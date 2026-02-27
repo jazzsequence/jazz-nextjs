@@ -42,50 +42,7 @@ jobs:
           echo "env_name=${ENV_NAME}" >> $GITHUB_OUTPUT
           echo "base_url=${BASE_URL}" >> $GITHUB_OUTPUT
 
-      - name: Wait for Pantheon deployment
-        id: wait
-        run: |
-          echo "Waiting for Pantheon to deploy to ${{ steps.env.outputs.env_name }}..."
-          echo "Target URL: ${{ steps.env.outputs.base_url }}"
-
-          MAX_ATTEMPTS=30
-          ATTEMPT=0
-          SLEEP_TIME=20
-
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
-
-            # Check if site responds with 200 and has expected content
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.env.outputs.base_url }}" || echo "000")
-
-            if [ "$HTTP_CODE" == "200" ]; then
-              # Site is up, check if it has the expected build timestamp or content
-              CONTENT=$(curl -s "${{ steps.env.outputs.base_url }}" || echo "")
-
-              # Check for Next.js or recent deployment marker
-              if echo "$CONTENT" | grep -q "Jazz Next.js\|Next.js\|__next"; then
-                echo "✅ Deployment detected (HTTP $HTTP_CODE)"
-                echo "deployment_ready=true" >> $GITHUB_OUTPUT
-                exit 0
-              else
-                echo "⏳ Site responding but content not ready yet..."
-              fi
-            else
-              echo "⏳ Site not ready (HTTP $HTTP_CODE)..."
-            fi
-
-            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-              echo "Waiting ${SLEEP_TIME}s before retry..."
-              sleep $SLEEP_TIME
-            fi
-          done
-
-          echo "❌ Timeout waiting for deployment"
-          echo "deployment_ready=false" >> $GITHUB_OUTPUT
-          exit 1
-
-      - name: Setup PHP
+      - name: Setup PHP (required for Terminus)
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
@@ -94,6 +51,52 @@ jobs:
         uses: pantheon-systems/terminus-github-actions@v1
         with:
           pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
+
+      - name: Wait for Pantheon build to complete
+        id: wait
+        run: |
+          echo "Waiting for Pantheon build to complete for ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}..."
+
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+          SLEEP_TIME=10
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
+
+            # Check workflow status using Terminus
+            WORKFLOW_STATUS=$(terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json --fields=workflow,env,status,time | jq -r '.[0].status' 2>/dev/null || echo "unknown")
+
+            echo "Current workflow status: $WORKFLOW_STATUS"
+
+            if [ "$WORKFLOW_STATUS" == "succeeded" ]; then
+              echo "✅ Build workflow succeeded"
+              echo "deployment_ready=true" >> $GITHUB_OUTPUT
+              exit 0
+            elif [ "$WORKFLOW_STATUS" == "failed" ]; then
+              echo "❌ Build workflow failed"
+              terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=table
+              echo "deployment_ready=false" >> $GITHUB_OUTPUT
+              exit 1
+            elif [ "$WORKFLOW_STATUS" == "running" ]; then
+              echo "⏳ Build still running..."
+            else
+              echo "⏳ Workflow status: $WORKFLOW_STATUS"
+            fi
+
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              sleep $SLEEP_TIME
+            fi
+          done
+
+          echo "❌ Timeout waiting for build to complete"
+          terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=table
+          echo "deployment_ready=false" >> $GITHUB_OUTPUT
+          exit 1
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Clear Pantheon cache
         run: |
