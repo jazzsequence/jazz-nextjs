@@ -52,30 +52,60 @@ jobs:
         with:
           pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
 
-      - name: Wait for Pantheon deployment
+      - name: Install Terminus Node Logs Plugin
+        run: |
+          terminus self:plugin:install pantheon-systems/terminus-node-logs-plugin
+          terminus self:plugin:reload
+          terminus list | grep node
+
+      - name: Wait for Pantheon build and deployment to complete
         id: wait
         run: |
           echo "Waiting for Pantheon deployment to complete..."
           echo "Site: ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}"
           echo "URL: ${{ steps.env.outputs.base_url }}"
 
-          # Simple approach: wait 2 minutes for build + deployment
-          # Next.js builds typically take 30s-90s on Pantheon
-          echo "Waiting 120 seconds for build and deployment..."
-          sleep 120
+          # Monitor Pantheon build and deployment status
+          # Max 10 minutes (builds can take up to 10 minutes per user feedback)
+          MAX_ATTEMPTS=60
+          SLEEP_TIME=10
+          ATTEMPT=0
 
-          # Verify site is responding
-          echo "Verifying site is accessible..."
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.env.outputs.base_url }})
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Check $ATTEMPT of $MAX_ATTEMPTS..."
 
-          if [ "$HTTP_STATUS" == "200" ]; then
-            echo "✅ Site is accessible (HTTP $HTTP_STATUS)"
-            echo "deployment_ready=true" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Site returned HTTP $HTTP_STATUS"
-            echo "deployment_ready=false" >> $GITHUB_OUTPUT
-            exit 1
-          fi
+            # Get most recent build status using terminus
+            BUILD_JSON=$(terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
+
+            # Parse status
+            BUILD_STATUS=$(echo "$BUILD_JSON" | jq -r 'to_entries | .[0].value.status // "UNKNOWN"')
+
+            echo "Build status: $BUILD_STATUS"
+
+            if [ "$BUILD_STATUS" == "DEPLOYMENT_SUCCESS" ]; then
+              echo "✅ Deployment successful"
+              terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=1
+              echo "deployment_ready=true" >> $GITHUB_OUTPUT
+              exit 0
+            elif [[ "$BUILD_STATUS" == *"FAILURE"* ]]; then
+              echo "❌ Build or deployment failed"
+              terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
+              echo "deployment_ready=false" >> $GITHUB_OUTPUT
+              exit 1
+            elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]] || [[ "$BUILD_STATUS" == "BUILD_SUCCESS" ]]; then
+              echo "⏳ Still processing..."
+            else
+              echo "⏳ Status: $BUILD_STATUS"
+            fi
+
+            sleep $SLEEP_TIME
+          done
+
+          echo "❌ Timeout after 10 minutes"
+          terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
+          echo "deployment_ready=false" >> $GITHUB_OUTPUT
+          exit 1
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
