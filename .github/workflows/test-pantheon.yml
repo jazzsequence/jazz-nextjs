@@ -76,8 +76,9 @@ jobs:
             echo "Check $ATTEMPT of $MAX_ATTEMPTS..."
 
             # Get most recent build status using terminus
+            # Use full command name instead of alias 'nbl' which may not be available in CI
             set +e
-            BUILD_JSON=$(terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
+            BUILD_JSON=$(terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
             TERMINUS_EXIT=$?
             set -e
 
@@ -104,12 +105,12 @@ jobs:
 
             if [ "$BUILD_STATUS" == "DEPLOYMENT_SUCCESS" ]; then
               echo "✅ Deployment successful"
-              terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=1
+              terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=1
               echo "deployment_ready=true" >> $GITHUB_OUTPUT
               exit 0
             elif [[ "$BUILD_STATUS" == *"FAILURE"* ]]; then
               echo "❌ Build or deployment failed"
-              terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
+              terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
               echo "deployment_ready=false" >> $GITHUB_OUTPUT
               exit 1
             elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]] || [[ "$BUILD_STATUS" == "BUILD_SUCCESS" ]]; then
@@ -122,7 +123,7 @@ jobs:
           done
 
           echo "❌ Timeout after 10 minutes"
-          terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
+          terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
           echo "deployment_ready=false" >> $GITHUB_OUTPUT
           exit 1
 
