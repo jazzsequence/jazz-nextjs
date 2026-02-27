@@ -65,6 +65,14 @@ Clearing Pantheon CDN cache...
 ✅ Cache cleared successfully
 ```
 
+## Terminus GitHub Action
+
+The workflow uses the official [Terminus GitHub Action](https://github.com/pantheon-systems/terminus-github-actions) (`pantheon-systems/terminus-github-actions@v1`), which:
+- Installs the latest Terminus CLI
+- Authenticates automatically with the machine token
+- Caches the Terminus session across workflow jobs
+- Handles PHP requirements automatically
+
 ## Troubleshooting
 
 ### Error: "Invalid machine token"
@@ -78,11 +86,14 @@ Clearing Pantheon CDN cache...
 
 ### Cache not clearing
 - Verify token has cache clearing permissions
-- Check Terminus version (requires 3.x)
+- Check workflow logs for Terminus authentication errors
 - Manual test: `terminus auth:login --machine-token=TOKEN`
 
 ## Related Documentation
 
+- [Pantheon's GitHub Actions](https://docs.pantheon.io/github-actions)
+- [Terminus GitHub Action](https://github.com/pantheon-systems/terminus-github-actions)
+- [Authenticate Terminus in GitHub Actions](https://docs.pantheon.io/terminus/ci/github-actions)
 - [Pantheon Machine Tokens](https://docs.pantheon.io/machine-tokens)
 - [GitHub Actions Secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets)
 - [Terminus CLI](https://docs.pantheon.io/terminus)

@@ -223,11 +223,12 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 2. Install dependencies with `npm ci`
 3. Determine target environment (dev or PR-specific)
 4. Wait for Pantheon deployment (HTTP polling for up to 10 minutes)
-5. **Install Terminus CLI and authenticate with Pantheon**
-6. **Clear Pantheon CDN cache** (`terminus env:clear-cache`)
-7. Run unit tests: `npm test -- --run`
-8. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
-9. Report test results in GitHub Actions summary
+5. **Setup PHP** (required for Terminus)
+6. **Install and authenticate Terminus** (via `pantheon-systems/terminus-github-actions@v1`)
+7. **Clear Pantheon CDN cache** (`terminus env:clear-cache`)
+8. Run unit tests: `npm test -- --run`
+9. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
+10. Report test results in GitHub Actions summary
 
 **Deployment detection**:
 - Polls site URL every 20 seconds (max 30 attempts)

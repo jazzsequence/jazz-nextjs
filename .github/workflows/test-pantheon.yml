@@ -85,18 +85,15 @@ jobs:
           echo "deployment_ready=false" >> $GITHUB_OUTPUT
           exit 1
 
-      - name: Install Terminus
-        run: |
-          mkdir -p $HOME/.terminus/plugins
-          curl -L https://github.com/pantheon-systems/terminus/releases/download/3.6.3/terminus.phar --output terminus
-          chmod +x terminus
-          sudo mv terminus /usr/local/bin/terminus
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
 
-      - name: Authenticate with Pantheon
-        env:
-          PANTHEON_MACHINE_TOKEN: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
-        run: |
-          terminus auth:login --machine-token="${PANTHEON_MACHINE_TOKEN}"
+      - name: Install and authenticate Terminus
+        uses: pantheon-systems/terminus-github-actions@v1
+        with:
+          pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
 
       - name: Clear Pantheon cache
         run: |
