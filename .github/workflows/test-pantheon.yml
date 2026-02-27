@@ -92,22 +92,24 @@ jobs:
             WORKFLOWS_RESPONSE=$(curl -s https://api.pantheon.io/v0/sites/$SITE_UUID/workflows \
               -H "Authorization: Bearer $SESSION_TOKEN")
 
-            # Get the first (most recent) workflow - API returns array directly
-            LATEST_WORKFLOW=$(echo "$WORKFLOWS_RESPONSE" | jq -r '.[0]')
-            WORKFLOW_ID=$(echo "$LATEST_WORKFLOW" | jq -r '.id // "unknown"')
-            WORKFLOW_STATUS=$(echo "$LATEST_WORKFLOW" | jq -r '.result // "unknown"')
-            WORKFLOW_DESC=$(echo "$LATEST_WORKFLOW" | jq -r '.description // "unknown"')
-            WORKFLOW_ENV=$(echo "$LATEST_WORKFLOW" | jq -r '.environment // "unknown"')
+            # Get the most recent sync_code workflow for this environment
+            # Filter for type=sync_code (builds/deployments) and matching environment
+            LATEST_WORKFLOW=$(echo "$WORKFLOWS_RESPONSE" | jq -r \
+              "map(select(.type == \"sync_code\" and .environment == \"${{ steps.env.outputs.env_name }}\")) | .[0]")
 
-            echo "Workflow: $WORKFLOW_DESC (env: $WORKFLOW_ENV)"
-            echo "Status: $WORKFLOW_STATUS"
-
-            # Only monitor workflows for the current environment
-            if [ "$WORKFLOW_ENV" != "${{ steps.env.outputs.env_name }}" ]; then
-              echo "⏭️  Skipping workflow for different environment"
+            if [ "$LATEST_WORKFLOW" == "null" ]; then
+              echo "⏳ No sync_code workflow found yet for ${{ steps.env.outputs.env_name }}"
               sleep $SLEEP_TIME
               continue
             fi
+
+            WORKFLOW_ID=$(echo "$LATEST_WORKFLOW" | jq -r '.id // "unknown"')
+            WORKFLOW_STATUS=$(echo "$LATEST_WORKFLOW" | jq -r '.result // "unknown"')
+            WORKFLOW_DESC=$(echo "$LATEST_WORKFLOW" | jq -r '.description // "unknown"')
+            WORKFLOW_TYPE=$(echo "$LATEST_WORKFLOW" | jq -r '.type // "unknown"')
+
+            echo "Workflow: $WORKFLOW_DESC (type: $WORKFLOW_TYPE)"
+            echo "Status: $WORKFLOW_STATUS"
 
             if [ "$WORKFLOW_STATUS" == "succeeded" ]; then
               echo "✅ Deployment successful"
