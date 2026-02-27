@@ -69,10 +69,25 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
 
-            # Get most recent build status (JSON is object with build IDs as keys)
-            BUILD_STATUS=$(terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>/dev/null | jq -r 'to_entries | .[0].value.status // "UNKNOWN"')
+            # Get build list and show raw output for debugging
+            echo "Fetching build status..."
+            BUILD_JSON=$(terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
 
-            echo "Current status: $BUILD_STATUS"
+            echo "Raw JSON response (first 500 chars):"
+            echo "$BUILD_JSON" | head -c 500
+            echo ""
+
+            # Check if we got valid JSON
+            if [ -z "$BUILD_JSON" ] || [ "$BUILD_JSON" = "{}" ]; then
+              echo "⏳ No builds found yet, waiting..."
+              sleep $SLEEP_TIME
+              continue
+            fi
+
+            # Parse status from JSON
+            BUILD_STATUS=$(echo "$BUILD_JSON" | jq -r 'to_entries | .[0].value.status // "UNKNOWN"')
+
+            echo "Parsed build status: $BUILD_STATUS"
 
             if [ "$BUILD_STATUS" == "DEPLOYMENT_SUCCESS" ]; then
               echo "✅ Build and deployment succeeded"
