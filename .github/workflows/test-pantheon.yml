@@ -52,15 +52,15 @@ jobs:
         with:
           pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
 
-      - name: Install Terminus Node Logs Plugin
-        run: |
-          terminus self:plugin:install pantheon-systems/terminus-node-logs-plugin
-          terminus self:plugin:reload
-          terminus list | grep node
-
       - name: Wait for Pantheon build and deployment to complete
         id: wait
         run: |
+          echo "Installing Terminus Node Logs Plugin..."
+          terminus self:plugin:install pantheon-systems/terminus-node-logs-plugin
+          terminus self:plugin:reload
+          echo "Verifying plugin commands available:"
+          terminus list | grep "node:builds:list"
+
           echo "Waiting for Pantheon deployment to complete..."
           echo "Site: ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}"
           echo "URL: ${{ steps.env.outputs.base_url }}"
