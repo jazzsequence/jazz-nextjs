@@ -94,18 +94,29 @@ If any command fails, fix the issues before committing. Never:
 
 **Rule**: Keep all dependencies up to date and compatible
 
+**Node.js Version**: 24.13.0 (matches Pantheon deployment environment)
+- Managed via nvm with `.nvmrc` file
+- npm 11.11.0
+- Ensures package-lock.json compatibility across local and CI/CD
+
 Recent dependency decisions:
-- **Tailwind CSS**: Downgraded from v4 (beta) to v3.4 (stable) for production reliability
+- **Node.js**: Upgraded to 24.13.0 to match Pantheon (from 22.6.0)
+- **Next.js**: Upgraded to 16.1.6 with Turbopack build (from 15.5.7)
+- **React**: Upgraded to 19.2.4 (from 18.3.1)
+- **Pantheon Cache Handler**: Added 0.4.0 for persistent caching
+- **ESLint**: Migrated from `next lint` to ESLint CLI with flat config
+- **Tailwind CSS**: Using v3.4 (stable) - v4 has ESM compatibility issues
 - **Test Environment**: Switched from jsdom to happy-dom for better ESM compatibility and performance
 - **TypeScript**: Use `unknown` instead of `any` for type safety
 - **Package Type**: Set to `"module"` for ESM support
 
 When dependencies are updated:
-1. Update package.json and package-lock.json
-2. Update README.md dependency versions
-3. Update this file (AI_USAGE.md)
-4. Test thoroughly before committing
-5. Document breaking changes in commit message
+1. Use Node 24.13.0 via `nvm use 24.13.0`
+2. Update package.json and package-lock.json
+3. Update README.md dependency versions
+4. Update this file (AI_USAGE.md)
+5. Test thoroughly before committing
+6. Document breaking changes in commit message
 
 ## Best Practices
 
@@ -134,4 +145,4 @@ See [TESTING.md](TESTING.md) for complete testing guide.
 - All tests must pass before commit
 
 ## Last Updated
-2026-02-26
+2026-02-27

@@ -110,14 +110,16 @@ jazz-nextjs/
 ## Technology Stack
 
 ### Core
-- **Next.js 15.5.7** - React framework with App Router
-- **React 18.3.1** - UI library
+- **Next.js 16.1.6** - React framework with App Router and Turbopack
+- **React 19.2.4** - UI library
 - **TypeScript 5** - Type safety
+- **Node.js 24.13.0** - Runtime (matches Pantheon)
 
 ### WordPress Integration
 - **Zod 3.24** - Schema validation
 - **DOMPurify** - HTML sanitization
 - **html-react-parser** - Safe HTML parsing
+- **@pantheon-systems/nextjs-cache-handler 0.4.0** - Persistent caching
 
 ### Testing
 - **Vitest 4** with happy-dom - Unit and integration testing
@@ -131,7 +133,8 @@ jazz-nextjs/
 - **PostCSS** - CSS processing
 - **Autoprefixer** - CSS vendor prefixing
 - **date-fns** - Date formatting
-- **Sharp** - Image optimization
+- **Sharp 0.34.5** - Image optimization
+- **ESLint 9.39.3** - Code linting with flat config
 
 ## Deployment
 
