@@ -92,12 +92,12 @@ jobs:
             WORKFLOWS_RESPONSE=$(curl -s https://api.pantheon.io/v0/sites/$SITE_UUID/workflows \
               -H "Authorization: Bearer $SESSION_TOKEN")
 
-            # Get the first (most recent) workflow
-            LATEST_WORKFLOW=$(echo "$WORKFLOWS_RESPONSE" | jq -r 'to_entries | .[0].value')
+            # Get the first (most recent) workflow - API returns array directly
+            LATEST_WORKFLOW=$(echo "$WORKFLOWS_RESPONSE" | jq -r '.[0]')
             WORKFLOW_ID=$(echo "$LATEST_WORKFLOW" | jq -r '.id // "unknown"')
             WORKFLOW_STATUS=$(echo "$LATEST_WORKFLOW" | jq -r '.result // "unknown"')
-            WORKFLOW_DESC=$(echo "$LATEST_WORKFLOW" | jq -r '.workflow // "unknown"')
-            WORKFLOW_ENV=$(echo "$LATEST_WORKFLOW" | jq -r '.env // "unknown"')
+            WORKFLOW_DESC=$(echo "$LATEST_WORKFLOW" | jq -r '.description // "unknown"')
+            WORKFLOW_ENV=$(echo "$LATEST_WORKFLOW" | jq -r '.environment // "unknown"')
 
             echo "Workflow: $WORKFLOW_DESC (env: $WORKFLOW_ENV)"
             echo "Status: $WORKFLOW_STATUS"
