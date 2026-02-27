@@ -442,39 +442,51 @@ error_log('Next.js revalidation: ' . print_r($response, true));
 
 ## Cache Management
 
-### Pantheon Quicksilver Hooks
+### Pantheon Cache Handler
 
-**Automatic cache clearing** on deployments via `pantheon.yml`:
+**Automatic cache management** via `@pantheon-systems/nextjs-cache-handler`:
 
-```yaml
-workflows:
-  deploy:
-    after:
-      - type: webphp
-        description: Clear Pantheon edge cache on deployment
-        script: private/scripts/clear_cache.php
+The Pantheon cache handler automatically manages cache invalidation:
+- **Build deploys**: Automatically clears page caches, preserves data caches
+- **GCS storage**: Persistent cache across deployments in production
+- **Revalidation**: Full support for `revalidatePath()` and `revalidateTag()`
 
-  sync_code:
-    after:
-      - type: webphp
-        description: Clear Pantheon edge cache after sync
-        script: private/scripts/clear_cache.php
+**Configuration** (already implemented):
+```typescript
+// cacheHandler.mjs
+import { createCacheHandler } from '@pantheon-systems/nextjs-cache-handler'
+
+const CacheHandler = createCacheHandler({
+  type: 'auto', // Auto-detect: GCS in production, file-based locally
+})
+
+export default CacheHandler
 ```
 
-**What gets cleared**:
-- Pantheon Varnish CDN cache (edge cache)
-- Next.js server-side cache (via Pantheon cache handler)
+**References**:
+- [Pantheon Next.js Cache Handler](https://docs.pantheon.io/release-notes/2026/02/nextjs-cache-handler)
+- [Cache Handler GitHub](https://github.com/pantheon-systems/nextjs-cache-handler)
 
-**When it runs**:
-- After code deployment to any environment (dev, test, live)
-- After code sync operations
+### Manual CDN Cache Clear
 
-**Benefits**:
-- Long CDN cache times (`s-maxage=31536000`) for performance
-- Automatic cache purge ensures fresh content after deployments
-- No manual cache clearing needed
+For immediate cache clearing (if needed):
 
-See `pantheon.yml` and `private/scripts/clear_cache.php` for implementation details.
+```bash
+# Clear cache for specific environment
+terminus env:clear-cache jazz-nextjs15.dev
+
+# Clear cache after deployment
+terminus env:clear-cache jazz-nextjs15.test
+terminus env:clear-cache jazz-nextjs15.live
+```
+
+### Limitations
+
+**Quicksilver and pantheon.yml NOT supported** on Next.js sites:
+- [Quicksilver hooks](https://docs.pantheon.io/nextjs/considerations) only work for WordPress/Drupal
+- [pantheon.yml is ignored](https://docs.pantheon.io/pantheon-yml) on Next.js sites
+- Node.js version controlled by `.nvmrc` and `package.json` engines field
+- Environment variables managed via [Terminus Secrets Manager](https://docs.pantheon.io/nextjs/environment-variables)
 
 ## Last Updated
 2026-02-27
