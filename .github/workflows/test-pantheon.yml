@@ -78,6 +78,10 @@ jobs:
 
           echo "✓ Authenticated with Pantheon API"
 
+          # Record start time - only look for workflows created after this
+          START_TIME=$(date +%s)
+          echo "Start time: $START_TIME ($(date -r $START_TIME))"
+
           # Monitor Pantheon workflow status via API
           # Max 10 minutes (builds can take up to 10 minutes per user feedback)
           MAX_ATTEMPTS=60
@@ -93,9 +97,9 @@ jobs:
               -H "Authorization: Bearer $SESSION_TOKEN")
 
             # Get the most recent sync_code workflow for this environment
-            # Filter for type=sync_code (builds/deployments) and matching environment
+            # Filter for: type=sync_code, matching environment, created after start time
             LATEST_WORKFLOW=$(echo "$WORKFLOWS_RESPONSE" | jq -r \
-              "map(select(.type == \"sync_code\" and .environment == \"${{ steps.env.outputs.env_name }}\")) | .[0]")
+              "map(select(.type == \"sync_code\" and .environment == \"${{ steps.env.outputs.env_name }}\" and .created_at >= $START_TIME)) | .[0]")
 
             if [ "$LATEST_WORKFLOW" == "null" ]; then
               echo "⏳ No sync_code workflow found yet for ${{ steps.env.outputs.env_name }}"
