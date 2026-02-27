@@ -61,18 +61,77 @@ This document tracks how AI tools are used in this project, specifically Claude 
 - Neural compression optimizes memory usage
 - Session restoration preserves context between work sessions
 
+## Development Methodology
+
+### Test-Driven Development (TDD London School)
+
+This project follows **TDD London School** (mockist approach):
+
+1. **Write Tests First**: Always write tests before implementing functionality
+2. **Red-Green-Refactor**:
+   - Red: Write failing test
+   - Green: Write minimal code to pass
+   - Refactor: Improve code while keeping tests green
+3. **Mock-First**: Use mocks for external dependencies (API calls, database)
+4. **Never Commit Failing Tests**: All tests must pass before commit
+
+### Pre-Commit Checklist
+
+**MANDATORY** before every commit:
+```bash
+npm test      # All tests must pass
+npm run lint  # No linting errors
+npm run build # Build must succeed
+```
+
+If any command fails, fix the issues before committing. Never:
+- Disable/whitelist linting rules to bypass errors
+- Comment out failing tests
+- Commit with build failures
+- Skip running tests
+
+### Dependency Management
+
+**Rule**: Keep all dependencies up to date and compatible
+
+Recent dependency decisions:
+- **Tailwind CSS**: Downgraded from v4 (beta) to v3.4 (stable) for production reliability
+- **Test Environment**: Switched from jsdom to happy-dom for better ESM compatibility and performance
+- **TypeScript**: Use `unknown` instead of `any` for type safety
+- **Package Type**: Set to `"module"` for ESM support
+
+When dependencies are updated:
+1. Update package.json and package-lock.json
+2. Update README.md dependency versions
+3. Update this file (AI_USAGE.md)
+4. Test thoroughly before committing
+5. Document breaking changes in commit message
+
 ## Best Practices
 
-1. **Single Message Operations**: All related operations in one message for parallelization
-2. **Background Execution**: Long-running tasks use `run_in_background: true`
-3. **No Polling**: Trust agents to return results rather than checking status
-4. **Incremental Commits**: Small, focused commits with clear messages
+1. **Test-First Development**: Write tests before implementation code
+2. **Single Message Operations**: All related operations in one message for parallelization
+3. **Background Execution**: Long-running tasks use `run_in_background: true`
+4. **No Polling**: Trust agents to return results rather than checking status
+5. **Incremental Commits**: Small, focused commits with clear messages
+6. **Never Skip Quality Checks**: Always run test, lint, and build before commit
 
 ## Session Management
 
 - Sessions are saved and can be restored via `session-{timestamp}` IDs
 - Auto memory files persist learnings across conversations
 - Hooks integrate with git workflow for automated quality checks
+
+## Testing Standards
+
+See [TESTING.md](TESTING.md) for complete testing guide.
+
+**Quick reference**:
+- Test framework: Vitest 4.0.18 with happy-dom
+- E2E testing: Playwright 1.58.2
+- API mocking: MSW 2.12.10
+- Always write tests before implementation (TDD)
+- All tests must pass before commit
 
 ## Last Updated
 2026-02-26
