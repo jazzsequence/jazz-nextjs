@@ -79,7 +79,7 @@ jobs:
 
             # Don't fail the whole script if terminus fails - capture output and check it
             set +e
-            BUILD_JSON=$(terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
+            BUILD_JSON=$(terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
             TERMINUS_EXIT=$?
             set -e
 
@@ -109,12 +109,12 @@ jobs:
 
             if [ "$BUILD_STATUS" == "DEPLOYMENT_SUCCESS" ]; then
               echo "✅ Build and deployment succeeded"
-              terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=1
+              terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=1
               echo "deployment_ready=true" >> $GITHUB_OUTPUT
               exit 0
             elif [[ "$BUILD_STATUS" == *"FAILURE"* ]]; then
               echo "❌ Build or deployment failed: $BUILD_STATUS"
-              terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
+              terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
               echo "deployment_ready=false" >> $GITHUB_OUTPUT
               exit 1
             elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]] || [[ "$BUILD_STATUS" == "BUILD_SUCCESS" ]]; then
@@ -127,7 +127,7 @@ jobs:
           done
 
           echo "❌ Timeout waiting for deployment to complete"
-          terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
+          terminus node:builds:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
           echo "deployment_ready=false" >> $GITHUB_OUTPUT
           exit 1
 
