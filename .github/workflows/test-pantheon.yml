@@ -57,9 +57,22 @@ jobs:
         run: |
           echo "Installing Terminus Node Logs Plugin..."
           terminus self:plugin:install pantheon-systems/terminus-node-logs-plugin
+
+          echo "Reloading plugins..."
           terminus self:plugin:reload
-          echo "Verifying plugin commands available:"
-          terminus list | grep "node:builds:list"
+
+          echo "Installed plugins:"
+          terminus self:plugin:list --format=list --field=name
+
+          echo "Available node commands:"
+          terminus list | grep "node" || echo "No node commands found"
+
+          echo "Checking for node:builds:list specifically:"
+          if terminus list | grep -q "node:builds:list"; then
+            echo "✅ node:builds:list is available"
+          else
+            echo "⚠️ node:builds:list not found, attempting to use it anyway..."
+          fi
 
           echo "Waiting for Pantheon deployment to complete..."
           echo "Site: ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}"
