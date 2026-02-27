@@ -212,36 +212,27 @@ Tests run ON Pantheon environments VIA GitHub Actions workflows. This ensures te
 
 ### GitHub Actions Testing Workflow
 
-Tests are triggered via GitHub Actions and run against the deployed Pantheon environment:
+The `.github/workflows/test-pantheon.yml` workflow runs automated tests against deployed Pantheon environments:
 
-```yaml
-name: Test on Pantheon
+**Trigger events**:
+- Push to `main` branch → tests run against `dev-jazz-nextjs15.pantheonsite.io`
+- Pull request opened/updated → tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
 
-on:
-  push:
-    branches: [main]
-  pull_request:
+**Workflow steps**:
+1. Checkout code and setup Node.js
+2. Install dependencies with `npm ci`
+3. Determine target environment (dev or PR-specific)
+4. Wait for Pantheon deployment (HTTP polling for up to 10 minutes)
+5. Run unit tests: `npm test -- --run`
+6. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
+7. Report test results in GitHub Actions summary
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+**Deployment detection**:
+- Polls site URL every 20 seconds (max 30 attempts)
+- Checks for HTTP 200 status AND content markers ("Jazz Next.js", "Next.js", "__next")
+- Fails if deployment not detected within timeout
 
-      - name: Wait for Pantheon build
-        run: |
-          # Poll Pantheon API (beta) to check build status
-          # Reference: https://api.pantheon.io/docs/swagger.json
-          # Wait for BUILD_SUCCESS or DEPLOYMENT_SUCCESS before running tests
-
-      - name: Run tests against deployed site
-        run: |
-          # Set environment URL based on context (PR number, branch, etc.)
-          # Run E2E tests against the deployed Pantheon environment
-          npm run test:e2e
-        env:
-          BASE_URL: ${{ steps.get-env-url.outputs.url }}
-```
+See `.github/workflows/test-pantheon.yml` for full implementation.
 
 ### Pantheon API Integration
 
@@ -313,4 +304,4 @@ See [Pantheon GitHub Application docs](https://docs.pantheon.io/github-applicati
 - [Pantheon Documentation Repository](https://github.com/pantheon-systems/documentation) (reference implementation)
 
 ## Last Updated
-2026-02-26
+2026-02-27

@@ -54,6 +54,7 @@ This document tracks how AI tools are used in this project, specifically Claude 
 2. Claude Flow orchestrates complex multi-step operations
 3. All changes are committed incrementally with proper co-authoring
 4. Documentation is updated alongside code changes
+5. GitHub Actions automatically test deployments on Pantheon environments
 
 ### Memory & Learning
 - AgentDB stores patterns and solutions across sessions
@@ -143,6 +144,15 @@ See [TESTING.md](TESTING.md) for complete testing guide.
 - API mocking: MSW 2.12.10
 - Always write tests before implementation (TDD)
 - All tests must pass before commit
+
+### Automated Testing on Pantheon
+
+GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests against deployed Pantheon environments:
+- **On push to main**: Tests run against `dev-jazz-nextjs15.pantheonsite.io`
+- **On pull requests**: Tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
+- **Wait strategy**: HTTP polling (30 attempts × 20s) to wait for Pantheon deployment
+- **Test types**: Unit tests (`npm test`) and E2E tests (`npm run test:e2e`)
+- **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
 
 ## Last Updated
 2026-02-27
