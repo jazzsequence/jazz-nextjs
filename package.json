@@ -18,6 +18,7 @@
     "test:e2e:ui": "playwright test --ui --config config/playwright.config.ts"
   },
   "dependencies": {
+    "@pantheon-systems/nextjs-cache-handler": "^0.4.0",
     "date-fns": "^4.1.0",
     "dompurify": "^3.3.1",
     "html-react-parser": "^5.2.17",

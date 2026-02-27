@@ -36,6 +36,58 @@ const nextConfig = {
 module.exports = nextConfig;
 ```
 
+## Pantheon Cache Handler
+
+As of February 2026, Pantheon provides `@pantheon-systems/nextjs-cache-handler` for persistent caching that survives deployments.
+
+**Installation**:
+```bash
+npm install @pantheon-systems/nextjs-cache-handler
+```
+
+**Configuration**:
+
+1. Create `cacheHandler.mjs` in project root:
+```javascript
+import { createCacheHandler } from '@pantheon-systems/nextjs-cache-handler'
+
+const CacheHandler = createCacheHandler({
+  type: 'auto', // Auto-detect: GCS if CACHE_BUCKET exists, else file-based
+})
+
+export default CacheHandler
+```
+
+2. Update `next.config.ts`:
+```typescript
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const nextConfig = {
+  cacheHandler: path.resolve(__dirname, "./cacheHandler.mjs"),
+  cacheMaxMemorySize: 0, // Disable in-memory caching
+  output: "standalone",
+};
+```
+
+**Environment Variables** (set in Pantheon dashboard):
+- `CACHE_BUCKET`: GCS bucket name (automatically set by Pantheon in production)
+- `OUTBOUND_PROXY_ENDPOINT`: Edge cache proxy (automatically set by Pantheon)
+- `CACHE_DEBUG`: Set to `true` or `1` for debug logging (optional)
+
+**Features**:
+- Persistent caching across deployments
+- Automatic GCS storage in production, file-based in development
+- Full support for `revalidateTag()`, `revalidatePath()`, and ISR
+- Automatic CDN cache invalidation on content updates
+- Smart build deploys: page caches refresh, data caches preserved
+
+**References**:
+- [Release Notes](https://docs.pantheon.io/release-notes/2026/02/nextjs-cache-handler)
+- [GitHub Repository](https://github.com/pantheon-systems/nextjs-cache-handler)
+
 ## Deployment Methods
 
 ### Automatic Deployments
@@ -146,6 +198,66 @@ When Pantheon receives a push or tag:
 - `DEPLOYMENT_WORKING` → Deployment in progress
 - `DEPLOYMENT_SUCCESS` → Live on Pantheon
 - `BUILD_FAILURE` / `DEPLOYMENT_FAILURE` → Check logs
+
+## Automated Testing on Pantheon
+
+Tests run ON Pantheon environments VIA GitHub Actions workflows. This ensures tests execute against the actual deployed application, not just locally.
+
+### Test Environment URLs
+
+- **Dev**: `dev-jazz-nextjs15.pantheonsite.io` (terminus: `jazz-nextjs15.dev`)
+- **PR**: `pr-{number}-jazz-nextjs15.pantheonsite.io` (terminus: `jazz-nextjs15.pr-{number}`)
+- **Test**: `test-jazz-nextjs15.pantheonsite.io` (terminus: `jazz-nextjs15.test`)
+- **Live**: `live-jazz-nextjs15.pantheonsite.io` (terminus: `jazz-nextjs15.live`)
+
+### GitHub Actions Testing Workflow
+
+Tests are triggered via GitHub Actions and run against the deployed Pantheon environment:
+
+```yaml
+name: Test on Pantheon
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait for Pantheon build
+        run: |
+          # Poll Pantheon API (beta) to check build status
+          # Reference: https://api.pantheon.io/docs/swagger.json
+          # Wait for BUILD_SUCCESS or DEPLOYMENT_SUCCESS before running tests
+
+      - name: Run tests against deployed site
+        run: |
+          # Set environment URL based on context (PR number, branch, etc.)
+          # Run E2E tests against the deployed Pantheon environment
+          npm run test:e2e
+        env:
+          BASE_URL: ${{ steps.get-env-url.outputs.url }}
+```
+
+### Pantheon API Integration
+
+The [Pantheon API (beta)](https://api.pantheon.io/docs/swagger.json) can be used to:
+- Poll build status before running tests
+- Retrieve deployment information
+- Monitor workflow progress
+
+**Known Limitation**: The current Pantheon documentation repository workflow experiences timeouts waiting for builds to complete. This may require custom polling logic or Pantheon API integration improvements.
+
+### Testing Strategy
+
+1. **Local tests** (`npm test`) - Run during development and pre-commit
+2. **Pantheon build** - Triggered by push/PR
+3. **GitHub Actions** - Wait for Pantheon build, then run E2E tests
+4. **Environment-specific tests** - Different test suites for Dev/PR/Test/Live
 
 ## Custom Domain Setup
 
