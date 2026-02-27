@@ -55,15 +55,30 @@ jobs:
       - name: Wait for Pantheon build and deployment to complete
         id: wait
         run: |
-          echo "Installing terminus-node-logs-plugin (latest)..."
-          terminus self:plugin:install pantheon-systems/terminus-node-logs-plugin
-          terminus self:plugin:reload
-
           echo "Waiting for Pantheon deployment to complete..."
           echo "Site: ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}"
           echo "URL: ${{ steps.env.outputs.base_url }}"
 
-          # Monitor Pantheon build and deployment status
+          # Get site UUID
+          SITE_UUID=$(terminus site:info ${{ env.PANTHEON_SITE_NAME }} --field=id)
+          echo "Site UUID: $SITE_UUID"
+
+          # Exchange machine token for API session token
+          SESSION_RESPONSE=$(curl -s -X POST https://api.pantheon.io/v0/authorize/machine-token \
+            -H "Content-Type: application/json" \
+            -d "{\"machine_token\": \"${{ secrets.PANTHEON_MACHINE_TOKEN }}\", \"client\": \"github-actions\"}")
+
+          SESSION_TOKEN=$(echo "$SESSION_RESPONSE" | jq -r '.session')
+
+          if [ -z "$SESSION_TOKEN" ] || [ "$SESSION_TOKEN" == "null" ]; then
+            echo "❌ Failed to get API session token"
+            echo "Response: $SESSION_RESPONSE"
+            exit 1
+          fi
+
+          echo "✓ Authenticated with Pantheon API"
+
+          # Monitor Pantheon workflow status via API
           # Max 10 minutes (builds can take up to 10 minutes per user feedback)
           MAX_ATTEMPTS=60
           SLEEP_TIME=10
@@ -73,55 +88,49 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "Check $ATTEMPT of $MAX_ATTEMPTS..."
 
-            # Get most recent build status using terminus
-            # In v0.1.4, the command is node:logs:build:list
-            set +e
-            BUILD_JSON=$(terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
-            TERMINUS_EXIT=$?
-            set -e
+            # Get most recent workflow for this site
+            WORKFLOWS_RESPONSE=$(curl -s https://api.pantheon.io/v0/sites/$SITE_UUID/workflows \
+              -H "Authorization: Bearer $SESSION_TOKEN")
 
-            if [ $TERMINUS_EXIT -ne 0 ]; then
-              echo "⚠️  Terminus command failed with exit code $TERMINUS_EXIT"
-              echo "Error output: $BUILD_JSON"
-              echo "Retrying..."
+            # Get the first (most recent) workflow
+            LATEST_WORKFLOW=$(echo "$WORKFLOWS_RESPONSE" | jq -r 'to_entries | .[0].value')
+            WORKFLOW_ID=$(echo "$LATEST_WORKFLOW" | jq -r '.id // "unknown"')
+            WORKFLOW_STATUS=$(echo "$LATEST_WORKFLOW" | jq -r '.result // "unknown"')
+            WORKFLOW_DESC=$(echo "$LATEST_WORKFLOW" | jq -r '.workflow // "unknown"')
+            WORKFLOW_ENV=$(echo "$LATEST_WORKFLOW" | jq -r '.env // "unknown"')
+
+            echo "Workflow: $WORKFLOW_DESC (env: $WORKFLOW_ENV)"
+            echo "Status: $WORKFLOW_STATUS"
+
+            # Only monitor workflows for the current environment
+            if [ "$WORKFLOW_ENV" != "${{ steps.env.outputs.env_name }}" ]; then
+              echo "⏭️  Skipping workflow for different environment"
               sleep $SLEEP_TIME
               continue
             fi
 
-            # Parse status
-            BUILD_STATUS=$(echo "$BUILD_JSON" | jq -r 'to_entries | .[0].value.status // "UNKNOWN"' 2>/dev/null || echo "PARSE_ERROR")
-
-            if [ "$BUILD_STATUS" == "PARSE_ERROR" ]; then
-              echo "⚠️  Failed to parse JSON response"
-              echo "Response: $BUILD_JSON"
-              echo "Retrying..."
-              sleep $SLEEP_TIME
-              continue
-            fi
-
-            echo "Build status: $BUILD_STATUS"
-
-            if [ "$BUILD_STATUS" == "DEPLOYMENT_SUCCESS" ]; then
+            if [ "$WORKFLOW_STATUS" == "succeeded" ]; then
               echo "✅ Deployment successful"
-              terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=1
               echo "deployment_ready=true" >> $GITHUB_OUTPUT
               exit 0
-            elif [[ "$BUILD_STATUS" == *"FAILURE"* ]]; then
-              echo "❌ Build or deployment failed"
-              terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
+            elif [ "$WORKFLOW_STATUS" == "failed" ]; then
+              echo "❌ Deployment failed"
+              echo "Workflow ID: $WORKFLOW_ID"
+              # Retrieve logs if available
+              curl -s https://api.pantheon.io/v0/sites/$SITE_UUID/workflows/$WORKFLOW_ID/logs \
+                -H "Authorization: Bearer $SESSION_TOKEN" || true
               echo "deployment_ready=false" >> $GITHUB_OUTPUT
               exit 1
-            elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]] || [[ "$BUILD_STATUS" == "BUILD_SUCCESS" ]]; then
+            elif [ "$WORKFLOW_STATUS" == "running" ]; then
               echo "⏳ Still processing..."
             else
-              echo "⏳ Status: $BUILD_STATUS"
+              echo "⏳ Status: $WORKFLOW_STATUS"
             fi
 
             sleep $SLEEP_TIME
           done
 
           echo "❌ Timeout after 10 minutes"
-          terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --limit=3
           echo "deployment_ready=false" >> $GITHUB_OUTPUT
           exit 1
 
