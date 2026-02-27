@@ -55,8 +55,9 @@ jobs:
       - name: Wait for Pantheon build and deployment to complete
         id: wait
         run: |
-          echo "Installing Terminus Node Logs Plugin..."
-          terminus self:plugin:install pantheon-systems/terminus-node-logs-plugin
+          echo "Installing Terminus Node Logs Plugin v0.1.3..."
+          # Pin to 0.1.3 - version 0.1.4 removed node:builds:list command
+          terminus self:plugin:install pantheon-systems/terminus-node-logs-plugin:0.1.3
 
           echo "Reloading plugins..."
           terminus self:plugin:reload
