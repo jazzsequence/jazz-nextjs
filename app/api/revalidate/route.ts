@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (tag) {
-      revalidateTag(tag, {}) // Empty config = immediate revalidation
+      revalidateTag(tag, "max") // stale-while-revalidate strategy
       console.log(`Revalidated tag: ${tag}`)
     }
 

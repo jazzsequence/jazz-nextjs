@@ -57,43 +57,18 @@ jobs:
         run: |
           echo "Waiting for Pantheon build to complete for ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}..."
 
-          MAX_ATTEMPTS=60
-          ATTEMPT=0
-          SLEEP_TIME=10
-
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            ATTEMPT=$((ATTEMPT + 1))
-            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
-
-            # Check workflow status using Terminus
-            WORKFLOW_STATUS=$(terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json --fields=workflow,env,status,time | jq -r '.[0].status' 2>/dev/null || echo "unknown")
-
-            echo "Current workflow status: $WORKFLOW_STATUS"
-
-            if [ "$WORKFLOW_STATUS" == "succeeded" ]; then
-              echo "✅ Build workflow succeeded"
-              echo "deployment_ready=true" >> $GITHUB_OUTPUT
-              exit 0
-            elif [ "$WORKFLOW_STATUS" == "failed" ]; then
-              echo "❌ Build workflow failed"
-              terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=table
-              echo "deployment_ready=false" >> $GITHUB_OUTPUT
-              exit 1
-            elif [ "$WORKFLOW_STATUS" == "running" ]; then
-              echo "⏳ Build still running..."
-            else
-              echo "⏳ Workflow status: $WORKFLOW_STATUS"
-            fi
-
-            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-              sleep $SLEEP_TIME
-            fi
-          done
-
-          echo "❌ Timeout waiting for build to complete"
-          terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=table
-          echo "deployment_ready=false" >> $GITHUB_OUTPUT
-          exit 1
+          # Use terminus workflow:wait to wait for the build to complete
+          # This waits for code sync/deploy workflows automatically
+          if terminus workflow:wait ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --max=600; then
+            echo "✅ Build workflow succeeded"
+            terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=table | head -5
+            echo "deployment_ready=true" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Build workflow failed or timed out"
+            terminus workflow:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=table
+            echo "deployment_ready=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
@@ -113,6 +88,7 @@ jobs:
         run: npm run test:e2e
         env:
           BASE_URL: ${{ steps.env.outputs.base_url }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
           CI: true
 
       - name: Report status
