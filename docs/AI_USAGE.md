@@ -151,8 +151,11 @@ GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests again
 - **On push to main**: Tests run against `dev-jazz-nextjs15.pantheonsite.io`
 - **On pull requests**: Tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
 - **Wait strategy**: HTTP polling (30 attempts × 20s) to wait for Pantheon deployment
+- **Cache clearing**: Automatically clears Pantheon CDN cache after deployment via Terminus
 - **Test types**: Unit tests (`npm test`) and E2E tests (`npm run test:e2e`)
 - **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
+
+**Required GitHub Secret**: `PANTHEON_MACHINE_TOKEN` for Terminus authentication
 
 ## Last Updated
 2026-02-27

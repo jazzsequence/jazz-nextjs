@@ -467,6 +467,15 @@ export default CacheHandler
 - [Pantheon Next.js Cache Handler](https://docs.pantheon.io/release-notes/2026/02/nextjs-cache-handler)
 - [Cache Handler GitHub](https://github.com/pantheon-systems/nextjs-cache-handler)
 
+### Automated CDN Cache Clearing
+
+**GitHub Actions automatically clears cache** after deployments:
+- After deployment detected, workflow runs `terminus env:clear-cache`
+- Ensures fresh content before running tests
+- No manual intervention needed for dev/PR environments
+
+See `.github/workflows/test-pantheon.yml` for implementation.
+
 ### Manual CDN Cache Clear
 
 For immediate cache clearing (if needed):
@@ -475,10 +484,12 @@ For immediate cache clearing (if needed):
 # Clear cache for specific environment
 terminus env:clear-cache jazz-nextjs15.dev
 
-# Clear cache after deployment
+# Clear cache after deployment to test/live
 terminus env:clear-cache jazz-nextjs15.test
 terminus env:clear-cache jazz-nextjs15.live
 ```
+
+**Note**: Dev and PR environments are cleared automatically via GitHub Actions.
 
 ### Limitations
 

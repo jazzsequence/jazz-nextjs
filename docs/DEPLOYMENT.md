@@ -223,14 +223,26 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 2. Install dependencies with `npm ci`
 3. Determine target environment (dev or PR-specific)
 4. Wait for Pantheon deployment (HTTP polling for up to 10 minutes)
-5. Run unit tests: `npm test -- --run`
-6. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
-7. Report test results in GitHub Actions summary
+5. **Install Terminus CLI and authenticate with Pantheon**
+6. **Clear Pantheon CDN cache** (`terminus env:clear-cache`)
+7. Run unit tests: `npm test -- --run`
+8. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
+9. Report test results in GitHub Actions summary
 
 **Deployment detection**:
 - Polls site URL every 20 seconds (max 30 attempts)
 - Checks for HTTP 200 status AND content markers ("Jazz Next.js", "Next.js", "__next")
 - Fails if deployment not detected within timeout
+
+**Automated cache clearing**:
+- After deployment detected, automatically clears Pantheon CDN cache
+- Ensures fresh content is served before running tests
+- Eliminates manual cache clearing after deployments
+
+**Required GitHub Secret**:
+- `PANTHEON_MACHINE_TOKEN` - Machine token for Terminus authentication
+  - Generate at: https://dashboard.pantheon.io/users/#account/tokens
+  - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
 
 See `.github/workflows/test-pantheon.yml` for full implementation.
 

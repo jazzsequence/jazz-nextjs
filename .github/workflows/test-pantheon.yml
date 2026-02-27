@@ -85,6 +85,25 @@ jobs:
           echo "deployment_ready=false" >> $GITHUB_OUTPUT
           exit 1
 
+      - name: Install Terminus
+        run: |
+          mkdir -p $HOME/.terminus/plugins
+          curl -L https://github.com/pantheon-systems/terminus/releases/download/3.6.3/terminus.phar --output terminus
+          chmod +x terminus
+          sudo mv terminus /usr/local/bin/terminus
+
+      - name: Authenticate with Pantheon
+        env:
+          PANTHEON_MACHINE_TOKEN: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
+        run: |
+          terminus auth:login --machine-token="${PANTHEON_MACHINE_TOKEN}"
+
+      - name: Clear Pantheon cache
+        run: |
+          echo "Clearing Pantheon CDN cache for ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}..."
+          terminus env:clear-cache ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}
+          echo "✅ Cache cleared successfully"
+
       - name: Run unit tests
         run: npm test -- --run
         env:
