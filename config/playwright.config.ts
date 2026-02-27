@@ -32,23 +32,20 @@ export default defineConfig({
   }),
 
   /* Configure projects for major browsers */
-  projects: [
+  projects: process.env.CI ? [
+    // CI: Test all browsers
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-
-    /* Test against mobile viewports. */
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
@@ -56,6 +53,12 @@ export default defineConfig({
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
+    },
+  ] : [
+    // Local: Only chromium for speed
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
     },
   ],
 
