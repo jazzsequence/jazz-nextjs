@@ -8,7 +8,7 @@ import type {
   WPCategory,
   WPTag,
   WPAPIError,
-} from './types'
+} from '../../../src/lib/wordpress/types'
 
 describe('WordPress Types', () => {
   describe('WPPost', () => {

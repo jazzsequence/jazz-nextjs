@@ -3,6 +3,7 @@
 ## Behavioral Rules (Always Enforced)
 
 - Do what has been asked; nothing more, nothing less
+- **DRY (Don't Repeat Yourself)**: Always minimize code duplication with functions, generics, or abstractions
 - NEVER create files unless they're absolutely necessary for achieving your goal
 - ALWAYS prefer editing an existing file to creating a new one
 - NEVER proactively create documentation files (*.md) or README files unless explicitly requested
@@ -14,8 +15,9 @@
 ## File Organization
 
 - NEVER save to root folder — use the directories below
-- Use `/src` for source code files
-- Use `/tests` for test files
+- Use `/src` for source code files ONLY (no test files)
+- Use `/tests` for ALL test files (*.test.ts, *.spec.ts)
+  - Mirror `/src` structure in `/tests` (e.g., `src/lib/foo.ts` → `tests/lib/foo.test.ts`)
 - Use `/docs` for documentation and markdown files
 - Use `/config` for configuration files
 - Use `/scripts` for utility scripts

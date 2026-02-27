@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../../tests/mocks/server'
+import { server } from '../../mocks/server'
 import {
   fetchPost,
   fetchPosts,
@@ -10,8 +10,8 @@ import {
   fetchGames,
   fetchRecipes,
   fetchArtists,
-} from './client'
-import type { WPPost, WPPage, WPGame, WPRecipe, WPArtist } from './types'
+} from '../../../src/lib/wordpress/client'
+import type { WPPost, WPPage, WPGame, WPRecipe, WPArtist } from '../../../src/lib/wordpress/types'
 
 const API_URL = 'https://jazzsequence.com/wp-json/wp/v2'
 
