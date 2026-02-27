@@ -200,28 +200,29 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 This project uses the following open-source dependencies:
 
 #### Core Framework
-- **Next.js** - MIT License - Vercel
-- **React** - MIT License - Meta Platforms, Inc.
-- **TypeScript** - Apache-2.0 License - Microsoft
+- **[Next.js](https://github.com/vercel/next.js)** - MIT License - [Vercel](https://vercel.com)
+- **[React](https://github.com/facebook/react)** - MIT License - [Meta Platforms, Inc.](https://opensource.fb.com)
+- **[TypeScript](https://github.com/microsoft/TypeScript)** - Apache-2.0 License - [Microsoft](https://www.typescriptlang.org)
 
 #### WordPress Integration
-- **Zod** - MIT License - Colin McDonnell
-- **DOMPurify** - Apache-2.0/MPL-2.0 License - Cure53
-- **html-react-parser** - MIT License - remarkable
+- **[Zod](https://github.com/colinhacks/zod)** - MIT License - [Colin McDonnell](https://github.com/colinhacks)
+- **[DOMPurify](https://github.com/cure53/DOMPurify)** - Apache-2.0/MPL-2.0 License - [Cure53](https://cure53.de)
+- **[html-react-parser](https://github.com/remarkablemark/html-react-parser)** - MIT License - [remarkablemark](https://github.com/remarkablemark)
+- **[isomorphic-dompurify](https://github.com/kkomelin/isomorphic-dompurify)** - MIT License - [Konstantin Komelin](https://github.com/kkomelin)
 
 #### Utilities
-- **date-fns** - MIT License - Sasha Koss and Lesha Koss
-- **sharp** - Apache-2.0 License - Lovell Fuller
+- **[date-fns](https://github.com/date-fns/date-fns)** - MIT License - [Sasha Koss](https://github.com/kossnocorp) and [Lesha Koss](https://github.com/leshakoss)
+- **[Sharp](https://github.com/lovell/sharp)** - Apache-2.0 License - [Lovell Fuller](https://github.com/lovell)
 
 #### Testing
-- **Vitest** - MIT License - Anthony Fu
-- **Playwright** - Apache-2.0 License - Microsoft
-- **MSW (Mock Service Worker)** - MIT License - Artem Zakharchenko
-- **Testing Library** - MIT License - Kent C. Dodds
+- **[Vitest](https://github.com/vitest-dev/vitest)** - MIT License - [Anthony Fu](https://github.com/antfu) and contributors
+- **[Playwright](https://github.com/microsoft/playwright)** - Apache-2.0 License - [Microsoft](https://playwright.dev)
+- **[MSW (Mock Service Worker)](https://github.com/mswjs/msw)** - MIT License - [Artem Zakharchenko](https://github.com/kettanaito)
+- **[Testing Library](https://github.com/testing-library)** - MIT License - [Kent C. Dodds](https://github.com/kentcdodds) and contributors
 
 #### Build Tools
-- **Tailwind CSS** - MIT License - Tailwind Labs
-- **ESLint** - MIT License - OpenJS Foundation
+- **[Tailwind CSS](https://github.com/tailwindlabs/tailwindcss)** - MIT License - [Tailwind Labs](https://tailwindcss.com)
+- **[ESLint](https://github.com/eslint/eslint)** - MIT License - [OpenJS Foundation](https://openjsf.org)
 
 For complete dependency information, see [package.json](package.json).
 
