@@ -55,9 +55,6 @@ jobs:
       - name: Wait for Pantheon build and deployment to complete
         id: wait
         run: |
-          echo "Verifying node:builds:list is available in core Terminus..."
-          terminus list | grep "node:builds:list"
-
           echo "Waiting for Pantheon deployment to complete..."
           echo "Site: ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}"
           echo "URL: ${{ steps.env.outputs.base_url }}"
