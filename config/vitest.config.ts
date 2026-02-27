@@ -8,6 +8,12 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
+    exclude: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/.next/**',
+      '**/tests/e2e/**', // Exclude Playwright E2E tests from Vitest
+    ],
     css: false, // Disable CSS processing to avoid ESM issues with Tailwind
     server: {
       deps: {

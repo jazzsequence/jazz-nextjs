@@ -24,6 +24,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
+  /* Load test environment variables */
+  ...(process.env.NODE_ENV !== 'production' && {
+    env: {
+      REVALIDATE_SECRET: process.env.REVALIDATE_SECRET || 'test-secret',
+    },
+  }),
+
   /* Configure projects for major browsers */
   projects: [
     {
@@ -57,5 +64,8 @@ export default defineConfig({
     command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
+    env: {
+      REVALIDATE_SECRET: process.env.REVALIDATE_SECRET || 'test-secret',
+    },
   },
 })

@@ -4,9 +4,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone", // Required for Pantheon deployment
 
-  // Pantheon persistent cache handler (released Feb 2026)
-  cacheHandler: "./cacheHandler.mjs",
-  cacheMaxMemorySize: 0, // Disable default in-memory caching
+  // Pantheon persistent cache handler (production only)
+  ...(process.env.NODE_ENV === "production" && {
+    cacheHandler: "./cacheHandler.mjs",
+    cacheMaxMemorySize: 0, // Disable default in-memory caching
+  }),
 
   // Image optimization for WordPress media (served via DigitalOcean CDN)
   images: {
