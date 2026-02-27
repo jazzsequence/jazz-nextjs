@@ -6,6 +6,15 @@ This document explains how the Next.js frontend stays in sync with WordPress con
 
 When new posts, pages, or custom content is created/updated in WordPress, the Next.js frontend needs to know about it. We use a combination of strategies depending on the content type and freshness requirements.
 
+### Automatic Cache Clearing
+
+**Pantheon CDN cache is automatically cleared** on code deployments via Quicksilver hooks (`pantheon.yml`):
+- **On deployment**: Varnish CDN cache cleared after code push
+- **On sync**: Cache cleared after code sync
+- **Result**: Fresh content served immediately after deployments
+
+This ensures long CDN cache times (`s-maxage=31536000`) don't serve stale content after deployments.
+
 ## Update Strategies
 
 ### 1. Incremental Static Regeneration (ISR) - Primary Method
@@ -64,55 +73,50 @@ async function getPost(slug: string) {
 
 **Implementation**:
 
-**Next.js API Route** (`app/api/revalidate/route.ts`):
+**Next.js API Route** (`app/api/revalidate/route.ts`) - **Already implemented**:
 ```typescript
 import { revalidatePath, revalidateTag } from 'next/cache'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
-  const { secret, path, tag, type, slug } = await request.json()
+  // Verify secret token via header
+  const secret = request.headers.get('x-revalidate-secret')
 
-  // Verify secret to prevent unauthorized revalidation
-  if (secret !== process.env.REVALIDATION_SECRET) {
-    return Response.json({ message: 'Invalid secret' }, { status: 401 })
+  if (secret !== process.env.REVALIDATE_SECRET) {
+    return NextResponse.json({ error: 'Invalid secret' }, { status: 401 })
   }
 
   try {
-    // Revalidate by path
+    const body = await request.json()
+    const { path, tag } = body
+
+    // Revalidate by path or tag
     if (path) {
       await revalidatePath(path)
+      console.log(`Revalidated path: ${path}`)
     }
 
-    // Revalidate by tag (e.g., all posts)
     if (tag) {
       await revalidateTag(tag)
+      console.log(`Revalidated tag: ${tag}`)
     }
 
-    // Revalidate based on content type
-    if (type && slug) {
-      const paths = {
-        post: `/posts/${slug}`,
-        page: `/${slug}`,
-        gc_game: `/games/${slug}`,
-        rb_recipe: `/recipes/${slug}`,
-        'plague-artist': `/artists/${slug}`,
-      }
-
-      if (paths[type]) {
-        await revalidatePath(paths[type])
-      }
-    }
-
-    return Response.json({
+    return NextResponse.json({
+      success: true,
       revalidated: true,
-      now: Date.now(),
-      path: path || `${type}/${slug}`
+      path,
+      tag,
+      timestamp: new Date().toISOString(),
     })
-  } catch (err) {
-    return Response.json({
-      message: 'Error revalidating',
-      error: err.message
-    }, { status: 500 })
+  } catch (error) {
+    console.error('Revalidation error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }
 ```
@@ -137,26 +141,54 @@ function trigger_nextjs_revalidation($post_id, $post, $update) {
         return;
     }
 
+    // Determine path based on post type
+    $paths = [
+        'post' => "/posts/{$post->post_name}",
+        'page' => "/{$post->post_name}",
+        'gc_game' => "/games/{$post->post_name}",
+        'rb_recipe' => "/recipes/{$post->post_name}",
+        'plague-artist' => "/artists/{$post->post_name}",
+    ];
+
+    $path = isset($paths[$post->post_type]) ? $paths[$post->post_type] : null;
+
+    if (!$path) {
+        return; // Unknown post type
+    }
+
     $data = [
-        'secret' => $secret,
-        'type' => $post->post_type,
-        'slug' => $post->post_name,
-        'action' => $update ? 'update' : 'create',
+        'path' => $path,
+        'tag' => $post->post_type, // Also revalidate by tag
     ];
 
     wp_remote_post($nextjs_url, [
         'body' => json_encode($data),
-        'headers' => ['Content-Type' => 'application/json'],
+        'headers' => [
+            'Content-Type' => 'application/json',
+            'X-Revalidate-Secret' => $secret, // Send as header
+        ],
         'timeout' => 5,
     ]);
 }
 ```
 
-**Environment Variables** (Set in Pantheon dashboard):
+**Environment Variables**:
+
+**Next.js (Set in Pantheon dashboard)**:
 ```env
-NEXTJS_REVALIDATION_URL=https://your-site.pantheonsite.io/api/revalidate
-REVALIDATION_SECRET=your-secure-random-string
+REVALIDATE_SECRET=your-secure-random-string-here
 WORDPRESS_API_URL=https://jazzsequence.com
+```
+
+**WordPress (Set in WordPress environment)**:
+```env
+NEXTJS_REVALIDATION_URL=https://dev-jazz-nextjs15.pantheonsite.io/api/revalidate
+NEXTJS_REVALIDATION_SECRET=same-secret-as-nextjs
+```
+
+**Security Note**: Generate a strong random secret:
+```bash
+openssl rand -base64 32
 ```
 
 **Pros**:
@@ -285,19 +317,22 @@ export default async function PostsArchive() {
 ### Phase 1: MVP (Current)
 - [x] TypeScript types for WordPress content
 - [x] Test infrastructure
+- [x] Pantheon cache handler with GCS storage
+- [x] Quicksilver hooks for automatic cache clearing on deployment
+- [x] On-demand revalidation API route (`/api/revalidate`)
 - [ ] Basic ISR implementation (5-minute revalidation)
 - [ ] WordPress API client functions
 
 ### Phase 2: Enhanced
-- [ ] On-demand revalidation API route
-- [ ] WordPress webhook plugin
-- [ ] Environment variables configuration
-- [ ] Tag-based cache invalidation
+- [ ] WordPress webhook plugin for automatic revalidation
+- [ ] Environment variables configuration (REVALIDATE_SECRET)
+- [ ] Tag-based cache invalidation for content types
+- [ ] ISR implementation across all content types
 
 ### Phase 3: Optimized
 - [ ] SWR for client-side lists
 - [ ] Advanced caching strategies
-- [ ] Performance monitoring
+- [ ] Performance monitoring and cache metrics
 - [ ] Cache warming on build
 
 ## Testing Content Updates
@@ -350,15 +385,17 @@ terminus node:logs:build:list jazz-nextjs.dev
 
 **Check**:
 1. Revalidation period hasn't expired yet
-2. Webhook secret matches
+2. Webhook secret matches (header: `X-Revalidate-Secret`)
 3. WordPress can reach Next.js URL
 4. No firewall blocking webhooks
 5. Check Pantheon build logs
+6. Pantheon CDN cache (cleared automatically on deployment)
 
 **Fix**:
-- Manually trigger: Call `/api/revalidate` directly
-- Clear cache: Redeploy site
-- Check logs: `terminus node:logs`
+- Manually trigger: `curl -X POST https://dev-jazz-nextjs15.pantheonsite.io/api/revalidate -H "X-Revalidate-Secret: YOUR_SECRET" -d '{"path": "/posts/test"}'`
+- Clear CDN cache: Push new deployment (triggers Quicksilver cache clear)
+- Check logs: `terminus node:logs jazz-nextjs15.dev`
+- Verify Quicksilver: `terminus workflow:list jazz-nextjs15.dev`
 
 ### Webhook Failures
 
@@ -403,5 +440,41 @@ error_log('Next.js revalidation: ' . print_r($response, true));
 - [SWR Documentation](https://swr.vercel.app)
 - [Pantheon Next.js Caching](https://docs.pantheon.io/nextjs/architecture#runtime-architecture)
 
+## Cache Management
+
+### Pantheon Quicksilver Hooks
+
+**Automatic cache clearing** on deployments via `pantheon.yml`:
+
+```yaml
+workflows:
+  deploy:
+    after:
+      - type: webphp
+        description: Clear Pantheon edge cache on deployment
+        script: private/scripts/clear_cache.php
+
+  sync_code:
+    after:
+      - type: webphp
+        description: Clear Pantheon edge cache after sync
+        script: private/scripts/clear_cache.php
+```
+
+**What gets cleared**:
+- Pantheon Varnish CDN cache (edge cache)
+- Next.js server-side cache (via Pantheon cache handler)
+
+**When it runs**:
+- After code deployment to any environment (dev, test, live)
+- After code sync operations
+
+**Benefits**:
+- Long CDN cache times (`s-maxage=31536000`) for performance
+- Automatic cache purge ensures fresh content after deployments
+- No manual cache clearing needed
+
+See `pantheon.yml` and `private/scripts/clear_cache.php` for implementation details.
+
 ## Last Updated
-2026-02-26
+2026-02-27
