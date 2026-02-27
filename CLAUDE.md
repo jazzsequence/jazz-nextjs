@@ -54,6 +54,27 @@ npm run lint
 - ALWAYS run tests after making code changes
 - ALWAYS verify build succeeds before committing
 
+## Deployment
+
+See [DEPLOYMENT.md](/docs/DEPLOYMENT.md) for full deployment guide.
+
+**Quick deployment commands:**
+```bash
+# Deploy to Test
+git tag pantheon_test_N -a -m "Deploy to Test" && git push origin --tags
+
+# Deploy to Live
+git tag pantheon_live_N -a -m "Deploy to Live" && git push origin --tags
+
+# Monitor deployment
+terminus node:logs:build:list jazz-nextjs.<env>
+```
+
+**Key requirements:**
+- `output: "standalone"` in next.config.js (required for Pantheon)
+- GitHub Application must be installed and authorized
+- Environment variables set in Pantheon dashboard, never committed
+
 ## Security Rules
 
 - NEVER hardcode API keys, secrets, or credentials in source files
