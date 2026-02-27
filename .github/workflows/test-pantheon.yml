@@ -76,10 +76,29 @@ jobs:
             echo "Check $ATTEMPT of $MAX_ATTEMPTS..."
 
             # Get most recent build status using terminus
+            set +e
             BUILD_JSON=$(terminus nbl ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>&1)
+            TERMINUS_EXIT=$?
+            set -e
+
+            if [ $TERMINUS_EXIT -ne 0 ]; then
+              echo "⚠️  Terminus command failed with exit code $TERMINUS_EXIT"
+              echo "Error output: $BUILD_JSON"
+              echo "Retrying..."
+              sleep $SLEEP_TIME
+              continue
+            fi
 
             # Parse status
-            BUILD_STATUS=$(echo "$BUILD_JSON" | jq -r 'to_entries | .[0].value.status // "UNKNOWN"')
+            BUILD_STATUS=$(echo "$BUILD_JSON" | jq -r 'to_entries | .[0].value.status // "UNKNOWN"' 2>/dev/null || echo "PARSE_ERROR")
+
+            if [ "$BUILD_STATUS" == "PARSE_ERROR" ]; then
+              echo "⚠️  Failed to parse JSON response"
+              echo "Response: $BUILD_JSON"
+              echo "Retrying..."
+              sleep $SLEEP_TIME
+              continue
+            fi
 
             echo "Build status: $BUILD_STATUS"
 
