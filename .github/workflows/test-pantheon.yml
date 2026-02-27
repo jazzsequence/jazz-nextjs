@@ -69,8 +69,8 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
 
-            # Get most recent build status (JSON format: one object per build)
-            BUILD_STATUS=$(terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>/dev/null | head -1 | jq -r '.Status // "UNKNOWN"')
+            # Get most recent build status (JSON is object with build IDs as keys)
+            BUILD_STATUS=$(terminus node:logs:build:list ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --format=json 2>/dev/null | jq -r 'to_entries | .[0].value.status // "UNKNOWN"')
 
             echo "Current status: $BUILD_STATUS"
 
