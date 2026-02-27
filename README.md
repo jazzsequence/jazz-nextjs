@@ -102,6 +102,7 @@ jazz-nextjs/
 ## Documentation
 
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Complete deployment guide for Pantheon
+- **[CONTENT_UPDATES.md](docs/CONTENT_UPDATES.md)** - Content synchronization strategies and ISR
 - **[TESTING.md](docs/TESTING.md)** - Testing guide and TDD methodology
 - **[AI_USAGE.md](docs/AI_USAGE.md)** - How AI tools are used in development
 - **[CLAUDE.md](CLAUDE.md)** - Development standards and workflow
