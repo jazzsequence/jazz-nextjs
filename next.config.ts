@@ -4,13 +4,13 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone", // Required for Pantheon deployment
 
-  // Image optimization for WordPress media
+  // Image optimization for WordPress media (served via DigitalOcean CDN)
   images: {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "jazzsequence.com",
-        pathname: "/wp-content/uploads/**",
+        hostname: "sfo2.digitaloceanspaces.com",
+        pathname: "/cdn.jazzsequence/**",
       },
     ],
   },
