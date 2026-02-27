@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockPosts, mockPost, mockPages, mockPage } from './wordpress-data'
+import { mockPosts, mockPages } from './wordpress-data'
 
 const WORDPRESS_API_URL = process.env.WORDPRESS_API_URL || 'https://jazzsequence.com/wp-json/wp/v2'
 
