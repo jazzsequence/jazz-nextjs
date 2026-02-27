@@ -5,10 +5,15 @@ import path from 'path'
 export default defineConfig({
   plugins: [react()],
   test: {
-    environment: 'jsdom',
+    environment: 'happy-dom',
     globals: true,
     setupFiles: ['./tests/setup.ts'],
-    css: true,
+    css: false, // Disable CSS processing to avoid ESM issues with Tailwind
+    server: {
+      deps: {
+        inline: [/@csstools/, /@asamuzakjp/],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

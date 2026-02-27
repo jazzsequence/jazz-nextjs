@@ -51,8 +51,12 @@ npm test
 npm run lint
 ```
 
-- ALWAYS run tests after making code changes
-- ALWAYS verify build succeeds before committing
+- **CRITICAL**: ALWAYS run tests before committing (TDD London School)
+- **CRITICAL**: ALWAYS verify build succeeds before committing
+- **CRITICAL**: NEVER commit code that fails tests or build
+- **CRITICAL**: Fix TypeScript/ESLint errors properly, never whitelist/disable rules
+- Write tests FIRST, then implement code to make tests pass
+- All three commands (test, lint, build) must pass before any commit
 
 ## Deployment
 

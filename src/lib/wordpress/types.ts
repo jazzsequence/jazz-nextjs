@@ -75,7 +75,7 @@ export interface WPBaseContent {
   comment_status: 'open' | 'closed'
   ping_status: 'open' | 'closed'
   template: string
-  meta: Record<string, any>
+  meta: Record<string, unknown>
   _embedded?: WPEmbedded
 }
 
@@ -163,7 +163,7 @@ export interface WPMovie extends WPBaseContent {
   genre: number[]
   actor: number[]
   collection: number[]
-  meta: Record<string, any> // Movie metadata varies
+  meta: Record<string, unknown> // Movie metadata varies
 }
 
 // Addresses (ab_address)
@@ -193,7 +193,7 @@ export interface WPCategory {
   slug: string
   taxonomy: 'category'
   parent: number
-  meta: Record<string, any>
+  meta: Record<string, unknown>
 }
 
 // Tag
@@ -205,7 +205,7 @@ export interface WPTag {
   name: string
   slug: string
   taxonomy: 'post_tag'
-  meta: Record<string, any>
+  meta: Record<string, unknown>
 }
 
 // Series (from Organize Series plugin)
@@ -217,11 +217,11 @@ export interface WPSeries {
   name: string
   slug: string
   taxonomy: 'series'
-  meta: Record<string, any>
+  meta: Record<string, unknown>
 }
 
 // API Response wrapper types
-export interface WPAPIListResponse<T> extends Array<T> {}
+export type WPAPIListResponse<T> = T[]
 
 export interface WPAPIError {
   code: string

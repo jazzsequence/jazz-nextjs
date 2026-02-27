@@ -118,13 +118,16 @@ jazz-nextjs/
 - **html-react-parser** - Safe HTML parsing
 
 ### Testing
-- **Vitest** - Unit and integration testing
+- **Vitest 4** with happy-dom - Unit and integration testing
 - **Playwright** - End-to-end testing
 - **MSW** - API mocking
 - **Testing Library** - React component testing
+- **happy-dom** - Lightweight DOM implementation for tests
 
 ### Build & Dev Tools
-- **Tailwind CSS 4** - Styling
+- **Tailwind CSS 3.4** - Styling framework
+- **PostCSS** - CSS processing
+- **Autoprefixer** - CSS vendor prefixing
 - **date-fns** - Date formatting
 - **Sharp** - Image optimization
 
