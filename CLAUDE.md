@@ -40,6 +40,19 @@
 - **HNSW**: Enabled
 - **Neural**: Enabled
 
+### Design Documentation
+
+**WordPress API Client** (`/docs/API_CLIENT_DESIGN.md`)
+- **Implementation**: `src/lib/wordpress/client.ts`
+- **Tests**: `tests/lib/wordpress/client.test.ts` (75/75 passing)
+- **Architecture**: Generic `fetchPosts(postType, options)` API for all content types
+- **Features**: Zod validation, retry logic, rate limiting, ISR integration
+- **Post Types**: posts, pages, gc_game, rb_recipe, plague-artist, movie, media, ab_address
+- **Key Design**: Ultra-generic API eliminates code duplication, single config per post type
+- **Rate Limiter**: Token bucket (10 req/sec, burst of 20)
+- **Retry Logic**: Exponential backoff with jitter (±20%), 3 retries max
+- **ISR**: Automatic cache tag generation, Next.js integration
+
 ## Build & Test
 
 ```bash
