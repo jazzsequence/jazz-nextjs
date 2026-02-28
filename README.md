@@ -8,11 +8,19 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
 
 ### Key Features
 
-- **WordPress REST API Integration**: Type-safe integration with WordPress content
-- **Multiple Custom Post Types**: Support for games, recipes, artists, media, movies, and more
-- **Type Safety**: Full TypeScript implementation with Zod schema validation
+- **WordPress REST API Client**: Production-ready client with retry logic, rate limiting, and Zod validation
+  - Generic `fetchPosts(postType, options)` API for all content types
+  - Exponential backoff with jitter (±20%) for transient failures
+  - Token bucket rate limiting (10 req/sec, burst of 20)
+  - Automatic ISR cache tag generation for Next.js
+  - Custom error classes with detailed context
+- **Multiple Custom Post Types**: Support for 8+ content types (games, recipes, artists, media, movies, addresses)
+- **Type Safety**: Full TypeScript implementation with runtime Zod schema validation
 - **HTML Sanitization**: DOMPurify integration for safe WordPress content rendering
-- **Testing**: Comprehensive test coverage with Vitest and Playwright
+- **Testing**: 75/75 tests passing with comprehensive coverage
+  - Unit tests with Vitest + happy-dom
+  - E2E tests with Playwright
+  - Automated Playwright report deployment to GitHub Pages
 - **Deployment**: Optimized for Pantheon's Next.js hosting platform
 
 ### Custom Post Types Supported
@@ -55,6 +63,8 @@ npm start
 
 ### Testing
 
+**Current Status**: ✅ 75/75 tests passing
+
 ```bash
 # Unit and integration tests (Vitest)
 npm test
@@ -72,11 +82,73 @@ npm run test:e2e
 npm run test:e2e:ui
 ```
 
+**Test Coverage:**
+- WordPress API client (65 tests)
+  - All post types (posts, pages, games, recipes, artists, movies, media, addresses)
+  - Error handling (404, 429, 500, network failures)
+  - Retry logic with exponential backoff
+  - Rate limiting
+  - ISR caching integration
+  - Edge cases (empty arrays, long content, Unicode, malformed responses)
+- Type validation (10 tests)
+  - Zod schema validation for all post types
+  - Required vs optional fields
+  - Custom post type metadata
+
+**Playwright Reports**: E2E test results are automatically deployed to GitHub Pages at:
+```
+https://{username}.github.io/jazz-nextjs/reports/{run_id}
+```
+
 ### Linting
 
 ```bash
 npm run lint
 ```
+
+## WordPress API Client Usage
+
+The WordPress API client provides a generic interface for all post types:
+
+```typescript
+import { fetchPosts, fetchPost } from '@/lib/wordpress/client'
+
+// Fetch posts with pagination
+const posts = await fetchPosts('posts', { page: 1, perPage: 10 })
+
+// Fetch games with search
+const games = await fetchPosts('gc_game', { search: 'monopoly' })
+
+// Fetch recipes with ISR caching (auto-generates cache tags)
+const recipes = await fetchPosts('rb_recipe', {
+  isr: { revalidate: 3600 }  // Auto-tags: ['rb_recipe']
+})
+
+// Fetch single post
+const post = await fetchPost('posts', 'my-post-slug')
+
+// Fetch single game with custom cache tags
+const game = await fetchPost('gc_game', 'monopoly', {
+  cache: { revalidate: 7200, tags: ['games', 'featured'] }
+})
+
+// Disable caching
+const liveData = await fetchPosts('posts', {
+  cache: { cache: 'no-cache' }
+})
+```
+
+**Supported Post Types:**
+- `posts` - WordPress posts
+- `pages` - WordPress pages
+- `gc_game` - Board games
+- `rb_recipe` - Recipes
+- `plague-artist` - Artists
+- `movie` - Movies
+- `media` - Video content
+- `ab_address` - Address book
+
+See [API_CLIENT_DESIGN.md](docs/API_CLIENT_DESIGN.md) for complete documentation.
 
 ## Project Structure
 
@@ -84,23 +156,33 @@ npm run lint
 jazz-nextjs/
 ├── src/
 │   └── lib/
-│       └── wordpress/      # WordPress API integration
-│           ├── types.ts    # TypeScript type definitions
-│           └── schemas.ts  # Zod validation schemas
+│       └── wordpress/       # WordPress API integration
+│           ├── client.ts    # Generic API client (retry, rate limiting, validation)
+│           ├── types.ts     # TypeScript type definitions
+│           └── schemas.ts   # Zod validation schemas
 ├── tests/
-│   ├── mocks/             # MSW handlers for API mocking
-│   └── setup.ts           # Test configuration
+│   ├── lib/wordpress/       # API client tests (75 tests)
+│   │   ├── client.test.ts   # Client functionality tests
+│   │   └── types.test.ts    # Schema validation tests
+│   ├── mocks/               # MSW handlers for API mocking
+│   └── setup.ts             # Test configuration (MSW, rate limiter reset)
 ├── config/
-│   ├── vitest.config.ts   # Vitest configuration
+│   ├── vitest.config.ts     # Vitest configuration
 │   └── playwright.config.ts # Playwright configuration
 ├── docs/
-│   ├── DEPLOYMENT.md      # Deployment guide
-│   └── AI_USAGE.md        # AI tooling documentation
-└── CLAUDE.md              # Development workflow and standards
+│   ├── API_CLIENT_DESIGN.md # WordPress API client architecture
+│   ├── DEPLOYMENT.md        # Deployment guide
+│   ├── TESTING.md           # Testing methodology (TDD)
+│   ├── CONTENT_UPDATES.md   # ISR and content sync strategies
+│   └── AI_USAGE.md          # AI tooling documentation
+├── .github/workflows/
+│   └── test-pantheon.yml    # CI/CD with Playwright report deployment
+└── CLAUDE.md                # Development workflow and standards
 ```
 
 ## Documentation
 
+- **[API_CLIENT_DESIGN.md](docs/API_CLIENT_DESIGN.md)** - WordPress API client architecture and design
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Complete deployment guide for Pantheon
 - **[CONTENT_UPDATES.md](docs/CONTENT_UPDATES.md)** - Content synchronization strategies and ISR
 - **[TESTING.md](docs/TESTING.md)** - Testing guide and TDD methodology
@@ -116,10 +198,13 @@ jazz-nextjs/
 - **Node.js 24.13.0** - Runtime (matches Pantheon)
 
 ### WordPress Integration
-- **Zod 3.24** - Schema validation
-- **DOMPurify** - HTML sanitization
+- **Generic API Client** - Ultra-DRY `fetchPosts(postType)` API for all content types
+- **Zod 3.24** - Runtime schema validation with custom error classes
+- **Retry Logic** - Exponential backoff with jitter (3 retries max, 1s → 2s → 4s)
+- **Rate Limiting** - Token bucket algorithm (10 req/sec sustained, 20 burst)
+- **DOMPurify** - HTML sanitization for WordPress content
 - **html-react-parser** - Safe HTML parsing
-- **@pantheon-systems/nextjs-cache-handler 0.4.0** - Persistent caching
+- **@pantheon-systems/nextjs-cache-handler 0.4.0** - Persistent ISR caching
 
 ### Testing
 - **Vitest 4** with happy-dom - Unit and integration testing
@@ -216,7 +301,6 @@ This project uses the following open-source dependencies:
 - **[Zod](https://github.com/colinhacks/zod)** - MIT License - [Colin McDonnell](https://github.com/colinhacks)
 - **[DOMPurify](https://github.com/cure53/DOMPurify)** - Apache-2.0/MPL-2.0 License - [Cure53](https://cure53.de)
 - **[html-react-parser](https://github.com/remarkablemark/html-react-parser)** - MIT License - [remarkablemark](https://github.com/remarkablemark)
-- **[isomorphic-dompurify](https://github.com/kkomelin/isomorphic-dompurify)** - MIT License - [Konstantin Komelin](https://github.com/kkomelin)
 
 #### Utilities
 - **[date-fns](https://github.com/date-fns/date-fns)** - MIT License - [Sasha Koss](https://github.com/kossnocorp) and [Lesha Koss](https://github.com/leshakoss)
