@@ -245,18 +245,20 @@ npx @claude-flow/cli@latest doctor --fix
   npm test && git add . && git commit -m "message"  # ❌ Don't chain
   ```
 
-**Allowed Prompts:**
-Add to your Claude Code settings (`.claude/settings.json` or global config):
+**Allowed Prompts (Project-Specific):**
+Configured in `.claude/settings.json` (project-specific, gitignored):
 ```json
 {
-  "allowedPrompts": [
-    { "tool": "Bash", "prompt": "git add" },
-    { "tool": "Bash", "prompt": "git commit" }
-  ]
+  "permissions": {
+    "allow": [
+      "Bash(git commit *)",
+      "Bash(git add *)"
+    ]
+  }
 }
 ```
 
-Both `git add` and `git commit` should be auto-approved for smooth TDD workflow.
+Both `git add` and `git commit` are auto-approved for smooth TDD workflow in this project only.
 
 ## Support
 
