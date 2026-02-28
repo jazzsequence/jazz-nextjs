@@ -81,6 +81,7 @@ export class WPRateLimitError extends WPAPIError {
 export interface ISROptions {
   revalidate?: number | false
   tags?: string[]
+  cache?: RequestCache
 }
 
 export interface FetchOptions {
@@ -315,6 +316,10 @@ function buildISROptions(options: ISROptions = {}): RequestInit {
       ...(options.revalidate !== undefined && { revalidate: options.revalidate }),
       ...(options.tags && { tags: options.tags }),
     }
+  }
+
+  if (options.cache !== undefined) {
+    cacheOptions.cache = options.cache
   }
 
   return cacheOptions
