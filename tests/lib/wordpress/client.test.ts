@@ -1680,12 +1680,15 @@ describe('WordPress API Client', () => {
         } as Response
       })
 
-      const promise = fetchPosts('posts')
+      // Start the promise and immediately set up the expectation
+      const promise = expect(fetchPosts('posts')).rejects.toThrow(/Failed to fetch posts|HTTP 429/i)
 
       // Fast-forward through all timers
       await vi.runAllTimersAsync()
 
-      await expect(promise).rejects.toThrow(/Failed to fetch posts|HTTP 429/i)
+      // Wait for the rejection to be handled
+      await promise
+
       expect(attempts).toBeGreaterThan(1) // Should retry on 429
 
       vi.useRealTimers()
