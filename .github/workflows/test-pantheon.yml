@@ -1,5 +1,11 @@
 name: Test on Pantheon
 
+# GitHub Pages Setup Required:
+# 1. Go to repository Settings → Pages
+# 2. Set Source to "GitHub Actions"
+# 3. Playwright reports will be available at:
+#    https://{username}.github.io/{repo}/reports/{run_id}
+
 on:
   push:
     branches: [main]
@@ -8,6 +14,11 @@ on:
 
 env:
   PANTHEON_SITE_NAME: jazz-nextjs15
+
+permissions:
+  contents: write  # Required for GitHub Pages deployment
+  pages: write
+  id-token: write
 
 jobs:
   test:
@@ -170,9 +181,20 @@ jobs:
             test-results/
           retention-days: 7
 
+      - name: Deploy Playwright report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./playwright-report
+          destination_dir: reports/${{ github.run_id }}
+          keep_files: true
+
       - name: Report status
         if: always()
         run: |
+          REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_id }}"
+
           echo "### Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ steps.env.outputs.env_name }}" >> $GITHUB_STEP_SUMMARY
@@ -183,7 +205,7 @@ jobs:
           echo "- **Unit Tests (Vitest):** ${{ steps.unit-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **E2E Tests (Playwright):** ${{ steps.e2e-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "See [Playwright Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed test results." >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View Playwright Report](${REPORT_URL}) for detailed test results" >> $GITHUB_STEP_SUMMARY
 
       - name: Fail workflow if any tests failed
         if: steps.unit-tests.outcome != 'success' || steps.e2e-tests.outcome != 'success'
