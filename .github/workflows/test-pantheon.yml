@@ -156,6 +156,16 @@ jobs:
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
           CI: true
 
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
       - name: Report status
         if: always()
         run: |
@@ -164,4 +174,7 @@ jobs:
           echo "**Environment:** ${{ steps.env.outputs.env_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** ${{ steps.env.outputs.base_url }}" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment:** ${{ steps.wait.outputs.deployment_ready == 'true' && '✅ Ready' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tests:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See [Playwright Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed test results." >> $GITHUB_STEP_SUMMARY
