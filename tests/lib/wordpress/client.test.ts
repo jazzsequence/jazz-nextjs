@@ -624,7 +624,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        await expect(fetchGames()).rejects.toThrow()
+        await expect(fetchPosts('gc_game')).rejects.toThrow()
       })
     })
 
@@ -1438,6 +1438,18 @@ describe('WordPress API Client', () => {
   // ===== Caching Integration Tests =====
 
   describe('Caching Integration', () => {
+    let originalFetch: typeof global.fetch
+
+    beforeEach(() => {
+      // Save the original fetch (MSW-intercepted version)
+      originalFetch = global.fetch
+    })
+
+    afterEach(() => {
+      // Restore the original fetch after each test
+      global.fetch = originalFetch
+    })
+
     it('should respect Next.js cache options', async () => {
       // This test verifies cache options are passed to fetch
       const mockFetch = vi.fn().mockResolvedValue({
@@ -1452,7 +1464,7 @@ describe('WordPress API Client', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          next: { revalidate: 60 },
+          next: { revalidate: 60, tags: ['posts'] }, // Auto-generated tags
         })
       )
     })
@@ -1470,7 +1482,7 @@ describe('WordPress API Client', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          next: { revalidate: 3600 },
+          next: { revalidate: 3600, tags: ['posts'] }, // Auto-generated tags
         })
       )
     })
