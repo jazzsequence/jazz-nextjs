@@ -145,11 +145,15 @@ jobs:
           echo "✅ Cache cleared successfully"
 
       - name: Run unit tests
+        id: unit-tests
+        continue-on-error: true
         run: npm test -- --run
         env:
           CI: true
 
       - name: Run E2E tests against Pantheon
+        id: e2e-tests
+        continue-on-error: true
         run: npm run test:e2e
         env:
           BASE_URL: ${{ steps.env.outputs.base_url }}
@@ -175,6 +179,12 @@ jobs:
           echo "**URL:** ${{ steps.env.outputs.base_url }}" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment:** ${{ steps.wait.outputs.deployment_ready == 'true' && '✅ Ready' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Tests:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "#### Test Suites" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests (Vitest):** ${{ steps.unit-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **E2E Tests (Playwright):** ${{ steps.e2e-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "See [Playwright Report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}) for detailed test results." >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail workflow if any tests failed
+        if: steps.unit-tests.outcome != 'success' || steps.e2e-tests.outcome != 'success'
+        run: exit 1
