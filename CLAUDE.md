@@ -246,8 +246,17 @@ npx @claude-flow/cli@latest doctor --fix
   ```
 
 **Allowed Prompts:**
-- `git commit` operations are auto-approved
-- Separate commands ensure proper approval flow
+Add to your Claude Code settings (`.claude/settings.json` or global config):
+```json
+{
+  "allowedPrompts": [
+    { "tool": "Bash", "prompt": "git add" },
+    { "tool": "Bash", "prompt": "git commit" }
+  ]
+}
+```
+
+Both `git add` and `git commit` should be auto-approved for smooth TDD workflow.
 
 ## Support
 
