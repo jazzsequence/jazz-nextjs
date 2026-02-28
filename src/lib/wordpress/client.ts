@@ -401,76 +401,22 @@ const ADDRESS_CONFIG: PostTypeConfig<WPAddress> = {
   arraySchema: WPAddressesSchema,
 }
 
+// Post type configuration map
+const POST_TYPE_CONFIGS: Record<string, PostTypeConfig<any>> = {
+  posts: POST_CONFIG,
+  pages: PAGE_CONFIG,
+  gc_game: GAME_CONFIG,
+  rb_recipe: RECIPE_CONFIG,
+  media: MEDIA_CONFIG,
+  'plague-artist': ARTIST_CONFIG,
+  movie: MOVIE_CONFIG,
+  ab_address: ADDRESS_CONFIG,
+}
+
 // ===== Generic Functions (WordPress-native naming) =====
 
 /**
- * Generic function to fetch posts (any post type)
- */
-export async function getPosts<T>(
-  endpoint: string,
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<T>> {
-  const { isr, cache, ...fetchOpts } = options
-  const queryParams = buildQueryParams(fetchOpts)
-  const url = `${API_BASE_URL}/${endpoint}${queryParams}`
-  const cacheOptions = buildISROptions(cache || isr || {})
-
-  try {
-    // Use unknown schema for generic function
-    const data = await fetchAndValidate(url, WPPostsSchema as z.ZodType<T[]>, cacheOptions)
-    return data
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new WPAPIError(
-        `Failed to fetch ${endpoint}: ${error.message}`,
-        undefined,
-        endpoint
-      )
-    }
-    throw error
-  }
-}
-
-/**
- * Generic function to fetch single post by slug (any post type)
- */
-export async function getPost<T>(
-  endpoint: string,
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<T> {
-  const { isr, cache, ...fetchOpts } = options
-  const queryParams = buildQueryParams(fetchOpts)
-  const baseQuery = queryParams ? `&${queryParams.slice(1)}` : ''
-  const url = `${API_BASE_URL}/${endpoint}?slug=${slug}${baseQuery}`
-  const cacheOptions = buildISROptions(cache || isr || {})
-
-  try {
-    // Use unknown schema for generic function
-    const data = await fetchAndValidate(url, WPPostsSchema as z.ZodType<T[]>, cacheOptions)
-
-    if (!data.length) {
-      throw new WPNotFoundError(endpoint, slug)
-    }
-
-    return data[0]
-  } catch (error) {
-    if (error instanceof WPNotFoundError) {
-      throw error
-    }
-    if (error instanceof Error) {
-      throw new WPAPIError(
-        `Failed to fetch ${endpoint} "${slug}": ${error.message}`,
-        undefined,
-        endpoint
-      )
-    }
-    throw error
-  }
-}
-
-/**
- * Generic wrapper using PostTypeConfig (internal DRY helper)
+ * Internal DRY helper using PostTypeConfig
  */
 async function fetchPostTypeList<T>(
   config: PostTypeConfig<T>,
@@ -578,128 +524,46 @@ async function fetchPostTypeItem<T>(
   }
 }
 
-// ===== Backward-compatible wrapper (for migration) =====
-
-/**
- * @deprecated Use getPosts() instead
- */
-export async function getCustomPostType<T>(
-  endpoint: string,
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<T>> {
-  return getPosts<T>(endpoint, options)
-}
-
 // ===== Public API Functions =====
 
-// Posts
-export async function fetchPosts(
+/**
+ * Fetch list of posts from any post type
+ * @param postType - Post type endpoint (e.g., 'posts', 'gc_game', 'rb_recipe')
+ * @param options - Fetch options (pagination, search, ISR, etc.)
+ */
+export async function fetchPosts<T = any>(
+  postType: string,
   options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPPost>> {
-  return fetchPostTypeList(POST_CONFIG, options)
+): Promise<WPAPIListResponse<T>> {
+  const config = POST_TYPE_CONFIGS[postType]
+  if (!config) {
+    throw new WPAPIError(
+      `Unknown post type: ${postType}`,
+      undefined,
+      postType
+    )
+  }
+  return fetchPostTypeList(config, options)
 }
 
-export async function fetchPost(
+/**
+ * Fetch single post by slug from any post type
+ * @param postType - Post type endpoint (e.g., 'posts', 'gc_game', 'rb_recipe')
+ * @param slug - Post slug
+ * @param options - Fetch options (pagination, embed, ISR, etc.)
+ */
+export async function fetchPost<T = any>(
+  postType: string,
   slug: string,
   options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPPost> {
-  return fetchPostTypeItem(POST_CONFIG, slug, options)
-}
-
-// Pages
-export async function fetchPages(
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPPage>> {
-  return fetchPostTypeList(PAGE_CONFIG, options)
-}
-
-export async function fetchPage(
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPPage> {
-  return fetchPostTypeItem(PAGE_CONFIG, slug, options)
-}
-
-// Games
-export async function fetchGames(
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPGame>> {
-  return fetchPostTypeList(GAME_CONFIG, options)
-}
-
-export async function fetchGame(
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPGame> {
-  return fetchPostTypeItem(GAME_CONFIG, slug, options)
-}
-
-// Recipes
-export async function fetchRecipes(
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPRecipe>> {
-  return fetchPostTypeList(RECIPE_CONFIG, options)
-}
-
-export async function fetchRecipe(
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPRecipe> {
-  return fetchPostTypeItem(RECIPE_CONFIG, slug, options)
-}
-
-// Artists
-export async function fetchArtists(
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPArtist>> {
-  return fetchPostTypeList(ARTIST_CONFIG, options)
-}
-
-export async function fetchArtist(
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPArtist> {
-  return fetchPostTypeItem(ARTIST_CONFIG, slug, options)
-}
-
-// Movies (NEW)
-export async function fetchMovies(
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPMovie>> {
-  return fetchPostTypeList(MOVIE_CONFIG, options)
-}
-
-export async function fetchMovie(
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPMovie> {
-  return fetchPostTypeItem(MOVIE_CONFIG, slug, options)
-}
-
-// Media (NEW)
-export async function fetchMedia(
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPMedia>> {
-  return fetchPostTypeList(MEDIA_CONFIG, options)
-}
-
-export async function fetchMediaItem(
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPMedia> {
-  return fetchPostTypeItem(MEDIA_CONFIG, slug, options)
-}
-
-// Addresses (NEW)
-export async function fetchAddresses(
-  options: FetchOptions = {}
-): Promise<WPAPIListResponse<WPAddress>> {
-  return fetchPostTypeList(ADDRESS_CONFIG, options)
-}
-
-export async function fetchAddress(
-  slug: string,
-  options: Omit<FetchOptions, 'search'> = {}
-): Promise<WPAddress> {
-  return fetchPostTypeItem(ADDRESS_CONFIG, slug, options)
+): Promise<T> {
+  const config = POST_TYPE_CONFIGS[postType]
+  if (!config) {
+    throw new WPAPIError(
+      `Unknown post type: ${postType}`,
+      undefined,
+      postType
+    )
+  }
+  return fetchPostTypeItem(config, slug, options)
 }

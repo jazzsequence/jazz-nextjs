@@ -4,19 +4,6 @@ import { server } from '../../mocks/server'
 import {
   fetchPost,
   fetchPosts,
-  fetchPage,
-  fetchPages,
-  fetchGame,
-  fetchGames,
-  fetchRecipes,
-  fetchArtists,
-  fetchMovies,
-  fetchMovie,
-  fetchMedia,
-  fetchMediaItem,
-  fetchAddresses,
-  fetchAddress,
-  getCustomPostType,
 } from '../../../src/lib/wordpress/client'
 import type {
   WPPost,
@@ -67,7 +54,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const posts = await fetchPosts()
+      const posts = await fetchPosts('posts')
       expect(posts).toHaveLength(1)
       expect(posts[0].slug).toBe('test-post-1')
       expect(posts[0].type).toBe('post')
@@ -87,7 +74,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      await fetchPosts({ page: 2, perPage: 5 })
+      await fetchPosts('posts', { page: 2, perPage: 5 })
     })
 
     it('should handle API errors', async () => {
@@ -112,7 +99,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      await fetchPosts({ embed: true })
+      await fetchPosts('posts', { embed: true })
     })
   })
 
@@ -151,7 +138,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const post = await fetchPost('test-post')
+      const post = await fetchPost('posts', 'test-post')
       expect(post.slug).toBe('test-post')
       expect(post.title.rendered).toBe('Test Post')
     })
@@ -202,7 +189,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const pages = await fetchPages()
+      const pages = await fetchPosts('pages')
       expect(pages).toHaveLength(1)
       expect(pages[0].type).toBe('page')
     })
@@ -241,7 +228,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const page = await fetchPage('about')
+      const page = await fetchPost('pages', 'about')
       expect(page.slug).toBe('about')
     })
   })
@@ -283,7 +270,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const games = await fetchGames()
+      const games = await fetchPosts('gc_game')
       expect(games).toHaveLength(1)
       expect(games[0].type).toBe('gc_game')
       expect(games[0].meta.gc_min_players).toBe(2)
@@ -325,7 +312,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const game = await fetchGame('test-game')
+      const game = await fetchPost('gc_game', 'test-game')
       expect(game.slug).toBe('test-game')
       expect(game.meta.gc_min_players).toBe(2)
     })
@@ -367,7 +354,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const recipes = await fetchRecipes()
+      const recipes = await fetchPosts('rb_recipe')
       expect(recipes).toHaveLength(1)
       expect(recipes[0].type).toBe('rb_recipe')
     })
@@ -406,7 +393,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const artists = await fetchArtists()
+      const artists = await fetchPosts('plague-artist')
       expect(artists).toHaveLength(1)
       expect(artists[0].type).toBe('plague-artist')
     })
@@ -449,7 +436,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      await fetchPosts({
+      await fetchPosts('posts', {
         page: 2,
         perPage: 10,
         embed: true,
@@ -466,7 +453,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      await fetchPosts({ search: 'test query' })
+      await fetchPosts('posts', { search: 'test query' })
     })
   })
 
@@ -506,7 +493,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        const posts = await fetchPosts()
+        const posts = await fetchPosts('posts')
         expect(posts).toHaveLength(1)
         expect(posts[0]).toMatchObject(validPost)
       })
@@ -577,7 +564,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        const posts = await fetchPosts()
+        const posts = await fetchPosts('posts')
         expect(posts[0].meta).toEqual({ custom_field: 'value' })
       })
     })
@@ -617,7 +604,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        const games = await fetchGames()
+        const games = await fetchPosts('gc_game')
         expect(games[0].meta.gc_min_players).toBe(2)
         expect(games[0].meta.gc_max_players).toBe(4)
       })
@@ -675,7 +662,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        const recipes = await fetchRecipes()
+        const recipes = await fetchPosts('rb_recipe')
         expect(recipes[0].rb_recipe_category).toEqual([1, 2])
       })
     })
@@ -712,7 +699,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        const movies = await fetchMovies()
+        const movies = await fetchPosts('movie')
         expect(movies[0].genre).toEqual([1, 2])
         expect(movies[0].actor).toEqual([3, 4])
       })
@@ -750,7 +737,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        const media = await fetchMedia()
+        const media = await fetchPosts('media')
         expect(media[0].meta.media_source).toBe('youtube')
       })
     })
@@ -791,7 +778,7 @@ describe('WordPress API Client', () => {
           })
         )
 
-        const addresses = await fetchAddresses()
+        const addresses = await fetchPosts('ab_address')
         expect(addresses[0].meta.ab_email).toBe('john@example.com')
       })
     })
@@ -1008,45 +995,8 @@ describe('WordPress API Client', () => {
 
   // ===== Generic getCustomPostType Function Tests =====
 
-  describe('getCustomPostType', () => {
-    it('should work with all post types', async () => {
-      server.use(
-        http.get(`${API_URL}/gc_game`, () => {
-          return HttpResponse.json([
-            {
-              id: 1,
-              type: 'gc_game',
-              slug: 'test-game',
-              title: { rendered: 'Test Game' },
-            },
-          ])
-        })
-      )
-
-      const games = await getCustomPostType('gc_game')
-      expect(games).toHaveLength(1)
-      expect(games[0].type).toBe('gc_game')
-    })
-
-    it('should accept same options as specific fetchers', async () => {
-      server.use(
-        http.get(`${API_URL}/rb_recipe`, ({ request }) => {
-          const url = new URL(request.url)
-          expect(url.searchParams.get('page')).toBe('2')
-          expect(url.searchParams.get('per_page')).toBe('10')
-          expect(url.searchParams.get('_embed')).toBe('true')
-          return HttpResponse.json([])
-        })
-      )
-
-      await getCustomPostType('rb_recipe', {
-        page: 2,
-        perPage: 10,
-        embed: true,
-      })
-    })
-
-    it('should have type-safe return values', async () => {
+  describe('Generic post type fetchers', () => {
+    it('should fetch games with game-specific validation', async () => {
       const mockGame: WPGame = {
         id: 1,
         date: '2026-02-26T00:00:00',
@@ -1066,7 +1016,12 @@ describe('WordPress API Client', () => {
         ping_status: 'closed',
         template: '',
         gc_attribute: [],
-        meta: {},
+        meta: {
+          gc_min_players: 2,
+          gc_max_players: 4,
+          gc_playing_time: 60,
+          gc_age: 12,
+        },
       }
 
       server.use(
@@ -1075,21 +1030,30 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const games = await getCustomPostType<WPGame>('gc_game')
+      const games = await fetchPosts<WPGame>('gc_game')
+      expect(games).toHaveLength(1)
+      expect(games[0].type).toBe('gc_game')
       expect(games[0].gc_attribute).toBeDefined()
+      expect(games[0].meta.gc_min_players).toBe(2)
+      expect(games[0].meta.gc_max_players).toBe(4)
     })
 
-    it('should handle error for unknown post types', async () => {
+    it('should work with all configured post types', async () => {
       server.use(
-        http.get(`${API_URL}/unknown_type`, () => {
-          return HttpResponse.json(
-            { code: 'rest_no_route', message: 'No route found' },
-            { status: 404 }
-          )
+        http.get(`${API_URL}/rb_recipe`, ({ request }) => {
+          const url = new URL(request.url)
+          expect(url.searchParams.get('page')).toBe('2')
+          expect(url.searchParams.get('per_page')).toBe('10')
+          expect(url.searchParams.get('_embed')).toBe('true')
+          return HttpResponse.json([])
         })
       )
 
-      await expect(getCustomPostType('unknown_type')).rejects.toThrow()
+      await fetchPosts('rb_recipe', {
+        page: 2,
+        perPage: 10,
+        embed: true,
+      })
     })
 
     it('should support search parameter', async () => {
@@ -1101,7 +1065,11 @@ describe('WordPress API Client', () => {
         })
       )
 
-      await getCustomPostType('movie', { search: 'action' })
+      await fetchPosts('movie', { search: 'action' })
+    })
+
+    it('should throw error for unknown post type', async () => {
+      await expect(fetchPosts('unknown_type')).rejects.toThrow(/unknown post type/i)
     })
   })
 
@@ -1141,7 +1109,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const movies = await fetchMovies()
+      const movies = await fetchPosts('movie')
       expect(movies).toHaveLength(1)
       expect(movies[0].type).toBe('movie')
     })
@@ -1179,7 +1147,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const movie = await fetchMovie('inception')
+      const movie = await fetchPost('movie', 'inception')
       expect(movie.slug).toBe('inception')
     })
 
@@ -1255,7 +1223,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const media = await fetchMedia()
+      const media = await fetchPosts('media')
       expect(media).toHaveLength(1)
       expect(media[0].type).toBe('media')
       expect(media[0].meta.media_source).toBe('youtube')
@@ -1294,7 +1262,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const media = await fetchMediaItem('my-video')
+      const media = await fetchPost('media', 'my-video')
       expect(media.slug).toBe('my-video')
       expect(media.meta.media_source).toBe('wordpresstv')
     })
@@ -1375,7 +1343,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const addresses = await fetchAddresses()
+      const addresses = await fetchPosts('ab_address')
       expect(addresses).toHaveLength(1)
       expect(addresses[0].type).toBe('ab_address')
       expect(addresses[0].meta.ab_email).toBe('john@example.com')
@@ -1420,7 +1388,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const address = await fetchAddress('jane-smith')
+      const address = await fetchPost('ab_address', 'jane-smith')
       expect(address.slug).toBe('jane-smith')
       expect(address.meta.ab_email).toBe('jane@example.com')
     })
@@ -1475,7 +1443,7 @@ describe('WordPress API Client', () => {
 
       global.fetch = mockFetch
 
-      await fetchPosts({ cache: { revalidate: 60 } })
+      await fetchPosts('posts', { cache: { revalidate: 60 } })
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -1493,7 +1461,7 @@ describe('WordPress API Client', () => {
 
       global.fetch = mockFetch
 
-      await fetchPosts({ cache: { revalidate: 3600 } })
+      await fetchPosts('posts', { cache: { revalidate: 3600 } })
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -1511,7 +1479,7 @@ describe('WordPress API Client', () => {
 
       global.fetch = mockFetch
 
-      await fetchPosts({ cache: { tags: ['posts', 'content'] } })
+      await fetchPosts('posts', { cache: { tags: ['posts', 'content'] } })
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -1529,7 +1497,7 @@ describe('WordPress API Client', () => {
 
       global.fetch = mockFetch
 
-      await fetchPosts({ cache: { cache: 'no-cache' } })
+      await fetchPosts('posts', { cache: { cache: 'no-cache' } })
 
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
@@ -1547,7 +1515,7 @@ describe('WordPress API Client', () => {
 
       global.fetch = mockFetch
 
-      await fetchPosts({
+      await fetchPosts('posts', {
         page: 2,
         perPage: 10,
         cache: { revalidate: 300, tags: ['posts'] },
@@ -1572,7 +1540,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const posts = await fetchPosts()
+      const posts = await fetchPosts('posts')
       expect(posts).toEqual([])
     })
 
@@ -1610,7 +1578,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const posts = await fetchPosts()
+      const posts = await fetchPosts('posts')
       expect(posts[0].content.rendered).toHaveLength(10007) // '<p>' + 10000 + '</p>'
     })
 
@@ -1646,7 +1614,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const posts = await fetchPosts()
+      const posts = await fetchPosts('posts')
       expect(posts[0].title.rendered).toContain('🎮')
       expect(posts[0].title.rendered).toContain('日本語')
     })
@@ -1668,7 +1636,7 @@ describe('WordPress API Client', () => {
         })
       )
 
-      const games = await fetchGames()
+      const games = await fetchPosts('gc_game')
       expect(games[0].meta.gc_min_players).toBeNull()
     })
 
@@ -1682,7 +1650,7 @@ describe('WordPress API Client', () => {
 
       // Set a shorter timeout for testing
       await expect(
-        fetchPosts({ timeout: 100 })
+        fetchPosts('posts', { timeout: 100 })
       ).rejects.toThrow(/timeout/i)
     })
 
