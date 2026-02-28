@@ -228,6 +228,27 @@ npx @claude-flow/cli@latest doctor --fix
 - Always run tests before committing
 - Never commit secrets, .env files, or credentials
 
+**Git Command Workflow (IMPORTANT):**
+- NEVER chain git commands with `&&` or `;`
+- Run `git add` in one command
+- Run `git commit` in a separate command
+- Run tests in separate command(s) before git operations
+- Example correct workflow:
+  ```bash
+  npm test -- --run
+  npm run lint
+  git add src/file.ts
+  git commit -m "message"
+  ```
+- Example WRONG (do not do this):
+  ```bash
+  npm test && git add . && git commit -m "message"  # ❌ Don't chain
+  ```
+
+**Allowed Prompts:**
+- `git commit` operations are auto-approved
+- Separate commands ensure proper approval flow
+
 ## Support
 
 - Documentation: https://github.com/ruvnet/claude-flow
