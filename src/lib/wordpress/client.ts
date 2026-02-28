@@ -186,6 +186,15 @@ class TokenBucketRateLimiter {
 // Global rate limiter instance (10 requests/sec, burst of 20)
 const rateLimiter = new TokenBucketRateLimiter(20, 10)
 
+/**
+ * Reset the rate limiter (for testing)
+ * @internal
+ */
+export function resetRateLimiter(): void {
+  rateLimiter['tokens'] = rateLimiter['maxTokens']
+  rateLimiter['lastRefill'] = Date.now()
+}
+
 // ===== Fetch Infrastructure =====
 
 /**

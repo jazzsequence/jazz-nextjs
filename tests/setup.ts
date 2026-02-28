@@ -1,7 +1,8 @@
 import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
-import { afterEach, beforeAll, afterAll } from 'vitest'
+import { afterEach, beforeAll, afterAll, vi } from 'vitest'
 import { server } from './mocks/server'
+import { resetRateLimiter } from '../src/lib/wordpress/client'
 
 // Establish API mocking before all tests
 beforeAll(() => {
@@ -12,7 +13,9 @@ beforeAll(() => {
 // so they don't affect other tests
 afterEach(() => {
   server.resetHandlers()
+  resetRateLimiter()
   cleanup()
+  vi.restoreAllMocks()
 })
 
 // Clean up after the tests are finished

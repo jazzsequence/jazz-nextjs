@@ -1438,26 +1438,12 @@ describe('WordPress API Client', () => {
   // ===== Caching Integration Tests =====
 
   describe('Caching Integration', () => {
-    let originalFetch: typeof global.fetch
-
-    beforeEach(() => {
-      // Save the original fetch (MSW-intercepted version)
-      originalFetch = global.fetch
-    })
-
-    afterEach(() => {
-      // Restore the original fetch after each test
-      global.fetch = originalFetch
-    })
-
     it('should respect Next.js cache options', async () => {
       // This test verifies cache options are passed to fetch
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
         json: async () => [],
-      })
-
-      global.fetch = mockFetch
+      } as Response)
 
       await fetchPosts('posts', { cache: { revalidate: 60 } })
 
@@ -1470,12 +1456,10 @@ describe('WordPress API Client', () => {
     })
 
     it('should support ISR revalidation times', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
         json: async () => [],
-      })
-
-      global.fetch = mockFetch
+      } as Response)
 
       await fetchPosts('posts', { cache: { revalidate: 3600 } })
 
@@ -1488,12 +1472,10 @@ describe('WordPress API Client', () => {
     })
 
     it('should support cache tags', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
         json: async () => [],
-      })
-
-      global.fetch = mockFetch
+      } as Response)
 
       await fetchPosts('posts', { cache: { tags: ['posts', 'content'] } })
 
@@ -1506,12 +1488,10 @@ describe('WordPress API Client', () => {
     })
 
     it('should support no-cache option', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
         json: async () => [],
-      })
-
-      global.fetch = mockFetch
+      } as Response)
 
       await fetchPosts('posts', { cache: { cache: 'no-cache' } })
 
@@ -1524,12 +1504,10 @@ describe('WordPress API Client', () => {
     })
 
     it('should combine cache options with query parameters', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
         ok: true,
         json: async () => [],
-      })
-
-      global.fetch = mockFetch
+      } as Response)
 
       await fetchPosts('posts', {
         page: 2,
@@ -1550,11 +1528,10 @@ describe('WordPress API Client', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty array response', async () => {
-      server.use(
-        http.get(`${API_URL}/posts`, () => {
-          return HttpResponse.json([])
-        })
-      )
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => [],
+      } as Response)
 
       const posts = await fetchPosts('posts')
       expect(posts).toEqual([])
@@ -1563,72 +1540,70 @@ describe('WordPress API Client', () => {
     it('should handle very long content', async () => {
       const longContent = '<p>' + 'a'.repeat(10000) + '</p>'
 
-      server.use(
-        http.get(`${API_URL}/posts`, () => {
-          return HttpResponse.json([
-            {
-              id: 1,
-              date: '2026-02-26T00:00:00',
-              date_gmt: '2026-02-26T00:00:00',
-              modified: '2026-02-26T00:00:00',
-              modified_gmt: '2026-02-26T00:00:00',
-              slug: 'long-post',
-              status: 'publish',
-              type: 'post',
-              link: `${API_URL}/long-post`,
-              title: { rendered: 'Long Post' },
-              content: { rendered: longContent },
-              excerpt: { rendered: '' },
-              author: 1,
-              featured_media: 0,
-              comment_status: 'open',
-              ping_status: 'closed',
-              template: '',
-              meta: {},
-              sticky: false,
-              format: 'standard',
-              categories: [],
-              tags: [],
-            },
-          ])
-        })
-      )
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            id: 1,
+            date: '2026-02-26T00:00:00',
+            date_gmt: '2026-02-26T00:00:00',
+            modified: '2026-02-26T00:00:00',
+            modified_gmt: '2026-02-26T00:00:00',
+            slug: 'long-post',
+            status: 'publish',
+            type: 'post',
+            link: `${API_URL}/long-post`,
+            title: { rendered: 'Long Post' },
+            content: { rendered: longContent },
+            excerpt: { rendered: '' },
+            author: 1,
+            featured_media: 0,
+            comment_status: 'open',
+            ping_status: 'closed',
+            template: '',
+            meta: {},
+            sticky: false,
+            format: 'standard',
+            categories: [],
+            tags: [],
+          },
+        ],
+      } as Response)
 
       const posts = await fetchPosts('posts')
       expect(posts[0].content.rendered).toHaveLength(10007) // '<p>' + 10000 + '</p>'
     })
 
     it('should handle Unicode characters in content', async () => {
-      server.use(
-        http.get(`${API_URL}/posts`, () => {
-          return HttpResponse.json([
-            {
-              id: 1,
-              date: '2026-02-26T00:00:00',
-              date_gmt: '2026-02-26T00:00:00',
-              modified: '2026-02-26T00:00:00',
-              modified_gmt: '2026-02-26T00:00:00',
-              slug: 'unicode-post',
-              status: 'publish',
-              type: 'post',
-              link: `${API_URL}/unicode-post`,
-              title: { rendered: '🎮 Test Game 日本語' },
-              content: { rendered: '<p>Content with émojis 🎲</p>' },
-              excerpt: { rendered: '' },
-              author: 1,
-              featured_media: 0,
-              comment_status: 'open',
-              ping_status: 'closed',
-              template: '',
-              meta: {},
-              sticky: false,
-              format: 'standard',
-              categories: [],
-              tags: [],
-            },
-          ])
-        })
-      )
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            id: 1,
+            date: '2026-02-26T00:00:00',
+            date_gmt: '2026-02-26T00:00:00',
+            modified: '2026-02-26T00:00:00',
+            modified_gmt: '2026-02-26T00:00:00',
+            slug: 'unicode-post',
+            status: 'publish',
+            type: 'post',
+            link: `${API_URL}/unicode-post`,
+            title: { rendered: '🎮 Test Game 日本語' },
+            content: { rendered: '<p>Content with émojis 🎲</p>' },
+            excerpt: { rendered: '' },
+            author: 1,
+            featured_media: 0,
+            comment_status: 'open',
+            ping_status: 'closed',
+            template: '',
+            meta: {},
+            sticky: false,
+            format: 'standard',
+            categories: [],
+            tags: [],
+          },
+        ],
+      } as Response)
 
       const posts = await fetchPosts('posts')
       expect(posts[0].title.rendered).toContain('🎮')
@@ -1636,36 +1611,35 @@ describe('WordPress API Client', () => {
     })
 
     it('should handle null or undefined optional fields', async () => {
-      server.use(
-        http.get(`${API_URL}/gc_game`, () => {
-          return HttpResponse.json([
-            {
-              id: 1,
-              date: '2026-02-26T00:00:00',
-              date_gmt: '2026-02-26T00:00:00',
-              modified: '2026-02-26T00:00:00',
-              modified_gmt: '2026-02-26T00:00:00',
-              type: 'gc_game',
-              slug: 'game',
-              status: 'publish',
-              link: `${API_URL}/gc_game/game`,
-              title: { rendered: 'Test Game' },
-              content: { rendered: '<p>Game content</p>' },
-              excerpt: { rendered: '' },
-              author: 1,
-              featured_media: 0,
-              comment_status: 'closed',
-              ping_status: 'closed',
-              template: '',
-              gc_attribute: [],
-              meta: {
-                // Optional fields omitted entirely (not null)
-                gc_playing_time: 60,
-              },
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => [
+          {
+            id: 1,
+            date: '2026-02-26T00:00:00',
+            date_gmt: '2026-02-26T00:00:00',
+            modified: '2026-02-26T00:00:00',
+            modified_gmt: '2026-02-26T00:00:00',
+            type: 'gc_game',
+            slug: 'game',
+            status: 'publish',
+            link: `${API_URL}/gc_game/game`,
+            title: { rendered: 'Test Game' },
+            content: { rendered: '<p>Game content</p>' },
+            excerpt: { rendered: '' },
+            author: 1,
+            featured_media: 0,
+            comment_status: 'closed',
+            ping_status: 'closed',
+            template: '',
+            gc_attribute: [],
+            meta: {
+              // Optional fields omitted entirely (not null)
+              gc_playing_time: 60,
             },
-          ])
-        })
-      )
+          },
+        ],
+      } as Response)
 
       const games = await fetchPosts('gc_game')
       expect(games[0].meta.gc_min_players).toBeUndefined()
@@ -1680,32 +1654,41 @@ describe('WordPress API Client', () => {
     })
 
     it('should handle malformed response body', async () => {
-      server.use(
-        http.get(`${API_URL}/posts`, () => {
-          return new HttpResponse('<html>Not JSON</html>', {
-            headers: { 'Content-Type': 'text/html' },
-          })
-        })
-      )
+      vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: async () => {
+          throw new SyntaxError('Unexpected token < in JSON at position 0')
+        },
+      } as Response)
 
       await expect(fetchPosts('posts')).rejects.toThrow()
     })
 
     it('should handle rate limiting (429 status)', async () => {
+      // Use fake timers to make delays instant
+      vi.useFakeTimers()
+
       let attempts = 0
 
-      server.use(
-        http.get(`${API_URL}/posts`, () => {
-          attempts++
-          return HttpResponse.json(
-            { code: 'rest_too_many_requests', message: 'Rate limit exceeded' },
-            { status: 429 }
-          )
-        })
-      )
+      vi.spyOn(global, 'fetch').mockImplementation(async () => {
+        attempts++
+        return {
+          ok: false,
+          status: 429,
+          statusText: 'Too Many Requests',
+          json: async () => ({ code: 'rest_too_many_requests', message: 'Rate limit exceeded' }),
+        } as Response
+      })
 
-      await expect(fetchPosts('posts')).rejects.toThrow(/Failed to fetch posts|HTTP 429/i)
+      const promise = fetchPosts('posts')
+
+      // Fast-forward through all timers
+      await vi.runAllTimersAsync()
+
+      await expect(promise).rejects.toThrow(/Failed to fetch posts|HTTP 429/i)
       expect(attempts).toBeGreaterThan(1) // Should retry on 429
+
+      vi.useRealTimers()
     })
   })
 })
