@@ -491,6 +491,11 @@ async function fetchPostTypeList<T>(
   try {
     return await fetchAndValidate(url, config.arraySchema, cacheOptions)
   } catch (error) {
+    // Re-throw validation errors as-is (preserve "validation" in message)
+    if (error instanceof WPValidationError) {
+      throw error
+    }
+
     // Use lowercase plural for error messages (e.g., "posts", "pages")
     const errorType = config.endpoint === 'posts' ? 'posts'
       : config.endpoint === 'pages' ? 'pages'
@@ -543,7 +548,11 @@ async function fetchPostTypeItem<T>(
 
     return data[0]
   } catch (error) {
+    // Re-throw specific error types as-is
     if (error instanceof WPNotFoundError) {
+      throw error
+    }
+    if (error instanceof WPValidationError) {
       throw error
     }
 
