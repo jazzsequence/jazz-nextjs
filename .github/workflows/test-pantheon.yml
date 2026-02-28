@@ -2,9 +2,14 @@ name: Test on Pantheon
 
 # GitHub Pages Setup Required:
 # 1. Go to repository Settings → Pages
-# 2. Set Source to "GitHub Actions"
-# 3. Playwright reports will be available at:
+# 2. Set Source to "Deploy from a branch"
+# 3. Select branch "gh-pages" and folder "/ (root)"
+# 4. Save
+# 5. Playwright reports will be available at:
 #    https://{username}.github.io/{repo}/reports/{run_id}
+#
+# Note: peaceiris/actions-gh-pages pushes to gh-pages branch
+# The first deployment will create this branch automatically
 
 on:
   push:
