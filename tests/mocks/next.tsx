@@ -28,9 +28,11 @@ export const Image = ({
 export const Link = ({
   children,
   href,
+  ...props
 }: {
   children: React.ReactNode;
   href: string;
+  [key: string]: unknown;
 }) => {
-  return <a href={href}>{children}</a>;
+  return <a href={href} {...props}>{children}</a>;
 };
