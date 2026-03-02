@@ -1,0 +1,301 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import Navigation from '@/components/Navigation';
+import type { WPMenuItem } from '@/lib/wordpress/types';
+
+// Mock Next.js Link component
+vi.mock('next/link', () => ({
+  default: ({
+    href,
+    children,
+    className,
+    target,
+    rel,
+  }: {
+    href: string;
+    children: React.ReactNode;
+    className?: string;
+    target?: string;
+    rel?: string;
+  }) => (
+    <a href={href} className={className} target={target} rel={rel}>
+      {children}
+    </a>
+  ),
+}));
+
+describe('Navigation', () => {
+  const mockMenuItems: WPMenuItem[] = [
+    {
+      id: 1,
+      title: { rendered: 'Home' },
+      url: 'https://example.com',
+      attr_title: '',
+      description: '',
+      type: 'custom',
+      type_label: 'Custom Link',
+      object: 'custom',
+      object_id: 0,
+      parent: 0,
+      menu_order: 1,
+      target: '',
+      classes: [],
+      xfn: [],
+      invalid: false,
+      meta: {},
+      menus: 1,
+    },
+    {
+      id: 2,
+      title: { rendered: 'About' },
+      url: 'https://example.com/about',
+      attr_title: '',
+      description: '',
+      type: 'post_type',
+      type_label: 'Page',
+      object: 'page',
+      object_id: 10,
+      parent: 0,
+      menu_order: 2,
+      target: '',
+      classes: [],
+      xfn: [],
+      invalid: false,
+      meta: {},
+      menus: 1,
+    },
+    {
+      id: 3,
+      title: { rendered: 'Blog' },
+      url: 'https://example.com/blog',
+      attr_title: '',
+      description: '',
+      type: 'post_type',
+      type_label: 'Page',
+      object: 'page',
+      object_id: 20,
+      parent: 0,
+      menu_order: 3,
+      target: '',
+      classes: [],
+      xfn: [],
+      invalid: false,
+      meta: {},
+      menus: 1,
+    },
+  ];
+
+  const mockNestedMenuItems: WPMenuItem[] = [
+    {
+      id: 1,
+      title: { rendered: 'Home' },
+      url: 'https://example.com',
+      attr_title: '',
+      description: '',
+      type: 'custom',
+      type_label: 'Custom Link',
+      object: 'custom',
+      object_id: 0,
+      parent: 0,
+      menu_order: 1,
+      target: '',
+      classes: [],
+      xfn: [],
+      invalid: false,
+      meta: {},
+      menus: 1,
+    },
+    {
+      id: 2,
+      title: { rendered: 'Parent Menu' },
+      url: 'https://example.com/parent',
+      attr_title: '',
+      description: '',
+      type: 'post_type',
+      type_label: 'Page',
+      object: 'page',
+      object_id: 10,
+      parent: 0,
+      menu_order: 2,
+      target: '',
+      classes: [],
+      xfn: [],
+      invalid: false,
+      meta: {},
+      menus: 1,
+    },
+    {
+      id: 3,
+      title: { rendered: 'Child Menu Item' },
+      url: 'https://example.com/parent/child',
+      attr_title: '',
+      description: '',
+      type: 'post_type',
+      type_label: 'Page',
+      object: 'page',
+      object_id: 11,
+      parent: 2, // Parent is menu item #2
+      menu_order: 3,
+      target: '',
+      classes: [],
+      xfn: [],
+      invalid: false,
+      meta: {},
+      menus: 1,
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('with menu data provided', () => {
+    it('should render menu items from menuItems prop', () => {
+      render(<Navigation menuItems={mockMenuItems} />);
+
+      expect(screen.getByText('Home')).toBeInTheDocument();
+      expect(screen.getByText('About')).toBeInTheDocument();
+      expect(screen.getByText('Blog')).toBeInTheDocument();
+    });
+
+    it('should render links with correct href', () => {
+      render(<Navigation menuItems={mockMenuItems} />);
+
+      const homeLink = screen.getByRole('link', { name: 'Home' });
+      const aboutLink = screen.getByRole('link', { name: 'About' });
+
+      expect(homeLink).toHaveAttribute('href', 'https://example.com');
+      expect(aboutLink).toHaveAttribute('href', 'https://example.com/about');
+    });
+
+    it('should render menu items in correct order', () => {
+      render(<Navigation menuItems={mockMenuItems} />);
+
+      const links = screen.getAllByRole('link');
+      expect(links[0]).toHaveTextContent('Home');
+      expect(links[1]).toHaveTextContent('About');
+      expect(links[2]).toHaveTextContent('Blog');
+    });
+  });
+
+  describe('nested menu items', () => {
+    it('should render parent menu items', () => {
+      render(<Navigation menuItems={mockNestedMenuItems} />);
+
+      expect(screen.getByText('Home')).toBeInTheDocument();
+      expect(screen.getByText('Parent Menu')).toBeInTheDocument();
+    });
+
+    it('should render child menu items under parent', () => {
+      render(<Navigation menuItems={mockNestedMenuItems} />);
+
+      expect(screen.getByText('Child Menu Item')).toBeInTheDocument();
+    });
+
+    it('should nest child items under parent', () => {
+      const { container } = render(<Navigation menuItems={mockNestedMenuItems} />);
+
+      // Find the parent list item
+      const parentItem = container.querySelector('[data-menu-id="2"]');
+      expect(parentItem).toBeInTheDocument();
+
+      // Parent should have a nested list
+      const nestedList = parentItem?.querySelector('ul');
+      expect(nestedList).toBeInTheDocument();
+
+      // Child item should be in the nested list
+      const childItem = nestedList?.querySelector('[data-menu-id="3"]');
+      expect(childItem).toBeInTheDocument();
+    });
+  });
+
+  describe('loading state', () => {
+    it('should display loading state when isLoading is true', () => {
+      render(<Navigation isLoading={true} />);
+
+      expect(screen.getByText('Loading menu...')).toBeInTheDocument();
+    });
+
+    it('should not display menu items when loading', () => {
+      render(<Navigation menuItems={mockMenuItems} isLoading={true} />);
+
+      expect(screen.getByText('Loading menu...')).toBeInTheDocument();
+      expect(screen.queryByText('Home')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('error state', () => {
+    it('should display error message when error prop is provided', () => {
+      render(<Navigation error="Failed to load menu" />);
+
+      expect(screen.getByText(/Failed to load menu/i)).toBeInTheDocument();
+    });
+
+    it('should not display menu items when error exists', () => {
+      render(<Navigation menuItems={mockMenuItems} error="Failed to load menu" />);
+
+      expect(screen.getByText(/Failed to load menu/i)).toBeInTheDocument();
+      expect(screen.queryByText('Home')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('empty state', () => {
+    it('should handle empty menu items array', () => {
+      render(<Navigation menuItems={[]} />);
+
+      const nav = screen.getByRole('navigation');
+      expect(nav).toBeInTheDocument();
+      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    });
+
+    it('should display default message when no menu items provided', () => {
+      render(<Navigation />);
+
+      const nav = screen.getByRole('navigation');
+      expect(nav).toBeInTheDocument();
+    });
+  });
+
+  describe('styling', () => {
+    it('should apply default Tailwind classes', () => {
+      const { container } = render(<Navigation menuItems={mockMenuItems} />);
+
+      const nav = container.querySelector('nav');
+      expect(nav).toHaveClass('bg-white', 'shadow-md');
+    });
+
+    it('should apply custom className', () => {
+      const { container } = render(
+        <Navigation menuItems={mockMenuItems} className="custom-nav" />
+      );
+
+      const nav = container.querySelector('nav');
+      expect(nav).toHaveClass('custom-nav');
+    });
+  });
+
+  describe('menu item target attribute', () => {
+    it('should render links with target="_blank" when specified', () => {
+      const itemsWithTarget: WPMenuItem[] = [
+        {
+          ...mockMenuItems[0],
+          target: '_blank',
+        },
+      ];
+
+      render(<Navigation menuItems={itemsWithTarget} />);
+
+      const link = screen.getByRole('link', { name: 'Home' });
+      expect(link).toHaveAttribute('target', '_blank');
+      expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    });
+
+    it('should not add target or rel attributes when target is empty', () => {
+      render(<Navigation menuItems={mockMenuItems} />);
+
+      const link = screen.getByRole('link', { name: 'Home' });
+      expect(link).not.toHaveAttribute('target');
+      expect(link).not.toHaveAttribute('rel');
+    });
+  });
+});
