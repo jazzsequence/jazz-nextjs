@@ -61,7 +61,7 @@ describe('Slack Notification', () => {
       expect(headerBlock.type).toBe('header');
       if (headerBlock.type === 'header') {
         expect(headerBlock.text.text).toContain('🚀');
-        expect(headerBlock.text.text).toContain('live');
+        expect(headerBlock.text.text).toContain('Successful');
       }
     });
 

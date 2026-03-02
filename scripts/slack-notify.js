@@ -63,6 +63,26 @@ function getWorkflowEmoji(status, environment) {
 }
 
 /**
+ * Truncate commit message if too long
+ * @param {string} message - Commit message
+ * @param {number} maxLength - Maximum length
+ * @returns {string} Truncated message
+ */
+function truncateMessage(message, maxLength = 200) {
+  if (message.length <= maxLength) return message;
+  return message.substring(0, maxLength) + '...';
+}
+
+/**
+ * Get color for deployment status
+ * @param {'success' | 'failure'} status - Deployment status
+ * @returns {string} Hex color code
+ */
+function getStatusColor(status) {
+  return status === 'success' ? '#36a64f' : '#d00000';
+}
+
+/**
  * Format deployment information into Slack message blocks
  * @param {DeploymentInfo} info - Deployment information
  * @returns {SlackMessage} Formatted Slack message with blocks
@@ -83,8 +103,13 @@ export function formatSlackMessage(info) {
 
   const shortHash = commitHash.substring(0, 7);
   const emoji = getWorkflowEmoji(status, environment);
-  const statusText = status === 'success' ? 'Deployed' : 'Failed';
+  const statusText = status === 'success' ? 'Deployment Successful' : 'Deployment Failed';
   const channel = process.env.SLACK_CHANNEL || '#firehose';
+  const envDisplay = environment.toUpperCase();
+
+  // GitHub commit URL (assumes GitHub repository from GITHUB_REPOSITORY env var)
+  const githubRepo = process.env.GITHUB_REPOSITORY || 'chrisreynolds/jazz-nextjs';
+  const commitUrl = `https://github.com/${githubRepo}/commit/${commitHash}`;
 
   /** @type {SlackBlock[]} */
   const blocks = [
@@ -92,7 +117,7 @@ export function formatSlackMessage(info) {
       type: 'header',
       text: {
         type: 'plain_text',
-        text: `${emoji} ${statusText} to ${environment}`,
+        text: `${emoji} ${statusText}`,
         emoji: true,
       },
     },
@@ -101,19 +126,11 @@ export function formatSlackMessage(info) {
       fields: [
         {
           type: 'mrkdwn',
+          text: `*Environment:*\n${envDisplay}`,
+        },
+        {
+          type: 'mrkdwn',
           text: `*Site:*\n${siteName}`,
-        },
-        {
-          type: 'mrkdwn',
-          text: `*Environment:*\n${environment}`,
-        },
-        {
-          type: 'mrkdwn',
-          text: `*Commit:*\n\`${shortHash}\``,
-        },
-        {
-          type: 'mrkdwn',
-          text: `*Committer:*\n${committer}`,
         },
       ],
     },
@@ -121,53 +138,77 @@ export function formatSlackMessage(info) {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Commit Message:*\n${commitMessage}`,
+        text: `*Commit:* <${commitUrl}|\`${shortHash}\`> by ${committer}\n>${truncateMessage(commitMessage, 150)}`,
       },
     },
   ];
 
-  // Add build time if available
-  if (buildTime) {
-    blocks.push({
-      type: 'section',
-      fields: [
-        {
-          type: 'mrkdwn',
-          text: `*Build Time:*\n${formatBuildTime(buildTime)}`,
-        },
-        {
-          type: 'mrkdwn',
-          text: `*Timestamp:*\n<!date^${Math.floor(timestamp.getTime() / 1000)}^{date_short_pretty} at {time}|${timestamp.toISOString()}>`,
-        },
-      ],
-    });
-  } else {
-    blocks.push({
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `*Timestamp:*\n<!date^${Math.floor(timestamp.getTime() / 1000)}^{date_short_pretty} at {time}|${timestamp.toISOString()}>`,
-      },
-    });
-  }
+  // Add timing context
+  const contextElements = [
+    {
+      type: 'mrkdwn',
+      text: `⏱️ Build: ${buildTime ? formatBuildTime(buildTime) : 'N/A'}`,
+    },
+    {
+      type: 'mrkdwn',
+      text: `🕐 <!date^${Math.floor(timestamp.getTime() / 1000)}^{date_short_pretty} at {time}|${timestamp.toISOString()}>`,
+    },
+  ];
 
-  // Add links
+  blocks.push({
+    type: 'context',
+    elements: contextElements,
+  });
+
+  // Add action buttons
   blocks.push(
     {
       type: 'divider',
     },
     {
-      type: 'section',
-      text: {
-        type: 'mrkdwn',
-        text: `<${siteUrl}|🌐 View Site> | <${dashboardUrl}|📊 Dashboard>`,
-      },
+      type: 'actions',
+      elements: [
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '🌐 View Site',
+            emoji: true,
+          },
+          url: siteUrl,
+          style: status === 'success' ? 'primary' : undefined,
+        },
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '📊 Dashboard',
+            emoji: true,
+          },
+          url: dashboardUrl,
+        },
+        {
+          type: 'button',
+          text: {
+            type: 'plain_text',
+            text: '💻 Commit',
+            emoji: true,
+          },
+          url: commitUrl,
+        },
+      ],
     }
   );
 
   return {
     channel,
     blocks,
+    attachments: [
+      {
+        color: getStatusColor(status),
+        blocks: [],
+      },
+    ],
   };
 }
 
