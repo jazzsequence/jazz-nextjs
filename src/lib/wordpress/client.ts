@@ -120,6 +120,13 @@ export interface FetchOptions {
   cache?: ISROptions // Alias for isr
 }
 
+export interface PaginatedResponse<T> {
+  data: T[]
+  totalItems: number
+  totalPages: number
+  currentPage: number
+}
+
 // ===== Retry Configuration =====
 
 interface RetryConfig {
@@ -315,6 +322,38 @@ async function fetchAndValidate<T extends z.ZodTypeAny>(
   }
 
   return result.data
+}
+
+/**
+ * Fetch and validate response with Zod schema, returning both data and response
+ * Used when response headers are needed (e.g., pagination metadata)
+ */
+async function fetchAndValidateWithResponse<T extends z.ZodTypeAny>(
+  url: string,
+  schema: T,
+  options: RequestInit = {},
+  retryConfig: RetryConfig = DEFAULT_RETRY_CONFIG
+): Promise<{ data: z.infer<T>; response: Response }> {
+  // Rate limit
+  await rateLimiter.tryAcquire()
+
+  // Fetch with retry
+  const response = await fetchWithRetry(url, options, retryConfig)
+
+  // Parse JSON
+  const data = await response.json()
+
+  // Validate with Zod
+  const result = schema.safeParse(data)
+
+  if (!result.success) {
+    throw new WPValidationError(
+      `Validation failed for ${url}`,
+      result.error
+    )
+  }
+
+  return { data: result.data, response }
 }
 
 /**
@@ -592,6 +631,71 @@ export async function fetchPosts<T = WPContent>(
     )
   }
   return fetchPostTypeList(config as PostTypeConfig<T>, options)
+}
+
+/**
+ * Fetch posts with pagination metadata
+ * @param postType - Post type endpoint (e.g., 'posts', 'gc_game', 'rb_recipe')
+ * @param options - Fetch options (pagination, embed, ISR, etc.)
+ * @returns Posts data with pagination metadata from response headers
+ */
+export async function fetchPostsWithPagination<T = WPContent>(
+  postType: string,
+  options: FetchOptions = {}
+): Promise<PaginatedResponse<T>> {
+  const config = POST_TYPE_CONFIGS[postType]
+  if (!config) {
+    throw new WPAPIError(
+      `Unknown post type: ${postType}`,
+      undefined,
+      postType
+    )
+  }
+
+  const { isr, cache, ...fetchOpts } = options
+  const queryParams = buildQueryParams(fetchOpts)
+  const url = `${API_BASE_URL}/${config.endpoint}${queryParams}`
+
+  // Auto-generate cache tags if ISR enabled but no tags provided
+  const isrOptions = cache || isr || {}
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = createCacheTags(config.endpoint)
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    const { data, response } = await fetchAndValidateWithResponse(
+      url,
+      config.arraySchema,
+      cacheOptions
+    )
+
+    // Extract pagination metadata from headers
+    const totalItems = parseInt(response.headers.get('X-WP-Total') || '0', 10) || data.length
+    const totalPages = parseInt(response.headers.get('X-WP-TotalPages') || '1', 10)
+    const currentPage = options.page || 1
+
+    return {
+      data: data as T[],
+      totalItems,
+      totalPages,
+      currentPage,
+    }
+  } catch (error) {
+    // Re-throw validation errors as-is
+    if (error instanceof WPValidationError) {
+      throw error
+    }
+
+    // Use lowercase plural for error messages
+    const errorType = config.endpoint
+    throw new WPAPIError(
+      `Failed to fetch ${errorType} with pagination`,
+      undefined,
+      config.endpoint
+    )
+  }
 }
 
 /**
