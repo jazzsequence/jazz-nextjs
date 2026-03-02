@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { fetchMenuItems, fetchPostsWithPagination } from '@/lib/wordpress/client';
 import Navigation from '@/components/Navigation';
 import Pagination from '@/components/Pagination';
-import { isNonProduction, getEnvironmentDisplayName } from '@/lib/pantheon/env';
+import { isNonProduction } from '@/lib/pantheon/env';
+import { BUILD_INFO } from '@/lib/build-info';
 import type { WPPost } from '@/lib/wordpress/types';
 
 interface HomePageProps {
@@ -62,8 +63,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const menuError =
     menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
-  const timestamp = new Date().toISOString();
-  const showEnvironmentInfo = isNonProduction();
+  const showBuildInfo = isNonProduction();
 
   return (
     <>
@@ -72,25 +72,11 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8">Recent Posts</h1>
 
-        {showEnvironmentInfo && (
-          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="font-semibold">Environment:</span>{' '}
-                <span className="px-2 py-1 bg-blue-100 rounded">
-                  {getEnvironmentDisplayName()}
-                </span>
-              </div>
-              <div className="text-sm text-gray-600">
-                Site: {process.env.NEXT_PUBLIC_SITE_URL || 'localhost'}
-              </div>
-            </div>
+        {showBuildInfo && (
+          <div className="text-xs text-gray-500 mb-6 font-mono">
+            Build: {new Date(BUILD_INFO.buildTime).toLocaleString()} • Commit: {BUILD_INFO.commitShort}
           </div>
         )}
-
-        <div className="text-sm text-gray-500 mb-6">
-          Last updated: {new Date(timestamp).toLocaleString()}
-        </div>
 
         {postsError && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6 text-red-800">

@@ -12,6 +12,14 @@
 - ALWAYS read a file before editing it
 - NEVER commit secrets, credentials, or .env files
 
+## Local Environment
+
+**Available Tools:**
+- `ag` (The Silver Searcher) - Faster alternative to grep for code searching
+  - Usage: `ag "pattern" path/` instead of `grep -r "pattern" path/`
+  - Respects .gitignore automatically
+  - Significantly faster for large codebases
+
 ## File Organization
 
 - NEVER save to root folder — use the directories below

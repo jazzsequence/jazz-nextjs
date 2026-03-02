@@ -49,6 +49,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# generated build info
+src/lib/build-info.ts
+
 
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
