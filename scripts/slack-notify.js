@@ -63,14 +63,24 @@ function getWorkflowEmoji(status, environment) {
 }
 
 /**
- * Truncate commit message if too long
+ * Format multiline commit message for Slack
  * @param {string} message - Commit message
- * @param {number} maxLength - Maximum length
- * @returns {string} Truncated message
+ * @returns {{ title: string; body?: string }} Formatted message
  */
-function truncateMessage(message, maxLength = 200) {
-  if (message.length <= maxLength) return message;
-  return message.substring(0, maxLength) + '...';
+function formatCommitMessage(message) {
+  const lines = message.split('\n').filter(line => line.trim());
+
+  if (lines.length === 0) {
+    return { title: 'No commit message' };
+  }
+
+  const title = lines[0];
+  const body = lines.slice(1).join('\n').trim();
+
+  return {
+    title: title.length > 100 ? title.substring(0, 97) + '...' : title,
+    body: body.length > 500 ? body.substring(0, 497) + '...' : body || undefined,
+  };
 }
 
 /**
@@ -111,6 +121,9 @@ export function formatSlackMessage(info) {
   const githubRepo = process.env.GITHUB_REPOSITORY || 'chrisreynolds/jazz-nextjs';
   const commitUrl = `https://github.com/${githubRepo}/commit/${commitHash}`;
 
+  // Format commit message
+  const { title, body } = formatCommitMessage(commitMessage);
+
   /** @type {SlackBlock[]} */
   const blocks = [
     {
@@ -138,10 +151,21 @@ export function formatSlackMessage(info) {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: `*Commit:* <${commitUrl}|\`${shortHash}\`> by ${committer}\n>${truncateMessage(commitMessage, 150)}`,
+        text: `*Commit:* <${commitUrl}|\`${shortHash}\`> by ${committer}\n*${title}*`,
       },
     },
   ];
+
+  // Add commit body if it exists
+  if (body) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `\`\`\`${body}\`\`\``,
+      },
+    });
+  }
 
   // Add timing context
   const contextElements = [
@@ -256,7 +280,12 @@ async function main() {
     const buildTime = process.env.BUILD_TIME ? parseInt(process.env.BUILD_TIME, 10) : undefined;
     const siteName = process.env.PANTHEON_SITE_NAME || 'jazz-nextjs15';
     const siteUrl = process.env.SITE_URL || `https://${environment}-${siteName}.pantheonsite.io`;
-    const dashboardUrl = process.env.DASHBOARD_URL || `https://dashboard.pantheon.io/sites/${siteName}#${environment}`;
+    const workspaceId = process.env.PANTHEON_WORKSPACE_ID;
+    const siteUuid = process.env.PANTHEON_SITE_UUID;
+    const dashboardUrl = process.env.DASHBOARD_URL ||
+      (workspaceId && siteUuid
+        ? `https://admin.dashboard.pantheon.io/workspace/${workspaceId}/node-site/${siteUuid}/environment/${environment}/builds`
+        : `https://dashboard.pantheon.io/sites/${siteName}#${environment}`);
 
     /** @type {DeploymentInfo} */
     const deploymentInfo = {

@@ -96,8 +96,10 @@ jobs:
           GITHUB_ACTOR: ${{ steps.committer.outputs.name }}
           BUILD_TIME: ${{ steps.timing.outputs.build_time }}
           PANTHEON_SITE_NAME: ${{ env.PANTHEON_SITE_NAME }}
+          PANTHEON_WORKSPACE_ID: ${{ secrets.PANTHEON_WORKSPACE_ID }}
+          PANTHEON_SITE_UUID: ${{ secrets.PANTHEON_SITE_UUID }}
           SITE_URL: ${{ steps.env.outputs.base_url }}
-          DASHBOARD_URL: https://dashboard.pantheon.io/sites/${{ env.PANTHEON_SITE_NAME }}#${{ steps.env.outputs.env_name }}
+          DASHBOARD_URL: https://admin.dashboard.pantheon.io/workspace/${{ secrets.PANTHEON_WORKSPACE_ID }}/node-site/${{ secrets.PANTHEON_SITE_UUID }}/environment/${{ steps.env.outputs.env_name }}/builds
 
       - name: Report notification status
         if: always()

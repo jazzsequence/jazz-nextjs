@@ -4,8 +4,8 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: "standalone", // Required for Pantheon deployment
 
-  // Pantheon persistent cache handler (production only)
-  ...(process.env.NODE_ENV === "production" && {
+  // Pantheon persistent cache handler (production only, when on Pantheon)
+  ...(process.env.NODE_ENV === "production" && process.env.PANTHEON_ENVIRONMENT && {
     cacheHandler: "./cacheHandler.mjs",
     cacheMaxMemorySize: 0, // Disable default in-memory caching
   }),
