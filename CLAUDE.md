@@ -53,6 +53,14 @@
 - **Retry Logic**: Exponential backoff with jitter (±20%), 3 retries max
 - **ISR**: Automatic cache tag generation, Next.js integration
 
+**Slack Deployment Notifications** (`/docs/SLACK_NOTIFICATIONS.md`)
+- **Implementation**: `scripts/slack-notify.js`
+- **Tests**: `tests/scripts/slack-notify.test.ts` (12/12 passing)
+- **Trigger**: GitHub Actions workflow after Pantheon deployments
+- **Features**: Block Kit formatting, emoji status indicators, build metrics
+- **Channel**: #firehose (configurable)
+- **Security**: Bot token stored in GitHub secrets, never committed
+
 ## Build & Test
 
 ```bash
