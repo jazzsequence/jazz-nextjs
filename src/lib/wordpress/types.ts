@@ -226,9 +226,11 @@ export interface WPMenu {
   name: string
   slug: string
   description: string
-  count: number
-  meta: Record<string, unknown>
+  count?: number | null
+  meta: Record<string, unknown> | unknown[]
   locations: string[]
+  auto_add?: boolean
+  _links?: Record<string, unknown>
 }
 
 // Menu Item

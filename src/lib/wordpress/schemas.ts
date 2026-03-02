@@ -250,9 +250,11 @@ export const WPMenuSchema = z.object({
   name: z.string(),
   slug: z.string(),
   description: z.string(),
-  count: z.number(),
-  meta: z.record(z.unknown()),
+  count: z.number().nullable().optional(),
+  meta: z.union([z.record(z.unknown()), z.array(z.unknown())]),
   locations: z.array(z.string()),
+  auto_add: z.boolean().optional(),
+  _links: z.record(z.unknown()).optional(),
 })
 
 export const WPMenusSchema = z.array(WPMenuSchema)

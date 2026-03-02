@@ -32,6 +32,8 @@ export default defineConfig({
   ...(process.env.NODE_ENV !== 'production' && {
     env: {
       REVALIDATE_SECRET: process.env.REVALIDATE_SECRET || 'test-secret',
+      WORDPRESS_USERNAME: process.env.WORDPRESS_USERNAME,
+      WORDPRESS_APP_PASSWORD: process.env.WORDPRESS_APP_PASSWORD,
     },
   }),
 
