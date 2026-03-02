@@ -301,6 +301,26 @@ Set environment variables in Pantheon dashboard, not in committed files:
 
 Never commit `.env` files to version control.
 
+### WordPress Application Passwords
+
+**CRITICAL**: WordPress application passwords must have all spaces removed when stored in Pantheon environment variables.
+
+WordPress displays application passwords with spaces for readability:
+```
+4Wjp 1234 abcd efgh
+```
+
+But when storing in Pantheon dashboard, remove ALL spaces:
+```
+4Wjp1234abcdefgh
+```
+
+**Why**: Pantheon's build scripts parse environment variables using shell, and values with spaces can cause syntax errors like `local: 4Wjp: bad variable name`, resulting in build failures.
+
+**Affected secrets**:
+- `WORDPRESS_APP_PASSWORD` (if using authenticated requests)
+- Any other secrets containing spaces
+
 ## GitHub Application
 
 Requires Pantheon's GitHub Application to be:
@@ -317,4 +337,4 @@ See [Pantheon GitHub Application docs](https://docs.pantheon.io/github-applicati
 - [Pantheon Documentation Repository](https://github.com/pantheon-systems/documentation) (reference implementation)
 
 ## Last Updated
-2026-02-27
+2026-03-02
