@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { fetchMenuItems, fetchPostsWithPagination } from '@/lib/wordpress/client';
 import Navigation from '@/components/Navigation';
 import Pagination from '@/components/Pagination';
+import Footer from '@/components/Footer';
 import { isNonProduction } from '@/lib/pantheon/env';
 import { BUILD_INFO } from '@/lib/build-info';
 import type { WPPost } from '@/lib/wordpress/types';
@@ -95,6 +96,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
               {posts.map(post => {
                 const featuredMedia = post._embedded?.['wp:featuredmedia']?.[0];
+                const hasImage = post.featured_media > 0 && featuredMedia;
                 const imageUrl = featuredMedia?.source_url;
                 const imageAlt = featuredMedia?.alt_text || post.title.rendered;
                 const excerpt = post.excerpt.rendered.replace(/<[^>]*>/g, '');
@@ -109,8 +111,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
                     key={post.id}
                     className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
                   >
-                    {imageUrl && (
-                      <div className="relative w-full aspect-video">
+                    {hasImage && imageUrl && (
+                      <div className="relative w-full h-64">
                         <Image
                           src={imageUrl}
                           alt={imageAlt}
@@ -164,6 +166,8 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </>
         )}
       </main>
+
+      <Footer />
     </>
   );
 }

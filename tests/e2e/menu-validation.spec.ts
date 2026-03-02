@@ -130,7 +130,7 @@ test.describe('WordPress Menu E2E Validation', () => {
         if (response && response.status() >= 400) {
           failedUrls.push({ url, status: response.status() })
         }
-      } catch (error) {
+      } catch {
         // Network errors or timeouts
         failedUrls.push({ url, status: 0 })
       }

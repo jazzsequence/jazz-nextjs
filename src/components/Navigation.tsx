@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import type { WPMenuItem } from '@/lib/wordpress/types';
 
@@ -59,6 +62,7 @@ function organizeMenuItems(items: WPMenuItem[]): WPMenuItem[] {
  * Render a menu item and its children recursively
  */
 function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: WPMenuItem[] }; isChild?: boolean }) {
+  const [isOpen, setIsOpen] = useState(false);
   const hasChildren = item.children && item.children.length > 0;
   const linkTarget = item.target || undefined;
   const linkRel = item.target === '_blank' ? 'noopener noreferrer' : undefined;
@@ -66,7 +70,9 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
   return (
     <li
       data-menu-id={item.id}
-      className={isChild ? 'ml-4' : ''}
+      className={isChild ? 'ml-4' : 'relative group'}
+      onMouseEnter={() => hasChildren && setIsOpen(true)}
+      onMouseLeave={() => hasChildren && setIsOpen(false)}
     >
       <Link
         href={item.url}
@@ -75,9 +81,32 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
         {...(linkRel && { rel: linkRel })}
       >
         {item.title.rendered}
+        {hasChildren && !isChild && (
+          <svg
+            className="inline-block w-4 h-4 ml-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 9l-7 7-7-7"
+            />
+          </svg>
+        )}
       </Link>
       {hasChildren && (
-        <ul className="mt-1">
+        <ul
+          className={`${
+            isChild
+              ? 'mt-1'
+              : `absolute left-0 top-full mt-1 bg-white shadow-lg rounded-md min-w-48 py-2 ${
+                  isOpen ? 'block' : 'hidden'
+                }`
+          }`}
+        >
           {item.children!.map(child => (
             <MenuItem key={child.id} item={child} isChild={true} />
           ))}
