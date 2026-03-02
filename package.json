@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build && npm run copy-standalone",
+    "build": "echo '[BUILD] Starting Next.js build...' && echo '[BUILD] Node version:' && node --version && echo '[BUILD] NPM version:' && npm --version && echo '[BUILD] Running next build...' && next build && echo '[BUILD] Next.js build completed successfully' && echo '[BUILD] Copying standalone files...' && npm run copy-standalone && echo '[BUILD] Build process completed'",
     "copy-standalone": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/ && cp server-debug.mjs .next/standalone/",
     "start": "node server-debug.mjs",
     "lint": "eslint .",
