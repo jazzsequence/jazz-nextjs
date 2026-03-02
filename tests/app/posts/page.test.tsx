@@ -1,0 +1,112 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import PostsPage from '@/app/posts/page';
+import * as wpClient from '@/lib/wordpress/client';
+import type { WPPost } from '@/lib/wordpress/types';
+
+// Mock the WordPress client
+vi.mock('@/lib/wordpress/client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/wordpress/client')>();
+  return {
+    ...actual,
+    fetchPosts: vi.fn(),
+  };
+});
+
+describe('PostsPage', () => {
+  const mockPosts: WPPost[] = [
+    {
+      id: 1,
+      type: 'post',
+      title: { rendered: 'First Post' },
+      excerpt: { rendered: '<p>This is the first post excerpt</p>' },
+      content: { rendered: '<p>First post content</p>' },
+      date: '2024-01-01T00:00:00',
+      date_gmt: '2024-01-01T00:00:00',
+      modified: '2024-01-01T00:00:00',
+      modified_gmt: '2024-01-01T00:00:00',
+      slug: 'first-post',
+      status: 'publish' as const,
+      link: 'https://example.com/first-post',
+      author: 1,
+      featured_media: 0,
+      comment_status: 'open' as const,
+      ping_status: 'open' as const,
+      sticky: false,
+      template: '',
+      format: 'standard' as const,
+      meta: {},
+      categories: [],
+      tags: [],
+    },
+    {
+      id: 2,
+      type: 'post',
+      title: { rendered: 'Second Post' },
+      excerpt: { rendered: '<p>This is the second post excerpt</p>' },
+      content: { rendered: '<p>Second post content</p>' },
+      date: '2024-01-02T00:00:00',
+      date_gmt: '2024-01-02T00:00:00',
+      modified: '2024-01-02T00:00:00',
+      modified_gmt: '2024-01-02T00:00:00',
+      slug: 'second-post',
+      status: 'publish' as const,
+      link: 'https://example.com/second-post',
+      author: 1,
+      featured_media: 0,
+      comment_status: 'open' as const,
+      ping_status: 'open' as const,
+      sticky: false,
+      template: '',
+      format: 'standard' as const,
+      meta: {},
+      categories: [],
+      tags: [],
+    },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should render posts list', async () => {
+    vi.mocked(wpClient.fetchPosts).mockResolvedValue(mockPosts);
+
+    const page = await PostsPage();
+    render(page);
+
+    expect(screen.getByText('Posts')).toBeInTheDocument();
+    expect(screen.getByText('First Post')).toBeInTheDocument();
+    expect(screen.getByText('Second Post')).toBeInTheDocument();
+  });
+
+  it('should call fetchPosts with correct parameters', async () => {
+    vi.mocked(wpClient.fetchPosts).mockResolvedValue(mockPosts);
+
+    await PostsPage();
+
+    expect(wpClient.fetchPosts).toHaveBeenCalledWith('posts', {
+      isr: { revalidate: 3600 },
+    });
+  });
+
+  it('should display message when no posts exist', async () => {
+    vi.mocked(wpClient.fetchPosts).mockResolvedValue([]);
+
+    const page = await PostsPage();
+    render(page);
+
+    expect(screen.getByText('No posts found.')).toBeInTheDocument();
+  });
+
+  it('should handle errors gracefully', async () => {
+    vi.mocked(wpClient.fetchPosts).mockRejectedValue(
+      new Error('API Error')
+    );
+
+    const page = await PostsPage();
+    render(page);
+
+    expect(screen.getByText(/unable to load posts/i)).toBeInTheDocument();
+  });
+});

@@ -31,6 +31,7 @@ import type {
   WPArtist,
   WPMovie,
   WPAddress,
+  WPContent,
   WPAPIListResponse,
 } from './types'
 
@@ -415,8 +416,19 @@ const ADDRESS_CONFIG: PostTypeConfig<WPAddress> = {
   arraySchema: WPAddressesSchema,
 }
 
+// Union type for all post type configs
+type AnyPostTypeConfig =
+  | PostTypeConfig<WPPost>
+  | PostTypeConfig<WPPage>
+  | PostTypeConfig<WPGame>
+  | PostTypeConfig<WPRecipe>
+  | PostTypeConfig<WPMedia>
+  | PostTypeConfig<WPArtist>
+  | PostTypeConfig<WPMovie>
+  | PostTypeConfig<WPAddress>;
+
 // Post type configuration map
-const POST_TYPE_CONFIGS: Record<string, PostTypeConfig<any>> = {
+const POST_TYPE_CONFIGS: Record<string, AnyPostTypeConfig> = {
   posts: POST_CONFIG,
   pages: PAGE_CONFIG,
   gc_game: GAME_CONFIG,
@@ -545,7 +557,7 @@ async function fetchPostTypeItem<T>(
  * @param postType - Post type endpoint (e.g., 'posts', 'gc_game', 'rb_recipe')
  * @param options - Fetch options (pagination, search, ISR, etc.)
  */
-export async function fetchPosts<T = any>(
+export async function fetchPosts<T = WPContent>(
   postType: string,
   options: FetchOptions = {}
 ): Promise<WPAPIListResponse<T>> {
@@ -557,7 +569,7 @@ export async function fetchPosts<T = any>(
       postType
     )
   }
-  return fetchPostTypeList(config, options)
+  return fetchPostTypeList(config as PostTypeConfig<T>, options)
 }
 
 /**
@@ -566,7 +578,7 @@ export async function fetchPosts<T = any>(
  * @param slug - Post slug
  * @param options - Fetch options (pagination, embed, ISR, etc.)
  */
-export async function fetchPost<T = any>(
+export async function fetchPost<T = WPContent>(
   postType: string,
   slug: string,
   options: Omit<FetchOptions, 'search'> = {}
@@ -579,5 +591,5 @@ export async function fetchPost<T = any>(
       postType
     )
   }
-  return fetchPostTypeItem(config, slug, options)
+  return fetchPostTypeItem(config as PostTypeConfig<T>, slug, options)
 }

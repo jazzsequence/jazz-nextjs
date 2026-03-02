@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { http, HttpResponse, delay } from 'msw'
+import { http, HttpResponse } from 'msw'
 import { server } from '../../mocks/server'
 import {
   fetchPost,
