@@ -10,8 +10,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build && npm run copy-standalone",
-    "copy-standalone": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
-    "start": "node .next/standalone/server.js",
+    "copy-standalone": "cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/ && cp server-debug.mjs .next/standalone/",
+    "start": "node server-debug.mjs",
     "lint": "eslint .",
     "test": "vitest --config config/vitest.config.ts",
     "test:ui": "vitest --ui --config config/vitest.config.ts",
