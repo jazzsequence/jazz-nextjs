@@ -21,6 +21,8 @@ import {
   WPMoviesSchema,
   WPAddressSchema,
   WPAddressesSchema,
+  WPMenusSchema,
+  WPMenuItemsSchema,
 } from './schemas'
 import type {
   WPPost,
@@ -32,6 +34,8 @@ import type {
   WPMovie,
   WPAddress,
   WPContent,
+  WPMenu,
+  WPMenuItem,
   WPAPIListResponse,
 } from './types'
 
@@ -39,6 +43,24 @@ import type {
 
 const API_BASE_URL =
   process.env.WORDPRESS_API_URL || 'https://jazzsequence.com/wp-json/wp/v2'
+
+const WORDPRESS_USERNAME = process.env.WORDPRESS_USERNAME
+const WORDPRESS_APP_PASSWORD = process.env.WORDPRESS_APP_PASSWORD
+
+/**
+ * Generate authentication headers for WordPress REST API
+ * Uses Application Password authentication if credentials are available
+ */
+function getAuthHeaders(): HeadersInit {
+  if (WORDPRESS_USERNAME && WORDPRESS_APP_PASSWORD) {
+    const credentials = `${WORDPRESS_USERNAME}:${WORDPRESS_APP_PASSWORD}`
+    const encoded = Buffer.from(credentials).toString('base64')
+    return {
+      Authorization: `Basic ${encoded}`,
+    }
+  }
+  return {}
+}
 
 // ===== Custom Error Classes =====
 
@@ -592,4 +614,92 @@ export async function fetchPost<T = WPContent>(
     )
   }
   return fetchPostTypeItem(config as PostTypeConfig<T>, slug, options)
+}
+
+// ===== Menu Functions =====
+
+/**
+ * Fetch all available menus
+ * @param options - ISR options for caching
+ */
+export async function fetchMenus(
+  options: Pick<FetchOptions, 'isr' | 'cache'> = {}
+): Promise<WPMenu[]> {
+  const { isr, cache } = options
+  const url = `${API_BASE_URL}/menus`
+
+  // Auto-generate cache tags if ISR enabled but no tags provided
+  const isrOptions = cache || isr || {}
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = createCacheTags('menus')
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    return await fetchAndValidate(url, WPMenusSchema, {
+      ...cacheOptions,
+      headers: {
+        ...getAuthHeaders(),
+      },
+    })
+  } catch (error) {
+    // Re-throw validation errors as-is
+    if (error instanceof WPValidationError) {
+      throw error
+    }
+
+    // Preserve status code if it's a WPAPIError
+    const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
+
+    throw new WPAPIError(
+      'Failed to fetch menus',
+      statusCode,
+      'menus'
+    )
+  }
+}
+
+/**
+ * Fetch menu items for a specific menu
+ * @param menuId - Menu ID to fetch items for
+ * @param options - ISR options for caching
+ */
+export async function fetchMenuItems(
+  menuId: number,
+  options: Pick<FetchOptions, 'isr' | 'cache'> = {}
+): Promise<WPMenuItem[]> {
+  const { isr, cache } = options
+  const url = `${API_BASE_URL}/menu-items?menus=${menuId}`
+
+  // Auto-generate cache tags if ISR enabled but no tags provided
+  const isrOptions = cache || isr || {}
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = createCacheTags('menu-items', `menu-${menuId}`)
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    return await fetchAndValidate(url, WPMenuItemsSchema, {
+      ...cacheOptions,
+      headers: {
+        ...getAuthHeaders(),
+      },
+    })
+  } catch (error) {
+    // Re-throw validation errors as-is
+    if (error instanceof WPValidationError) {
+      throw error
+    }
+
+    // Preserve status code if it's a WPAPIError
+    const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
+
+    throw new WPAPIError(
+      'Failed to fetch menu items',
+      statusCode,
+      'menu-items'
+    )
+  }
 }

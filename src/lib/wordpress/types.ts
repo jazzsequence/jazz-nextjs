@@ -220,6 +220,42 @@ export interface WPSeries {
   meta: Record<string, unknown>
 }
 
+// Menu
+export interface WPMenu {
+  id: number
+  name: string
+  slug: string
+  description: string
+  count: number
+  meta: Record<string, unknown>
+  locations: string[]
+}
+
+// Menu Item
+export interface WPMenuItem {
+  id: number
+  title: WPRendered
+  url: string
+  attr_title: string
+  description: string
+  type: string
+  type_label: string
+  object: string
+  object_id: number
+  parent: number
+  menu_order: number
+  target: string
+  classes: string[]
+  xfn: string[]
+  invalid: boolean
+  meta: Record<string, unknown>
+  menus: number
+  _links?: {
+    self?: Array<{ href: string }>
+    collection?: Array<{ href: string }>
+  }
+}
+
 // API Response wrapper types
 export type WPAPIListResponse<T> = T[]
 

@@ -244,6 +244,45 @@ export const WPCategoriesSchema = z.array(WPCategorySchema)
 export const WPTagsSchema = z.array(WPTagSchema)
 export const WPSeriesListSchema = z.array(WPSeriesSchema)
 
+// Menu schemas
+export const WPMenuSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  slug: z.string(),
+  description: z.string(),
+  count: z.number(),
+  meta: z.record(z.unknown()),
+  locations: z.array(z.string()),
+})
+
+export const WPMenusSchema = z.array(WPMenuSchema)
+
+export const WPMenuItemSchema = z.object({
+  id: z.number(),
+  title: WPRenderedSchema,
+  url: z.string(),
+  attr_title: z.string(),
+  description: z.string(),
+  type: z.string(),
+  type_label: z.string(),
+  object: z.string(),
+  object_id: z.number(),
+  parent: z.number(),
+  menu_order: z.number(),
+  target: z.string(),
+  classes: z.array(z.string()),
+  xfn: z.array(z.string()),
+  invalid: z.boolean(),
+  meta: z.record(z.unknown()),
+  menus: z.number(),
+  _links: z.object({
+    self: z.array(z.object({ href: z.string() })).optional(),
+    collection: z.array(z.object({ href: z.string() })).optional(),
+  }).optional(),
+})
+
+export const WPMenuItemsSchema = z.array(WPMenuItemSchema)
+
 // Union content schema
 export const WPContentSchema = z.union([
   WPPostSchema,
@@ -268,3 +307,5 @@ export type InferredWPAddress = z.infer<typeof WPAddressSchema>
 export type InferredWPCategory = z.infer<typeof WPCategorySchema>
 export type InferredWPTag = z.infer<typeof WPTagSchema>
 export type InferredWPSeries = z.infer<typeof WPSeriesSchema>
+export type InferredWPMenu = z.infer<typeof WPMenuSchema>
+export type InferredWPMenuItem = z.infer<typeof WPMenuItemSchema>
