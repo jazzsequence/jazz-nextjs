@@ -1,0 +1,109 @@
+name: Slack Deployment Notifications
+
+# This workflow sends Slack notifications for successful Pantheon deployments
+# Runs after the test-pantheon workflow completes
+
+on:
+  workflow_run:
+    workflows: ["Test on Pantheon"]
+    types:
+      - completed
+
+env:
+  PANTHEON_SITE_NAME: jazz-nextjs15
+
+jobs:
+  notify:
+    name: Send Slack notification
+    runs-on: ubuntu-latest
+    # Run for both success and failure
+    if: ${{ github.event.workflow_run.conclusion != 'cancelled' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies (minimal)
+        run: npm ci --omit=dev --prefer-offline
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event.workflow_run.event }}" == "pull_request" ]; then
+            # Extract PR number from workflow run
+            PR_NUM=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }} --jq '.pull_requests[0].number')
+            ENV_NAME="pr-${PR_NUM}"
+            BASE_URL="https://pr-${PR_NUM}-${PANTHEON_SITE_NAME}.pantheonsite.io"
+          else
+            ENV_NAME="dev"
+            BASE_URL="https://dev-${PANTHEON_SITE_NAME}.pantheonsite.io"
+          fi
+          echo "env_name=${ENV_NAME}" >> $GITHUB_OUTPUT
+          echo "base_url=${BASE_URL}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Get commit message
+        id: commit
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B ${{ github.event.workflow_run.head_sha }})
+          # Escape newlines for GitHub Actions
+          COMMIT_MSG="${COMMIT_MSG//'%'/'%25'}"
+          COMMIT_MSG="${COMMIT_MSG//$'\n'/'%0A'}"
+          COMMIT_MSG="${COMMIT_MSG//$'\r'/'%0D'}"
+          echo "message=${COMMIT_MSG}" >> $GITHUB_OUTPUT
+
+      - name: Get committer name
+        id: committer
+        run: |
+          COMMITTER=$(git log -1 --pretty=%an ${{ github.event.workflow_run.head_sha }})
+          echo "name=${COMMITTER}" >> $GITHUB_OUTPUT
+
+      - name: Calculate build time
+        id: timing
+        run: |
+          # Get workflow run start and end times
+          RUN_DATA=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }})
+          START_TIME=$(echo "$RUN_DATA" | jq -r '.created_at')
+          END_TIME=$(echo "$RUN_DATA" | jq -r '.updated_at')
+
+          # Convert to seconds and calculate duration
+          START_EPOCH=$(date -u -d "$START_TIME" +%s 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$START_TIME" +%s)
+          END_EPOCH=$(date -u -d "$END_TIME" +%s 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$END_TIME" +%s)
+          DURATION=$((END_EPOCH - START_EPOCH))
+
+          echo "build_time=${DURATION}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Send Slack notification
+        run: node scripts/slack-notify.js
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_DEPLOYBOT_TOKEN }}
+          SLACK_CHANNEL: '#firehose'
+          PANTHEON_ENV: ${{ steps.env.outputs.env_name }}
+          DEPLOYMENT_STATUS: ${{ github.event.workflow_run.conclusion }}
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha }}
+          COMMIT_MESSAGE: ${{ steps.commit.outputs.message }}
+          GITHUB_ACTOR: ${{ steps.committer.outputs.name }}
+          BUILD_TIME: ${{ steps.timing.outputs.build_time }}
+          PANTHEON_SITE_NAME: ${{ env.PANTHEON_SITE_NAME }}
+          SITE_URL: ${{ steps.env.outputs.base_url }}
+          DASHBOARD_URL: https://dashboard.pantheon.io/sites/${{ env.PANTHEON_SITE_NAME }}#${{ steps.env.outputs.env_name }}
+
+      - name: Report notification status
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Slack notification sent successfully"
+          else
+            echo "⚠️  Slack notification failed, but this is non-critical"
+          fi
