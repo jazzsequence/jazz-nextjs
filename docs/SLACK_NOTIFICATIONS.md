@@ -55,6 +55,19 @@ Add the following secret to your GitHub repository:
 
 The default channel is `#firehose`. To change it, modify the `SLACK_CHANNEL` environment variable in `.github/workflows/slack-notify-deploy.yml`.
 
+### Pantheon Dashboard URLs
+
+Dashboard URLs are automatically constructed using Terminus to fetch:
+- Workspace UUID via `terminus site:info --field=organization`
+- Site UUID via `terminus site:info --field=id`
+
+The workflow builds the admin dashboard URL:
+```
+https://admin.dashboard.pantheon.io/workspace/{WORKSPACE_ID}/node-site/{SITE_UUID}/environment/{ENV}/builds
+```
+
+This requires the `PANTHEON_MACHINE_TOKEN` secret to be configured (same token used for testing).
+
 ## Message Format
 
 Notifications include:
@@ -117,6 +130,8 @@ The notification script uses the following environment variables:
 - `PANTHEON_SITE_NAME` - Pantheon site name (default: `jazz-nextjs15`)
 - `SITE_URL` - Deployed site URL
 - `DASHBOARD_URL` - Pantheon dashboard URL
+- `PANTHEON_WORKSPACE_ID` - Pantheon workspace UUID (for accurate dashboard URL)
+- `PANTHEON_SITE_UUID` - Pantheon site UUID (for accurate dashboard URL)
 
 ## Testing
 
