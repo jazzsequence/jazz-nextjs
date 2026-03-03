@@ -9,9 +9,19 @@ vi.mock('@/lib/wordpress/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/wordpress/client')>();
   return {
     ...actual,
-    fetchPosts: vi.fn(),
+    fetchPostsWithPagination: vi.fn(),
+    fetchMenuItems: vi.fn().mockResolvedValue([]),
   };
 });
+
+// Mock getBuildInfo
+vi.mock('@/lib/build-info', () => ({
+  getBuildInfo: vi.fn().mockResolvedValue({
+    commit: 'abc123',
+    branch: 'main',
+    buildTime: '2024-01-01T00:00:00Z',
+  }),
+}));
 
 describe('PostsPage', () => {
   const mockPosts: WPPost[] = [
@@ -70,9 +80,14 @@ describe('PostsPage', () => {
   });
 
   it('should render posts list', async () => {
-    vi.mocked(wpClient.fetchPosts).mockResolvedValue(mockPosts);
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue({
+      data: mockPosts,
+      totalItems: 2,
+      totalPages: 1,
+      currentPage: 1,
+    });
 
-    const page = await PostsPage();
+    const page = await PostsPage({ searchParams: Promise.resolve({}) });
     render(page);
 
     expect(screen.getByText('Posts')).toBeInTheDocument();
@@ -80,33 +95,46 @@ describe('PostsPage', () => {
     expect(screen.getByText('Second Post')).toBeInTheDocument();
   });
 
-  it('should call fetchPosts with correct parameters', async () => {
-    vi.mocked(wpClient.fetchPosts).mockResolvedValue(mockPosts);
+  it('should call fetchPostsWithPagination with correct parameters', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue({
+      data: mockPosts,
+      totalItems: 2,
+      totalPages: 1,
+      currentPage: 1,
+    });
 
-    await PostsPage();
+    await PostsPage({ searchParams: Promise.resolve({}) });
 
-    expect(wpClient.fetchPosts).toHaveBeenCalledWith('posts', {
-      isr: { revalidate: 3600 },
+    expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith('posts', {
+      page: 1,
+      perPage: 10,
+      embed: true,
+      isr: { revalidate: 3600, tags: ['posts'] },
     });
   });
 
   it('should display message when no posts exist', async () => {
-    vi.mocked(wpClient.fetchPosts).mockResolvedValue([]);
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue({
+      data: [],
+      totalItems: 0,
+      totalPages: 0,
+      currentPage: 1,
+    });
 
-    const page = await PostsPage();
+    const page = await PostsPage({ searchParams: Promise.resolve({}) });
     render(page);
 
     expect(screen.getByText('No posts found.')).toBeInTheDocument();
   });
 
   it('should handle errors gracefully', async () => {
-    vi.mocked(wpClient.fetchPosts).mockRejectedValue(
+    vi.mocked(wpClient.fetchPostsWithPagination).mockRejectedValue(
       new Error('API Error')
     );
 
-    const page = await PostsPage();
+    const page = await PostsPage({ searchParams: Promise.resolve({}) });
     render(page);
 
-    expect(screen.getByText(/unable to load posts/i)).toBeInTheDocument();
+    expect(screen.getByText(/failed to load posts/i)).toBeInTheDocument();
   });
 });

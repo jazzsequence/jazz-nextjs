@@ -68,7 +68,6 @@ test.describe('Individual Post Page', () => {
 
     // Content should be rendered (not showing raw HTML)
     const article = page.locator('article');
-    const html = await article.innerHTML();
 
     // Should not contain escaped HTML entities in normal text
     const visibleText = await article.textContent();

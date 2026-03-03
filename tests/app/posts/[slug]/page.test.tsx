@@ -11,8 +11,17 @@ vi.mock('@/lib/wordpress/client', async (importOriginal) => {
   return {
     ...actual,
     fetchPost: vi.fn(),
+    fetchMenuItems: vi.fn().mockResolvedValue([]),
   };
 });
+
+vi.mock('@/lib/build-info', () => ({
+  getBuildInfo: vi.fn().mockResolvedValue({
+    commit: 'abc123',
+    branch: 'main',
+    buildTime: '2024-01-01T00:00:00Z',
+  }),
+}));
 
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
@@ -64,7 +73,7 @@ describe('PostPage', () => {
     await PostPage({ params: Promise.resolve({ slug: 'test-post' }) });
 
     expect(wpClient.fetchPost).toHaveBeenCalledWith('posts', 'test-post', {
-      isr: { revalidate: 3600 },
+      isr: { revalidate: 3600, tags: ['posts', 'post-test-post'] },
     });
   });
 

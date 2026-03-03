@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import type { WPMenuItem } from '@/lib/wordpress/types';
 
@@ -62,7 +61,6 @@ function organizeMenuItems(items: WPMenuItem[]): WPMenuItem[] {
  * Render a menu item and its children recursively
  */
 function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: WPMenuItem[] }; isChild?: boolean }) {
-  const [isOpen, setIsOpen] = useState(false);
   const hasChildren = item.children && item.children.length > 0;
   const linkTarget = item.target || undefined;
   const linkRel = item.target === '_blank' ? 'noopener noreferrer' : undefined;
@@ -70,9 +68,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
   return (
     <li
       data-menu-id={item.id}
-      className={isChild ? 'ml-4' : 'relative group'}
-      onMouseEnter={() => hasChildren && setIsOpen(true)}
-      onMouseLeave={() => hasChildren && setIsOpen(false)}
+      className={isChild ? 'ml-4' : hasChildren ? 'relative group' : 'relative'}
     >
       <Link
         href={item.url}
@@ -102,9 +98,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
           className={`${
             isChild
               ? 'mt-1'
-              : `absolute left-0 top-full mt-1 bg-white shadow-lg rounded-md min-w-48 py-2 ${
-                  isOpen ? 'block' : 'hidden'
-                }`
+              : 'absolute left-0 top-full mt-1 bg-white shadow-lg rounded-md min-w-48 py-2 hidden group-hover:block'
           }`}
         >
           {item.children!.map(child => (

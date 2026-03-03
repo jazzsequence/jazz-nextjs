@@ -116,18 +116,22 @@ test.describe('User Navigation Flows', () => {
   test('should handle browser back and forward navigation', async ({ page }) => {
     // Start on homepage
     await page.goto('/');
+    await page.waitForLoadState('networkidle');
     const homeUrl = page.url();
 
     // Navigate to posts
     await page.goto('/posts');
+    await page.waitForLoadState('networkidle');
     const postsUrl = page.url();
 
     // Go back
     await page.goBack();
+    await page.waitForLoadState('networkidle');
     expect(page.url()).toBe(homeUrl);
 
     // Go forward
     await page.goForward();
+    await page.waitForLoadState('networkidle');
     expect(page.url()).toBe(postsUrl);
   });
 

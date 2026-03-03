@@ -25,19 +25,25 @@ test.describe('Navigation Component', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Find a menu item with children (dropdown)
-    const menuItemWithDropdown = page.locator('nav[role="navigation"] li.group').first();
+    // Find menu items with children (dropdown)
+    const menuItemsWithDropdown = page.locator('nav[role="navigation"] li.group');
+    const count = await menuItemsWithDropdown.count();
 
-    if (await menuItemWithDropdown.count() > 0) {
+    if (count > 0) {
+      const firstDropdownItem = menuItemsWithDropdown.first();
+
       // Hover over parent menu item
-      await menuItemWithDropdown.hover();
+      await firstDropdownItem.hover();
 
       // Wait a moment for dropdown to appear
       await page.waitForTimeout(200);
 
       // Dropdown should be visible
-      const dropdown = menuItemWithDropdown.locator('ul');
+      const dropdown = firstDropdownItem.locator('ul');
       await expect(dropdown).toBeVisible();
+    } else {
+      // No dropdown menus in this menu - test passes
+      expect(count).toBe(0);
     }
   });
 
