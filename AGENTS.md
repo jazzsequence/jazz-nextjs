@@ -6,6 +6,56 @@
 
 # Project-Specific Agent Instructions
 
+## Session Start Protocol - MANDATORY
+
+**BEFORE ANY WORK BEGINS, spawn a TDD enforcement agent:**
+
+```typescript
+// Step 1: Load claude-flow tools
+ToolSearch({ query: "claude-flow agent swarm", max_results: 10 })
+
+// Step 2: Initialize swarm
+mcp__claude-flow__swarm_init({
+  topology: "hierarchical",
+  maxAgents: 3,
+  config: {
+    name: "tdd-enforcement-swarm",
+    purpose: "Enforce TDD compliance",
+    rules: ["Block commits without tests", "Verify test-first", "Check pre-commit"]
+  }
+})
+
+// Step 3: Spawn TDD enforcement agent
+mcp__claude-flow__agent_spawn({
+  agentType: "reviewer",
+  model: "sonnet",
+  task: "Monitor all code changes for TDD compliance. Block commits that implement code without tests first, skip running tests, or violate AGENTS.md/CLAUDE.md standards",
+  config: {
+    role: "tdd-enforcer",
+    strictMode: true,
+    autoBlock: true,
+    requirements: ["tests-first", "all-tests-pass", "lint-clean", "no-secrets"]
+  }
+})
+```
+
+**This creates an ACTUAL running agent, not just a Claude Code subagent.**
+
+**Why this is required:**
+- Enforces TDD London School methodology
+- Prevents violations of project standards
+- Provides continuous oversight of all work
+- Blocks non-compliant commits before they happen
+
+**The enforcement agent will:**
+- ✅ Verify tests exist before implementation
+- ✅ Confirm tests pass before commits
+- ✅ Check lint compliance
+- ✅ Validate file organization
+- ✅ Block commits that violate standards
+
+**NO WORK should proceed without this agent running.**
+
 ## Critical Development Workflows
 
 ### 1. Test-Driven Development (TDD) - MANDATORY
