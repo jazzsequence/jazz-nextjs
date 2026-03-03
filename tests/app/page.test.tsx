@@ -37,6 +37,16 @@ vi.mock('next/link', () => ({
   ),
 }));
 
+// Mock Greeting component
+vi.mock('@/components/Greeting', () => ({
+  Greeting: () => (
+    <section>
+      <h1>Hi, I&apos;m Chris</h1>
+      <div>I make websites and things.</div>
+    </section>
+  ),
+}));
+
 describe('HomePage', () => {
   it('should display build information', async () => {
     const searchParams = { page: '1' };
@@ -50,14 +60,14 @@ describe('HomePage', () => {
     expect(buildInfo.textContent).toContain('abc123d');
   });
 
-  it('should display Recent Posts heading', async () => {
+  it('should display Greeting component', async () => {
     const searchParams = { page: '1' };
     const Page = await HomePage({ searchParams });
 
     render(Page);
 
     const heading = screen.getByRole('heading', { level: 1 });
-    expect(heading.textContent).toBe('Recent Posts');
+    expect(heading.textContent).toBe("Hi, I'm Chris");
   });
 
   it('should render without errors when no posts available', async () => {

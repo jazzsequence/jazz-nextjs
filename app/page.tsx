@@ -4,6 +4,7 @@ import { fetchMenuItems, fetchPostsWithPagination } from '@/lib/wordpress/client
 import Navigation from '@/components/Navigation';
 import Pagination from '@/components/Pagination';
 import Footer from '@/components/Footer';
+import { Greeting } from '@/components/Greeting';
 import { getBuildInfo } from '@/lib/build-info';
 import type { WPPost } from '@/lib/wordpress/types';
 
@@ -75,7 +76,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <Navigation menuItems={menuItemsData} error={menuError} />
 
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">Recent Posts</h1>
+        <Greeting />
 
         <div className="text-xs text-gray-500 mb-6 font-mono">
           Build: {new Date(buildInfoData.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver' })} MT • Commit: {buildInfoData.commitShort}
