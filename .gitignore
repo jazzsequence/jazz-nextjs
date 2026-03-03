@@ -56,3 +56,5 @@ src/lib/build-info.ts
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
 secrets.json
+# next-agents-md
+.next-docs/
