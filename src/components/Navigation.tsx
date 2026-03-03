@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { transformMenuUrl } from '@/lib/url-transform';
 import type { WPMenuItem } from '@/lib/wordpress/types';
 
 interface NavigationProps {
@@ -64,6 +65,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
   const hasChildren = item.children && item.children.length > 0;
   const linkTarget = item.target || undefined;
   const linkRel = item.target === '_blank' ? 'noopener noreferrer' : undefined;
+  const transformedUrl = transformMenuUrl(item.url);
 
   return (
     <li
@@ -71,7 +73,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
       className={isChild ? 'ml-4' : hasChildren ? 'relative group' : 'relative'}
     >
       <Link
-        href={item.url}
+        href={transformedUrl}
         className="block px-4 py-2 text-gray-800 hover:bg-gray-100 hover:text-blue-600 transition-colors rounded"
         {...(linkTarget && { target: linkTarget })}
         {...(linkRel && { rel: linkRel })}

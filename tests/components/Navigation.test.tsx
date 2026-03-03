@@ -313,4 +313,59 @@ describe('Navigation', () => {
       expect(link).not.toHaveAttribute('rel');
     });
   });
+
+  describe('URL transformation', () => {
+    it('should transform jazzsequence.com URLs to local paths', () => {
+      const itemsWithJazzUrls: WPMenuItem[] = [
+        {
+          ...mockMenuItems[0],
+          url: 'https://jazzsequence.com/music/',
+          title: { rendered: 'Music' },
+        },
+        {
+          ...mockMenuItems[1],
+          url: 'https://jazzsequence.com',
+          title: { rendered: 'Home' },
+        },
+      ];
+
+      render(<Navigation menuItems={itemsWithJazzUrls} />);
+
+      const musicLink = screen.getByRole('link', { name: 'Music' });
+      const homeLink = screen.getByRole('link', { name: 'Home' });
+
+      expect(musicLink).toHaveAttribute('href', '/music/');
+      expect(homeLink).toHaveAttribute('href', '/');
+    });
+
+    it('should keep external URLs unchanged', () => {
+      const itemsWithExternalUrls: WPMenuItem[] = [
+        {
+          ...mockMenuItems[0],
+          url: 'https://github.com/jazzsequence',
+          title: { rendered: 'GitHub' },
+        },
+      ];
+
+      render(<Navigation menuItems={itemsWithExternalUrls} />);
+
+      const link = screen.getByRole('link', { name: 'GitHub' });
+      expect(link).toHaveAttribute('href', 'https://github.com/jazzsequence');
+    });
+
+    it('should keep relative URLs unchanged', () => {
+      const itemsWithRelativeUrls: WPMenuItem[] = [
+        {
+          ...mockMenuItems[0],
+          url: '/about/',
+          title: { rendered: 'About' },
+        },
+      ];
+
+      render(<Navigation menuItems={itemsWithRelativeUrls} />);
+
+      const link = screen.getByRole('link', { name: 'About' });
+      expect(link).toHaveAttribute('href', '/about/');
+    });
+  });
 });
