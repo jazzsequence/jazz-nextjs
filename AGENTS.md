@@ -70,23 +70,38 @@ SECURITY:
 19. No secrets or .env files committed?
 20. No credentials in source code?
 
+DEPENDENCIES & LICENSING:
+21. Check license compatibility for new dependencies
+22. No GPL/AGPL licenses (unless explicitly approved)
+23. Verify package.json changes don't introduce restrictive licenses
+
 GIT PRACTICES:
-21. Incremental commits (not one massive commit)?
-22. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
-23. Commit messages clear and descriptive?
+24. Incremental commits (not one massive commit)?
+25. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
+26. Commit messages clear and descriptive?
 
 FILES TO REVIEW:
-- Check git diff --cached (staged changes)
-- Check git status (unstaged files)
-- Review all modified/new files
+- Run npm test -- --run (verify all tests pass)
+- Run npm run lint (verify lint clean)
+- Run npm run build (verify build succeeds)
+- Check git status (modified/new files)
+- Review all file changes
 - Verify documentation updates
+- Check package.json for license compatibility if dependencies changed
 
 DELIVERABLE:
 Provide clear APPROVE or REJECT decision with specific findings for ALL categories.
 
-If REJECT: List violations and required fixes.
-If APPROVE: Confirm all rules followed, commit is safe.`
-})
+If REJECT: List violations and required fixes. Do NOT create approval flag.
+
+If APPROVE:
+1. Confirm all rules followed, commit is safe
+2. Create approval flag file with this command:
+   date +%s > .git/hooks/reviewer-approved
+3. Tell me to stage and commit (approval is valid for 5 minutes)
+
+CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only checks that you gave approval.`
+}))
 ```
 
 **IMPORTANT: Use Claude Code's `Agent` tool, NOT `mcp__claude-flow__*` tools**
@@ -97,17 +112,20 @@ If APPROVE: Confirm all rules followed, commit is safe.`
 
 **Why two-layer enforcement works:**
 
-**Layer 1 - Automated (Pre-commit Hook):**
-- Runs tests automatically before every commit
-- Checks lint automatically
-- Blocks secrets from being committed
-- Provides fast feedback loop
+**Layer 1 - Manual Oversight (Reviewer Agent) - RUNS FIRST:**
+- Spawned BEFORE staging/committing
+- Runs tests, lint, build (once, not duplicate)
+- Comprehensive review of ALL rules
+- Checks documentation updates, TDD methodology, file organization, license compatibility
+- Creates approval flag file if everything passes
+- Approval valid for 5 minutes
 
-**Layer 2 - Manual Oversight (Reviewer Agent):**
-- Comprehensive review of ALL rules (not just tests/lint)
-- Checks documentation updates, TDD methodology, file organization
-- Catches behavioral violations hooks cannot detect
-- MANDATORY before every commit - no exceptions
+**Layer 2 - Automated Gate (Pre-commit Hook) - RUNS SECOND:**
+- Checks for reviewer approval flag file
+- Blocks commit if no approval or approval expired
+- Does NOT re-run tests/lint (agent already did that)
+- Only checks secrets as secondary validation
+- Fast execution since agent did heavy lifting
 
 **The reviewer agent will check:**
 - ✅ TDD methodology (tests-first, separate commits, all pass)
@@ -117,11 +135,21 @@ If APPROVE: Confirm all rules followed, commit is safe.`
 - ✅ Security (no secrets, no credentials)
 - ✅ Git practices (incremental commits, co-author)
 
+**CRITICAL WORKFLOW:**
+1. Make changes (edit files, write code)
+2. Spawn reviewer agent BEFORE staging (agent runs tests/lint once)
+3. Wait for agent APPROVE decision
+4. Agent creates .git/hooks/reviewer-approved flag file
+5. NOW stage files with git add
+6. Commit - pre-commit hook checks for approval flag
+7. If approval expired (>5 min), get fresh approval
+
 **CRITICAL RULES:**
-1. Pre-commit hook runs automatically (can't skip without --no-verify)
-2. Reviewer agent is MANDATORY before every commit (no exceptions)
-3. Never commit without APPROVE from reviewer agent
-4. If agent says REJECT, fix violations then get new approval
+- Never stage files before getting agent approval
+- Never commit without APPROVE from reviewer agent
+- If agent says REJECT, fix violations then spawn agent again
+- Approval expires after 5 minutes (prevents stale approvals)
+- Hook does NOT re-run tests (agent already did that)
 
 ## Critical Development Workflows
 

@@ -247,6 +247,16 @@ npx @claude-flow/cli@latest doctor --fix
 - Document Claude Flow usage in `/docs/AI_USAGE.md`
 
 ### Git Commit Practices
+
+**Pre-commit Validation (MANDATORY):**
+- A pre-commit hook validates reviewer agent approval before allowing commits
+- Spawn reviewer agent BEFORE staging files (see AGENTS.md for full workflow)
+- Agent runs tests/lint and creates approval flag if all checks pass
+- Approval expires after 5 minutes (prevents stale approvals)
+- Hook validates approval flag at commit time - blocks commits without it
+- This ensures comprehensive oversight of all 26 behavioral requirements
+
+**Commit Standards:**
 - Make incremental commits as work progresses
 - Each logical unit of work should be committed separately
 - Co-author commits with Claude (not Claude Flow):
@@ -254,7 +264,6 @@ npx @claude-flow/cli@latest doctor --fix
   Co-Authored-By: Claude <claude@anthropic.com>
   ```
 - First commit may be larger, subsequent commits should be focused and small
-- Always run tests before committing
 - Never commit secrets, .env files, or credentials
 
 **Git Command Workflow (IMPORTANT):**
