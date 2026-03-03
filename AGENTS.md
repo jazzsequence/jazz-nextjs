@@ -8,24 +8,35 @@
 
 ## Session Start Protocol - MANDATORY
 
-**STEP 1: Spawn background monitoring agent (REQUIRED for all sessions)**
+**STEP 1: Install enforcement hooks**
 
-At the START of EVERY session, spawn a comprehensive enforcement agent in the background:
+```bash
+./.githooks/install.sh
+```
+
+This installs a pre-commit hook that automatically:
+- ✅ Runs all tests before every commit
+- ✅ Runs linter before every commit
+- ✅ Blocks commits containing secrets
+- ⚠️ Reminds you to get reviewer agent approval (manual gate)
+
+---
+
+**STEP 2: MANDATORY reviewer approval before EVERY commit**
+
+BEFORE committing, you MUST spawn a reviewer agent and get approval:
 
 ```typescript
-// Use Claude Code's Agent tool with run_in_background
+// Use Claude Code's Agent tool
 Agent({
   subagent_type: "reviewer",
   model: "sonnet",
-  description: "Background behavioral monitor",
-  run_in_background: true,
-  prompt: `Monitor all actions in real-time for compliance with AGENTS.md and CLAUDE.md rules.
+  description: "Pre-commit behavioral review",
+  prompt: `Review my uncommitted changes for compliance with AGENTS.md and CLAUDE.md rules.
 
-YOU ARE A BACKGROUND MONITOR, NOT A POST-COMMIT REVIEWER.
+CRITICAL: I am about to commit. Review my work and provide APPROVE or REJECT.
 
-Your job: Watch my work in progress and alert me IMMEDIATELY when I violate rules, BEFORE I commit.
-
-Monitor for violations of:
+Check for violations of:
 
 CRITICAL REQUIREMENTS TO CHECK:
 
@@ -64,19 +75,17 @@ GIT PRACTICES:
 22. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
 23. Commit messages clear and descriptive?
 
-WHEN TO ALERT:
-- Alert me IMMEDIATELY when you detect a violation
-- Don't wait for commits - catch problems as they happen
-- Monitor file operations, edits, new files, documentation gaps
-- Check in real-time, not after the fact
-
-EXAMPLES OF REAL-TIME ALERTS:
-- "⚠️ You just created src/lib/audience-matcher.ts without writing tests first (TDD violation)"
-- "⚠️ You modified code but haven't updated documentation (CLAUDE.md requires doc updates)"
-- "⚠️ You're about to commit tests and implementation together (need separate commits)"
+FILES TO REVIEW:
+- Check git diff --cached (staged changes)
+- Check git status (unstaged files)
+- Review all modified/new files
+- Verify documentation updates
 
 DELIVERABLE:
-Continuous monitoring with real-time alerts. Send alerts immediately when violations occur, before commits happen.`
+Provide clear APPROVE or REJECT decision with specific findings for ALL categories.
+
+If REJECT: List violations and required fixes.
+If APPROVE: Confirm all rules followed, commit is safe.`
 })
 ```
 
@@ -86,31 +95,33 @@ Continuous monitoring with real-time alerts. Send alerts immediately when violat
 - **Claude Code Agent tool** spawns actual working subagents that execute tasks
 - This is the key difference that makes enforcement actually work
 
-**Why background monitoring works:**
-- Claude Code's Agent tool with `run_in_background: true` creates persistent monitor
-- Agent watches file system operations in real-time
-- Alerts arrive IMMEDIATELY when violations occur (not after commits)
-- Prevents violations before they become commits
-- Catches issues pre-commit hooks cannot detect (documentation gaps, TDD workflow, file creation patterns)
-- No duplicate test runs (agent runs tests, pre-commit hook skips if agent validated)
+**Why two-layer enforcement works:**
 
-**The background monitor will:**
-- 🔍 Watch file operations in real-time (creates, edits, deletes)
-- ⚠️ Alert IMMEDIATELY when rules are violated (before commits)
-- ✅ Check TDD methodology (tests-first, separate commits)
-- ✅ Validate file organization (/src, /tests, /docs, no root files)
-- ✅ Enforce documentation updates (CRITICAL - always update docs!)
-- ✅ Verify code quality (DRY, file size, prefer editing)
-- ✅ Check security (no secrets, no credentials)
-- ✅ Monitor git practices (incremental commits, co-author)
+**Layer 1 - Automated (Pre-commit Hook):**
+- Runs tests automatically before every commit
+- Checks lint automatically
+- Blocks secrets from being committed
+- Provides fast feedback loop
 
-**IMPORTANT: This agent runs CONTINUOUSLY, not just at commit time!**
+**Layer 2 - Manual Oversight (Reviewer Agent):**
+- Comprehensive review of ALL rules (not just tests/lint)
+- Checks documentation updates, TDD methodology, file organization
+- Catches behavioral violations hooks cannot detect
+- MANDATORY before every commit - no exceptions
 
-**NO PRE-COMMIT HOOKS:**
-- Background agent replaces pre-commit hooks entirely
-- Comprehensive behavioral monitoring (18+ checks)
-- Real-time alerts prevent violations before commits
-- No duplicate test runs or redundant validation
+**The reviewer agent will check:**
+- ✅ TDD methodology (tests-first, separate commits, all pass)
+- ✅ File organization (/src, /tests, /docs, no root files)
+- ✅ Documentation updates (CRITICAL - always update docs!)
+- ✅ Code quality (DRY, file size, prefer editing)
+- ✅ Security (no secrets, no credentials)
+- ✅ Git practices (incremental commits, co-author)
+
+**CRITICAL RULES:**
+1. Pre-commit hook runs automatically (can't skip without --no-verify)
+2. Reviewer agent is MANDATORY before every commit (no exceptions)
+3. Never commit without APPROVE from reviewer agent
+4. If agent says REJECT, fix violations then get new approval
 
 ## Critical Development Workflows
 
