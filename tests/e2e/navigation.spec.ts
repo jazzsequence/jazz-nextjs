@@ -1,0 +1,136 @@
+import { test, expect } from '@playwright/test';
+
+test.describe('Navigation Component', () => {
+  test('should display main navigation menu', async ({ page }) => {
+    await page.goto('/');
+
+    const nav = page.locator('nav[role="navigation"]');
+    await expect(nav).toBeVisible();
+  });
+
+  test('should have menu items', async ({ page }) => {
+    await page.goto('/');
+
+    const menuItems = page.locator('nav[role="navigation"] a');
+    const count = await menuItems.count();
+
+    expect(count).toBeGreaterThan(0);
+  });
+
+  test('should show dropdown menus on hover', async ({ page, isMobile }) => {
+    if (isMobile) {
+      test.skip();
+    }
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Find a menu item with children (dropdown)
+    const menuItemWithDropdown = page.locator('nav[role="navigation"] li.group').first();
+
+    if (await menuItemWithDropdown.count() > 0) {
+      // Hover over parent menu item
+      await menuItemWithDropdown.hover();
+
+      // Wait a moment for dropdown to appear
+      await page.waitForTimeout(200);
+
+      // Dropdown should be visible
+      const dropdown = menuItemWithDropdown.locator('ul');
+      await expect(dropdown).toBeVisible();
+    }
+  });
+
+  test('should hide dropdown menus when not hovering', async ({ page, isMobile }) => {
+    if (isMobile) {
+      test.skip();
+    }
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    const menuItemWithDropdown = page.locator('nav[role="navigation"] li.group').first();
+
+    if (await menuItemWithDropdown.count() > 0) {
+      // Initially, dropdown should be hidden
+      const dropdown = menuItemWithDropdown.locator('ul');
+      await expect(dropdown).toBeHidden();
+    }
+  });
+
+  test('should navigate when clicking menu link', async ({ page }) => {
+    await page.goto('/');
+
+    // Find first menu link
+    const firstLink = page.locator('nav[role="navigation"] a').first();
+    const href = await firstLink.getAttribute('href');
+
+    if (href && !href.startsWith('http')) {
+      // Click the link
+      await firstLink.click();
+      await page.waitForLoadState('networkidle');
+
+      // Should navigate to the link
+      expect(page.url()).toContain(href);
+    }
+  });
+
+  test('should show navigation on all pages', async ({ page }) => {
+    // Test on homepage
+    await page.goto('/');
+    let nav = page.locator('nav[role="navigation"]');
+    await expect(nav).toBeVisible();
+
+    // Test on posts list
+    await page.goto('/posts');
+    nav = page.locator('nav[role="navigation"]');
+    await expect(nav).toBeVisible();
+  });
+
+  test('should be responsive on mobile', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto('/');
+
+    const nav = page.locator('nav[role="navigation"]');
+    await expect(nav).toBeVisible();
+
+    // Menu items should stack vertically on mobile
+    const menuList = nav.locator('ul').first();
+    const box = await menuList.boundingBox();
+
+    if (box) {
+      // Menu should take up most of the width on mobile
+      expect(box.width).toBeGreaterThan(300);
+    }
+  });
+
+  test('should have accessible navigation labels', async ({ page }) => {
+    await page.goto('/');
+
+    const nav = page.locator('nav[role="navigation"]');
+
+    // Navigation should have proper ARIA role
+    const role = await nav.getAttribute('role');
+    expect(role).toBe('navigation');
+
+    // Links should have text content
+    const links = nav.locator('a');
+    const firstLinkText = await links.first().textContent();
+    expect(firstLinkText).toBeTruthy();
+    expect(firstLinkText?.trim().length).toBeGreaterThan(0);
+  });
+
+  test('should maintain navigation state across pages', async ({ page }) => {
+    await page.goto('/');
+
+    // Get menu items on homepage
+    const homeMenuItems = await page.locator('nav[role="navigation"] a').count();
+
+    // Navigate to posts page
+    await page.goto('/posts');
+
+    // Should have same menu items
+    const postsMenuItems = await page.locator('nav[role="navigation"] a').count();
+    expect(postsMenuItems).toBe(homeMenuItems);
+  });
+});
