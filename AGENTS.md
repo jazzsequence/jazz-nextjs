@@ -96,12 +96,9 @@ If REJECT: List violations and required fixes. Do NOT create approval flag.
 
 If APPROVE:
 1. Confirm all rules followed, commit is safe
-2. Create approval flag file using Write tool (auto-approved):
-   Write({
-     file_path: ".git/hooks/reviewer-approved",
-     content: String(Math.floor(Date.now() / 1000))
-   })
-3. Tell me to stage and commit (approval is valid for 5 minutes)
+2. Tell me "APPROVED - I will create the approval flag"
+3. Main agent will create flag: date +%s > .git/hooks/reviewer-approved
+4. Then stage and commit (approval is valid for 5 minutes)
 
 CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only checks that you gave approval.`
 }))
