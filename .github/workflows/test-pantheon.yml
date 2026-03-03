@@ -131,11 +131,19 @@ jobs:
 
             if [ "$BUILD_STATUS" == "DEPLOYMENT_SUCCESS" ]; then
               echo "✅ Build and deployment successful"
+              echo ""
+              echo "Recent build logs:"
+              terminus env:logs ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --type=nginx-error --since=10m || true
               echo "deployment_ready=true" >> $GITHUB_OUTPUT
               exit 0
             elif [[ "$BUILD_STATUS" == *"FAILURE"* ]]; then
               echo "❌ Build or deployment failed"
-              echo "Build ID: $BUILD_ID"
+              echo ""
+              echo "Build logs (last 100 lines):"
+              terminus env:logs ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --type=nginx-error --lines=100 || echo "Unable to fetch logs"
+              echo ""
+              echo "Environment info:"
+              terminus env:info ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} || true
               echo "deployment_ready=false" >> $GITHUB_OUTPUT
               exit 1
             elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]] || [ "$BUILD_STATUS" == "BUILD_SUCCESS" ]; then
