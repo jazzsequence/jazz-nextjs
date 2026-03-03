@@ -272,6 +272,21 @@ describe('Navigation', () => {
       const nav = container.querySelector('nav');
       expect(nav).toHaveClass('custom-nav');
     });
+
+    it('should apply z-50 to dropdown menus to appear above content', () => {
+      const { container } = render(<Navigation menuItems={mockNestedMenuItems} />);
+
+      // Find the parent menu item with children
+      const parentItem = container.querySelector('[data-menu-id="2"]');
+      expect(parentItem).toBeInTheDocument();
+
+      // Find the dropdown submenu
+      const dropdown = parentItem?.querySelector('ul');
+      expect(dropdown).toBeInTheDocument();
+
+      // Verify z-50 class is applied for stacking context
+      expect(dropdown).toHaveClass('z-50');
+    });
   });
 
   describe('menu item target attribute', () => {
