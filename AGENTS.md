@@ -27,28 +27,57 @@ This installs a pre-commit hook that automatically:
 
 **STEP 2: (Optional) Spawn monitoring agent for complex sessions**
 
-For complex multi-file changes, spawn a TDD enforcement agent:
+For complex multi-file changes, spawn a comprehensive enforcement agent:
 
 ```typescript
 // Use Claude Code's Agent tool for actual execution
 Agent({
   subagent_type: "reviewer",
   model: "sonnet",
-  description: "TDD compliance review",
-  prompt: `Review all commits for TDD compliance.
+  description: "Comprehensive behavioral review",
+  prompt: `Review all commits for compliance with AGENTS.md and CLAUDE.md rules.
 
 CRITICAL REQUIREMENTS TO CHECK:
+
+TDD METHODOLOGY:
 1. Were tests written BEFORE implementation code?
 2. Do all tests pass (npm test -- --run)?
 3. Is lint clean (npm run lint)?
-4. Are test files in /tests directory (not /src)?
-5. Are there any TDD methodology violations?
-6. Are tests and implementation in separate commits?
+4. Are tests and implementation in separate commits?
+5. Build successful (npm run build)?
 
-Check git history to verify test files were committed BEFORE implementation files.
+FILE ORGANIZATION:
+6. Are test files in /tests directory (not /src)?
+7. Are source files in /src directory?
+8. Are docs in /docs directory?
+9. NO files created in root folder (except config files)?
+
+DOCUMENTATION UPDATES:
+10. Were relevant docs updated for code changes?
+11. Was CLAUDE.md updated for workflow/config changes?
+12. Was AGENTS.md updated for agent-related changes?
+13. Was README.md updated for architecture changes?
+14. NO new documentation created unless requested?
+
+CODE QUALITY:
+15. DRY principle followed (no code duplication)?
+16. Files kept under 500 lines?
+17. Prefer editing existing files over creating new ones?
+18. Read files before editing them?
+
+SECURITY:
+19. No secrets or .env files committed?
+20. No credentials in source code?
+
+GIT PRACTICES:
+21. Incremental commits (not one massive commit)?
+22. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
+23. Commit messages clear and descriptive?
+
+Check git history to verify proper workflow.
 
 DELIVERABLE:
-Provide a clear APPROVE or REJECT decision with specific findings.`
+Provide APPROVE or REJECT with specific findings for ALL categories above.`
 })
 ```
 
@@ -60,16 +89,20 @@ Provide a clear APPROVE or REJECT decision with specific findings.`
 
 **Why this works:**
 - Claude Code's Agent tool spawns actual executing subagents
-- Agents can read git history to verify TDD workflow compliance
+- Agents can read git history, files, and documentation
 - Agents provide detailed review with APPROVE/REJECT decisions
-- Enforces TDD London School methodology (tests-first, separate commits)
+- Enforces ALL behavioral rules from AGENTS.md and CLAUDE.md
+- Catches violations that pre-commit hooks cannot detect (docs, DRY, file creation patterns)
 
-**The enforcement agent will:**
-- ✅ Verify tests were written before implementation (separate commits)
-- ✅ Confirm all tests pass (npm test)
-- ✅ Check lint compliance (npm run lint)
-- ✅ Validate file organization (tests in /tests, not /src)
-- ✅ Detect TDD methodology violations
+**The enforcement agent will check:**
+- ✅ TDD methodology (tests-first, separate commits, all pass)
+- ✅ File organization (/src, /tests, /docs, no root files)
+- ✅ Documentation updates (CRITICAL - always update docs!)
+- ✅ Code quality (DRY, file size, prefer editing)
+- ✅ Security (no secrets, no credentials)
+- ✅ Git practices (incremental commits, co-author)
+
+**IMPORTANT: This agent enforces ALL rules from AGENTS.md and CLAUDE.md, not just TDD!**
 
 **Use this for complex sessions or before git push to validate commits.**
 
