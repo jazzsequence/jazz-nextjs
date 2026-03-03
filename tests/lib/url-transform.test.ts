@@ -43,6 +43,19 @@ describe('transformMenuUrl', () => {
       // WordPress sometimes returns URLs without protocol
       expect(transformMenuUrl('//example.com/page')).toBe('//example.com/page');
     });
+
+    it('should keep jazzsequence.com subdomains unchanged', () => {
+      // Subdomains should NOT be transformed - only exact jazzsequence.com match
+      expect(transformMenuUrl('https://music.jazzsequence.com')).toBe('https://music.jazzsequence.com');
+      expect(transformMenuUrl('https://music.jazzsequence.com/album')).toBe('https://music.jazzsequence.com/album');
+      expect(transformMenuUrl('https://blog.jazzsequence.com')).toBe('https://blog.jazzsequence.com');
+    });
+
+    it('should keep common external sites unchanged', () => {
+      // Real-world examples from menu
+      expect(transformMenuUrl('https://wordpress.org/plugins/some-plugin')).toBe('https://wordpress.org/plugins/some-plugin');
+      expect(transformMenuUrl('https://soundcloud.com/artist')).toBe('https://soundcloud.com/artist');
+    });
   });
 
   describe('relative URLs', () => {
