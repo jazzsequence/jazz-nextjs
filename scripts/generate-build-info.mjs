@@ -6,7 +6,7 @@
  */
 
 import { execSync } from 'child_process';
-import { writeFileSync } from 'fs';
+import { writeFileSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -16,14 +16,78 @@ const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 const outputFile = join(rootDir, 'src/lib/build-info.ts');
 
-try {
-  // Get git commit hash
-  const commitHash = execSync('git rev-parse HEAD', {
-    cwd: rootDir,
-    encoding: 'utf8',
-  }).trim();
+/**
+ * Get commit hash from GitHub API
+ * Reads repo info from package.json and fetches latest commit
+ */
+async function getCommitFromGitHub() {
+  try {
+    const packageJson = JSON.parse(
+      readFileSync(join(rootDir, 'package.json'), 'utf8')
+    );
 
-  const commitShort = commitHash.substring(0, 7);
+    // Extract repo from package.json repository field
+    const repoUrl = packageJson.repository?.url || packageJson.repository;
+    if (!repoUrl) {
+      console.log('⚠️  No repository field in package.json');
+      return null;
+    }
+
+    // Parse GitHub repo (supports various formats)
+    const match = repoUrl.match(/github\.com[/:]([\w-]+)\/([\w-]+)/);
+    if (!match) {
+      console.log('⚠️  Could not parse GitHub repo from:', repoUrl);
+      return null;
+    }
+
+    const [, owner, repo] = match;
+    const cleanRepo = repo.replace(/\.git$/, '');
+
+    console.log(`📡 Fetching commit from GitHub API: ${owner}/${cleanRepo}`);
+
+    // Fetch latest commit from main branch
+    const url = `https://api.github.com/repos/${owner}/${cleanRepo}/commits/main`;
+    const response = await fetch(url, {
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'jazz-nextjs-build-script',
+      },
+    });
+
+    if (!response.ok) {
+      console.log(`⚠️  GitHub API returned ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    return data.sha;
+  } catch (error) {
+    console.log('⚠️  Failed to fetch from GitHub API:', error.message);
+    return null;
+  }
+}
+
+async function generateBuildInfo() {
+  try {
+    let commitHash;
+
+    // Try git command first (works locally and in GitHub Actions)
+    try {
+      commitHash = execSync('git rev-parse HEAD', {
+        cwd: rootDir,
+        encoding: 'utf8',
+      }).trim();
+      console.log('✓ Got commit hash from git');
+    } catch {
+      console.log('⚠️  git command failed, trying GitHub API...');
+      commitHash = await getCommitFromGitHub();
+    }
+
+    if (!commitHash) {
+      throw new Error('Could not determine commit hash');
+    }
+
+    const commitShort = commitHash.substring(0, 7);
 
   // Get build timestamp
   const buildTime = new Date().toISOString();
@@ -65,4 +129,11 @@ export const BUILD_INFO = {
 
   writeFileSync(outputFile, fallbackContent, 'utf8');
   console.log('⚠️  Created fallback build info');
+  }
 }
+
+// Run the async function
+generateBuildInfo().catch(error => {
+  console.error('❌ Fatal error:', error);
+  process.exit(1);
+});

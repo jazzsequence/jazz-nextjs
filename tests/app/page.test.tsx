@@ -1,7 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
-import { BUILD_INFO } from '@/lib/build-info';
+
+// Mock build info (generated at build time, not available during tests)
+vi.mock('@/lib/build-info', () => ({
+  BUILD_INFO: {
+    commitHash: 'abc123def456',
+    commitShort: 'abc123d',
+    buildTime: '2026-03-03T10:00:00.000Z',
+  },
+}));
 
 // Mock the WordPress client
 vi.mock('@/lib/wordpress/client', () => ({
@@ -39,7 +47,7 @@ describe('HomePage', () => {
     // Build info should be visible
     const buildInfo = screen.getByText(/Build:.*Commit:/);
     expect(buildInfo).toBeTruthy();
-    expect(buildInfo.textContent).toContain(BUILD_INFO.commitShort);
+    expect(buildInfo.textContent).toContain('abc123d');
   });
 
   it('should display Recent Posts heading', async () => {
