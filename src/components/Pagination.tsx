@@ -16,6 +16,10 @@ const Pagination = ({ currentPage, totalPages, basePath }: PaginationProps) => {
     if (page === 1) {
       return basePath;
     }
+    // Handle root path specially to avoid double slash
+    if (basePath === '/') {
+      return `/page/${page}`;
+    }
     return `${basePath}/page/${page}`;
   };
 

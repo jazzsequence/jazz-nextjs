@@ -44,7 +44,7 @@ test.describe('Pagination Component', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const page2Link = page.locator('a[href="/page/2"]');
+    const page2Link = page.getByRole('link', { name: 'Go to page 2' });
     const exists = await page2Link.count() > 0;
 
     if (exists) {
@@ -156,7 +156,7 @@ test.describe('Pagination Component', () => {
   test('should update URL when navigating pages', async ({ page }) => {
     await page.goto('/');
 
-    const page2Link = page.locator('a[href="/page/2"]');
+    const page2Link = page.getByRole('link', { name: 'Go to page 2' });
     const exists = await page2Link.count() > 0;
 
     if (exists) {
@@ -171,7 +171,7 @@ test.describe('Pagination Component', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const page2Link = page.locator('a[href="/page/2"]');
+    const page2Link = page.getByRole('link', { name: 'Go to page 2' });
     const exists = await page2Link.count() > 0;
 
     if (exists) {
