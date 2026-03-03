@@ -2,13 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
 
-// Mock build info (generated at build time, not available during tests)
+// Mock build info runtime function
 vi.mock('@/lib/build-info', () => ({
-  BUILD_INFO: {
+  getBuildInfo: vi.fn().mockResolvedValue({
     commitHash: 'abc123def456',
     commitShort: 'abc123d',
     buildTime: '2026-03-03T10:00:00.000Z',
-  },
+  }),
 }));
 
 // Mock the WordPress client
