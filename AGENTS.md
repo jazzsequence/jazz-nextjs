@@ -8,7 +8,26 @@
 
 ## Session Start Protocol - MANDATORY
 
-**BEFORE ANY WORK BEGINS, spawn a TDD enforcement agent:**
+**STEP 1: Install TDD enforcement hooks**
+
+```bash
+# Install pre-commit hook that blocks non-compliant commits
+./.githooks/install.sh
+```
+
+This installs a pre-commit hook that automatically:
+- ✅ Runs all tests before every commit
+- ✅ Runs linter before every commit
+- ✅ Blocks commits containing secrets
+- ✅ Enforces file organization rules
+
+**The hook will BLOCK commits that violate TDD standards.**
+
+---
+
+**STEP 2: (Optional) Spawn monitoring agent for complex sessions**
+
+For complex multi-file changes, spawn a TDD enforcement agent:
 
 ```typescript
 // Step 1: Load claude-flow tools
