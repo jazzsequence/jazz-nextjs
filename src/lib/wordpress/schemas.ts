@@ -32,8 +32,8 @@ export const WPFeaturedMediaSchema = z.object({
   source_url: z.string(),
   alt_text: z.string(),
   media_details: z.object({
-    width: z.number(),
-    height: z.number(),
+    width: z.number().nullable(),
+    height: z.number().nullable(),
     sizes: z.record(z.object({
       source_url: z.string(),
       width: z.number(),
