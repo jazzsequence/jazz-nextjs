@@ -149,8 +149,10 @@ describe('fetchGreetingVariants', () => {
     const variants = await fetchGreetingVariants();
     const fallback = variants.find(v => v.isFallback);
 
-    expect(fallback?.heading).toBe("Hi, I'm Chris");
-    expect(fallback?.content).toContain('websites & things');
+    // &#8217; = RIGHT SINGLE QUOTATION MARK (U+2019, curly apostrophe)
+    // &amp; = AMPERSAND (U+0026, &)
+    expect(fallback?.heading).toBe("Hi, I\u2019m Chris"); // Using unicode escape for curly apostrophe
+    expect(fallback?.content).toContain('websites & things'); // & should be decoded
   });
 
   it('should handle fetch errors gracefully', async () => {
