@@ -44,14 +44,14 @@ test.describe('Pagination Component', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const page2Link = page.locator('a[href="/?page=2"]');
+    const page2Link = page.locator('a[href="/page/2"]');
     const exists = await page2Link.count() > 0;
 
     if (exists) {
       await page2Link.click();
       await page.waitForLoadState('networkidle');
 
-      expect(page.url()).toContain('page=2');
+      expect(page.url()).toContain('/page/2');
 
       // Current page should now be 2
       const currentPage = page.locator('[aria-current="page"]');
@@ -61,7 +61,7 @@ test.describe('Pagination Component', () => {
   });
 
   test('should have working Next button', async ({ page }) => {
-    await page.goto('/?page=1');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     const nextButton = page.locator('a:has-text("Next")');
@@ -74,13 +74,13 @@ test.describe('Pagination Component', () => {
         await nextButton.click();
         await page.waitForLoadState('networkidle');
 
-        expect(page.url()).toContain('page=2');
+        expect(page.url()).toContain('/page/2');
       }
     }
   });
 
   test('should have working Previous button on page 2', async ({ page }) => {
-    await page.goto('/?page=2');
+    await page.goto('/page/2');
     await page.waitForLoadState('networkidle');
 
     const prevButton = page.locator('a:has-text("Previous")');
@@ -93,14 +93,14 @@ test.describe('Pagination Component', () => {
       await prevButton.click();
       await page.waitForLoadState('networkidle');
 
-      // Should be back on page 1 or homepage
+      // Should be back on homepage
       const url = page.url();
-      expect(url).toMatch(/page=1|\/$/);
+      expect(url).toMatch(/\/$/);
     }
   });
 
   test('should disable Previous button on page 1', async ({ page }) => {
-    await page.goto('/?page=1');
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     const prevButton = page.locator('text=Previous').first();
@@ -113,7 +113,7 @@ test.describe('Pagination Component', () => {
       if (isDisabled) {
         // Should not be clickable
         const className = await prevButton.getAttribute('class');
-        expect(className).toContain('cursor-not-allowed');
+        expect(className).toContain('pointer-events-none');
       }
     }
   });
@@ -156,15 +156,14 @@ test.describe('Pagination Component', () => {
   test('should update URL when navigating pages', async ({ page }) => {
     await page.goto('/');
 
-    const page2Link = page.locator('a[href="/?page=2"]');
+    const page2Link = page.locator('a[href="/page/2"]');
     const exists = await page2Link.count() > 0;
 
     if (exists) {
       await page2Link.click();
       await page.waitForLoadState('networkidle');
 
-      const url = new URL(page.url());
-      expect(url.searchParams.get('page')).toBe('2');
+      expect(page.url()).toContain('/page/2');
     }
   });
 
@@ -172,7 +171,7 @@ test.describe('Pagination Component', () => {
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    const page2Link = page.locator('a[href="/?page=2"]');
+    const page2Link = page.locator('a[href="/page/2"]');
     const exists = await page2Link.count() > 0;
 
     if (exists) {
@@ -187,7 +186,7 @@ test.describe('Pagination Component', () => {
       await page.keyboard.press('Enter');
       await page.waitForLoadState('networkidle');
 
-      expect(page.url()).toContain('page=2');
+      expect(page.url()).toContain('/page/2');
     }
   });
 });

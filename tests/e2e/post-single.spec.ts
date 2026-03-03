@@ -1,9 +1,23 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Individual Post Page', () => {
-  // We'll use a known post slug for testing
-  // This slug should exist on jazzsequence.com
-  const testSlug = 'hello-world'; // Common test post
+  let testSlug: string;
+
+  // Get a real post slug before running tests
+  test.beforeAll(async ({ request }) => {
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const response = await request.get(`${baseUrl}/`);
+    const html = await response.text();
+
+    // Extract first post slug from homepage
+    const match = html.match(/href="\/posts\/([^"]+)"/);
+    if (match && match[1]) {
+      testSlug = match[1];
+    } else {
+      // Fallback to a commonly available post
+      testSlug = 'welcome';
+    }
+  });
 
   test('should display post title', async ({ page }) => {
     await page.goto(`/posts/${testSlug}`);

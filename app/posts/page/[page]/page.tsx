@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { fetchMenuItems, fetchPostsWithPagination } from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
 import PostsList from '@/components/PostsList';
@@ -8,8 +9,10 @@ import { getBuildInfo } from '@/lib/build-info';
 
 export const revalidate = 3600; // ISR: Revalidate every hour
 
-interface PostsPageProps {
-  searchParams: { page?: string };
+interface PageProps {
+  params: Promise<{
+    page: string;
+  }>;
 }
 
 interface PostsData {
@@ -43,8 +46,14 @@ async function fetchPostsData(page: number): Promise<PostsData> {
   }
 }
 
-export default async function PostsPage({ searchParams }: PostsPageProps) {
-  const page = Number(searchParams?.page) || 1;
+export default async function PaginatedPostsPage({ params }: PageProps) {
+  const { page: pageParam } = await params;
+  const page = parseInt(pageParam, 10);
+
+  // Invalid page number - show 404
+  if (isNaN(page) || page < 1) {
+    notFound();
+  }
 
   // Fetch posts, menu items, and build info in parallel
   const [postsData, menuItems, buildInfo] = await Promise.allSettled([
@@ -59,6 +68,11 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
     postsData.status === 'fulfilled'
       ? postsData.value
       : { posts: [], totalPages: 0, error: 'Failed to load posts' };
+
+  // Page number is too high - show 404
+  if (page > totalPages && totalPages > 0) {
+    notFound();
+  }
 
   const menuItemsData =
     menuItems.status === 'fulfilled' ? menuItems.value : undefined;

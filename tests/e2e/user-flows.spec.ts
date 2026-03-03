@@ -146,15 +146,15 @@ test.describe('User Navigation Flows', () => {
   });
 
   test('should handle pagination across navigation', async ({ page }) => {
-    await page.goto('/?page=2');
+    await page.goto('/page/2');
     await page.waitForLoadState('networkidle');
 
     // Go to posts list
-    await page.goto('/posts?page=2');
+    await page.goto('/posts/page/2');
     await page.waitForLoadState('networkidle');
 
     // Should maintain page 2
-    expect(page.url()).toContain('page=2');
+    expect(page.url()).toContain('/page/2');
 
     // Current page should be highlighted
     const currentPage = page.locator('[aria-current="page"]');
@@ -167,27 +167,29 @@ test.describe('User Navigation Flows', () => {
   test('should show build info consistently', async ({ page }) => {
     // Check on homepage
     await page.goto('/');
-    const homeBuildInfo = page.locator('text=/Build:.*Commit:/');
+    const homeBuildInfo = page.locator('text=/Commit:/');
     await expect(homeBuildInfo).toBeVisible();
 
-    const homeCommit = await homeBuildInfo.textContent();
+    const homeText = await homeBuildInfo.textContent();
+    const homeCommit = homeText?.match(/Commit:\s*(\S+)/)?.[1];
 
-    // Check on posts page - should show same commit
+    // Check on posts page - should show same commit hash
     await page.goto('/posts');
-    const postsBuildInfo = page.locator('text=/Build:.*Commit:/');
+    const postsBuildInfo = page.locator('text=/Commit:/');
 
     if (await postsBuildInfo.count() > 0) {
-      const postsCommit = await postsBuildInfo.textContent();
+      const postsText = await postsBuildInfo.textContent();
+      const postsCommit = postsText?.match(/Commit:\s*(\S+)/)?.[1];
       expect(postsCommit).toBe(homeCommit);
     }
   });
 
   test('should handle direct URL navigation', async ({ page }) => {
     // Navigate directly to page 2
-    await page.goto('/?page=2');
+    await page.goto('/page/2');
     await page.waitForLoadState('networkidle');
 
-    expect(page.url()).toContain('page=2');
+    expect(page.url()).toContain('/page/2');
 
     // Should show page 2 content
     const articles = page.locator('article');
