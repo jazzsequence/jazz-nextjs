@@ -9,7 +9,7 @@ import { getBuildInfo } from '@/lib/build-info';
 export const revalidate = 3600; // ISR: Revalidate every hour
 
 interface PostsPageProps {
-  searchParams: { page?: string };
+  searchParams: Promise<{ page?: string }>;
 }
 
 interface PostsData {
@@ -44,7 +44,8 @@ async function fetchPostsData(page: number): Promise<PostsData> {
 }
 
 export default async function PostsPage({ searchParams }: PostsPageProps) {
-  const page = Number(searchParams?.page) || 1;
+  const params = await searchParams;
+  const page = Number(params?.page) || 1;
 
   // Fetch posts, menu items, and build info in parallel
   const [postsData, menuItems, buildInfo] = await Promise.allSettled([

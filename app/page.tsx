@@ -8,7 +8,7 @@ import { getBuildInfo } from '@/lib/build-info';
 import type { WPPost } from '@/lib/wordpress/types';
 
 interface HomePageProps {
-  searchParams: { page?: string };
+  searchParams: Promise<{ page?: string }>;
 }
 
 interface PostsData {
@@ -43,7 +43,8 @@ async function fetchPostsData(page: number): Promise<PostsData> {
 }
 
 export default async function HomePage({ searchParams }: HomePageProps) {
-  const page = Number(searchParams?.page) || 1;
+  const params = await searchParams;
+  const page = Number(params?.page) || 1;
 
   // Fetch posts, menu items, and build info in parallel
   const [postsData, menuItems, buildInfo] = await Promise.allSettled([

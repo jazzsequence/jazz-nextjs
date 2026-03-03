@@ -31,8 +31,10 @@ test.describe('User Navigation Flows', () => {
     expect(href).toBeTruthy();
     expect(href).toMatch(/^\/posts\//);
 
-    await firstPostLink.click();
-    await page.waitForLoadState('networkidle');
+    await Promise.all([
+      page.waitForURL(/\/posts\//),
+      firstPostLink.click(),
+    ]);
 
     // Should be on individual post page
     expect(page.url()).toContain('/posts/');
@@ -48,8 +50,10 @@ test.describe('User Navigation Flows', () => {
 
     // Click first post
     const firstPostLink = page.locator('article h2 a').first();
-    await firstPostLink.click();
-    await page.waitForLoadState('networkidle');
+    await Promise.all([
+      page.waitForURL(/\/posts\//),
+      firstPostLink.click(),
+    ]);
 
     // Should be on post page
     expect(page.url()).toContain('/posts/');

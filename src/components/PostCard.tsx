@@ -37,11 +37,11 @@ export default function PostCard({ post }: PostCardProps) {
         </Link>
       )}
       <div className="p-6">
-        <Link href={`/posts/${post.slug}`}>
-          <h2 className="text-2xl font-bold mb-2 hover:text-blue-600 transition-colors">
+        <h2 className="text-2xl font-bold mb-2">
+          <Link href={`/posts/${post.slug}`} className="hover:text-blue-600 transition-colors">
             {post.title.rendered}
-          </h2>
-        </Link>
+          </Link>
+        </h2>
         <time className="text-sm text-gray-500 mb-3 block">
           {formattedDate}
         </time>

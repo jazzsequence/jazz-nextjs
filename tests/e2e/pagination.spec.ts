@@ -48,8 +48,10 @@ test.describe('Pagination Component', () => {
     const exists = await page2Link.count() > 0;
 
     if (exists) {
-      await page2Link.click();
-      await page.waitForLoadState('networkidle');
+      await Promise.all([
+        page.waitForURL('**/page/2'),
+        page2Link.click(),
+      ]);
 
       expect(page.url()).toContain('/page/2');
 
@@ -71,8 +73,10 @@ test.describe('Pagination Component', () => {
       const isDisabled = await nextButton.getAttribute('aria-disabled');
 
       if (isDisabled !== 'true') {
-        await nextButton.click();
-        await page.waitForLoadState('networkidle');
+        await Promise.all([
+          page.waitForURL('**/page/2'),
+          nextButton.click(),
+        ]);
 
         expect(page.url()).toContain('/page/2');
       }
@@ -90,8 +94,10 @@ test.describe('Pagination Component', () => {
       const isDisabled = await prevButton.getAttribute('aria-disabled');
       expect(isDisabled).not.toBe('true');
 
-      await prevButton.click();
-      await page.waitForLoadState('networkidle');
+      await Promise.all([
+        page.waitForURL(/\/$/),
+        prevButton.click(),
+      ]);
 
       // Should be back on homepage
       const url = page.url();
@@ -183,8 +189,10 @@ test.describe('Pagination Component', () => {
       expect(isFocused).toBe(true);
 
       // Should be able to activate with Enter
-      await page.keyboard.press('Enter');
-      await page.waitForLoadState('networkidle');
+      await Promise.all([
+        page.waitForURL('**/page/2'),
+        page.keyboard.press('Enter'),
+      ]);
 
       expect(page.url()).toContain('/page/2');
     }
