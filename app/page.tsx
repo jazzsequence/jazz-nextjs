@@ -4,7 +4,6 @@ import { fetchMenuItems, fetchPostsWithPagination } from '@/lib/wordpress/client
 import Navigation from '@/components/Navigation';
 import Pagination from '@/components/Pagination';
 import Footer from '@/components/Footer';
-import { isNonProduction } from '@/lib/pantheon/env';
 import { BUILD_INFO } from '@/lib/build-info';
 import type { WPPost } from '@/lib/wordpress/types';
 
@@ -64,8 +63,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const menuError =
     menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
-  const showBuildInfo = isNonProduction();
-
   return (
     <>
       <Navigation menuItems={menuItemsData} error={menuError} />
@@ -73,11 +70,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <main className="container mx-auto px-4 py-8">
         <h1 className="text-4xl font-bold mb-8">Recent Posts</h1>
 
-        {showBuildInfo && (
-          <div className="text-xs text-gray-500 mb-6 font-mono">
-            Build: {new Date(BUILD_INFO.buildTime).toLocaleString()} • Commit: {BUILD_INFO.commitShort}
-          </div>
-        )}
+        <div className="text-xs text-gray-500 mb-6 font-mono">
+          Build: {new Date(BUILD_INFO.buildTime).toLocaleString()} • Commit: {BUILD_INFO.commitShort}
+        </div>
 
         {postsError && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6 text-red-800">
