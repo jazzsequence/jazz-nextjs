@@ -98,7 +98,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
           className={`${
             isChild
               ? 'mt-1'
-              : 'absolute left-0 top-full mt-1 bg-white shadow-lg rounded-md min-w-48 py-2 hidden group-hover:block'
+              : 'absolute left-0 top-full mt-1 bg-white shadow-lg rounded-md min-w-48 py-2 hidden group-hover:block z-50'
           }`}
         >
           {item.children!.map(child => (

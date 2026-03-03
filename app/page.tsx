@@ -78,7 +78,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <h1 className="text-4xl font-bold mb-8">Recent Posts</h1>
 
         <div className="text-xs text-gray-500 mb-6 font-mono">
-          Build: {new Date(buildInfoData.buildTime).toLocaleString()} • Commit: {buildInfoData.commitShort}
+          Build: {new Date(buildInfoData.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver' })} MT • Commit: {buildInfoData.commitShort}
         </div>
 
         {postsError && (
