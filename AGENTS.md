@@ -30,50 +30,48 @@ This installs a pre-commit hook that automatically:
 For complex multi-file changes, spawn a TDD enforcement agent:
 
 ```typescript
-// Step 1: Load claude-flow tools
-ToolSearch({ query: "claude-flow agent swarm", max_results: 10 })
-
-// Step 2: Initialize swarm
-mcp__claude-flow__swarm_init({
-  topology: "hierarchical",
-  maxAgents: 3,
-  config: {
-    name: "tdd-enforcement-swarm",
-    purpose: "Enforce TDD compliance",
-    rules: ["Block commits without tests", "Verify test-first", "Check pre-commit"]
-  }
-})
-
-// Step 3: Spawn TDD enforcement agent
-mcp__claude-flow__agent_spawn({
-  agentType: "reviewer",
+// Use Claude Code's Agent tool for actual execution
+Agent({
+  subagent_type: "reviewer",
   model: "sonnet",
-  task: "Monitor all code changes for TDD compliance. Block commits that implement code without tests first, skip running tests, or violate AGENTS.md/CLAUDE.md standards",
-  config: {
-    role: "tdd-enforcer",
-    strictMode: true,
-    autoBlock: true,
-    requirements: ["tests-first", "all-tests-pass", "lint-clean", "no-secrets"]
-  }
+  description: "TDD compliance review",
+  prompt: `Review all commits for TDD compliance.
+
+CRITICAL REQUIREMENTS TO CHECK:
+1. Were tests written BEFORE implementation code?
+2. Do all tests pass (npm test -- --run)?
+3. Is lint clean (npm run lint)?
+4. Are test files in /tests directory (not /src)?
+5. Are there any TDD methodology violations?
+6. Are tests and implementation in separate commits?
+
+Check git history to verify test files were committed BEFORE implementation files.
+
+DELIVERABLE:
+Provide a clear APPROVE or REJECT decision with specific findings.`
 })
 ```
 
-**This creates an ACTUAL running agent, not just a Claude Code subagent.**
+**IMPORTANT: Use Claude Code's `Agent` tool, NOT `mcp__claude-flow__*` tools**
 
-**Why this is required:**
-- Enforces TDD London School methodology
-- Prevents violations of project standards
-- Provides continuous oversight of all work
-- Blocks non-compliant commits before they happen
+- **claude-flow MCP tools** (`mcp__claude-flow__*`) create metadata only - they don't execute
+- **Claude Code Agent tool** spawns actual working subagents that execute tasks
+- This is the key difference that makes enforcement actually work
+
+**Why this works:**
+- Claude Code's Agent tool spawns actual executing subagents
+- Agents can read git history to verify TDD workflow compliance
+- Agents provide detailed review with APPROVE/REJECT decisions
+- Enforces TDD London School methodology (tests-first, separate commits)
 
 **The enforcement agent will:**
-- ✅ Verify tests exist before implementation
-- ✅ Confirm tests pass before commits
-- ✅ Check lint compliance
-- ✅ Validate file organization
-- ✅ Block commits that violate standards
+- ✅ Verify tests were written before implementation (separate commits)
+- ✅ Confirm all tests pass (npm test)
+- ✅ Check lint compliance (npm run lint)
+- ✅ Validate file organization (tests in /tests, not /src)
+- ✅ Detect TDD methodology violations
 
-**NO WORK should proceed without this agent running.**
+**Use this for complex sessions or before git push to validate commits.**
 
 ## Critical Development Workflows
 
