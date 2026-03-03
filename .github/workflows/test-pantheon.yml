@@ -109,11 +109,22 @@ jobs:
             echo "Check $ATTEMPT of $MAX_ATTEMPTS..."
 
             # Get build list for this environment (Next.js-specific endpoint)
-            BUILDS_RESPONSE=$(curl -s "https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/${{ steps.env.outputs.env_name }}/build/list?limit=5" \
+            BUILDS_RESPONSE=$(curl -s "https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/${{ steps.env.outputs.env_name }}/build/list?limit=10" \
               -H "X-Pantheon-Session: $SESSION_TOKEN")
 
-            # Find build matching this commit SHA
-            BUILD=$(echo "$BUILDS_RESPONSE" | jq -r ".[] | select(.commit == \"$COMMIT_SHA\")")
+            # Debug: On first attempt, show what the API returns
+            if [ $ATTEMPT -eq 1 ]; then
+              echo "DEBUG: API endpoint: https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/${{ steps.env.outputs.env_name }}/build/list"
+              echo "DEBUG: Response (first 1000 chars):"
+              echo "$BUILDS_RESPONSE" | head -c 1000
+              echo ""
+              echo "DEBUG: Commits in response:"
+              echo "$BUILDS_RESPONSE" | jq -r '.[].commit // "null"' 2>/dev/null || echo "Failed to parse JSON"
+              echo ""
+            fi
+
+            # Find build matching this commit SHA (try full SHA first, then short SHA)
+            BUILD=$(echo "$BUILDS_RESPONSE" | jq -r ".[] | select(.commit == \"$COMMIT_SHA\" or .commit == \"${COMMIT_SHA:0:7}\")")
 
             if [ -z "$BUILD" ] || [ "$BUILD" == "null" ]; then
               echo "⏳ No build found yet for commit $COMMIT_SHA"
