@@ -1,4 +1,6 @@
-# Jazz NextJS
+# jazzsequence on Next.js
+
+[![Test on Pantheon](https://github.com/jazzsequence/jazz-nextjs/actions/workflows/test-pantheon.yml/badge.svg)](https://github.com/jazzsequence/jazz-nextjs/actions/workflows/test-pantheon.yml)
 
 A Next.js application for [jazzsequence.com](https://jazzsequence.com) that integrates with WordPress REST API to display content from various custom post types.
 
