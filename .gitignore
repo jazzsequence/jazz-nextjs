@@ -27,8 +27,8 @@
 .DS_Store
 *.pem
 
-# session notes
-docs/SESSION_NOTES.md
+# Internal research and analysis
+.research/
 
 # debug
 npm-debug.log*
