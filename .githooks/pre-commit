@@ -36,6 +36,26 @@ else
 fi
 echo ""
 
+# Check 2: No gitignored files
+echo "2️⃣  Checking for gitignored files..."
+IGNORED_FILES=""
+for file in $(git diff --cached --name-only); do
+    if git check-ignore -q "$file"; then
+        IGNORED_FILES="${IGNORED_FILES}\n   - $file"
+    fi
+done
+
+if [ -n "$IGNORED_FILES" ]; then
+    echo -e "${RED}❌ BLOCKED: Attempting to commit gitignored files:${NC}"
+    echo -e "${RED}${IGNORED_FILES}${NC}"
+    echo ""
+    echo "   These files are in .gitignore and should NOT be committed."
+    echo "   Use 'git reset HEAD <file>' to unstage them."
+    exit 1
+fi
+echo -e "${GREEN}✅ No gitignored files${NC}"
+echo ""
+
 # Check 3: No secrets
 echo "3️⃣  Checking for secrets..."
 for file in $(git diff --cached --name-only); do
