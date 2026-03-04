@@ -70,10 +70,9 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests (skip if testing remote) */
   webServer: process.env.BASE_URL ? undefined : {
-    command: 'npm run build && npm run start',
+    command: 'npm run dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,  // Allow 2 minutes for build
     env: {
       REVALIDATE_SECRET: process.env.REVALIDATE_SECRET || 'test-secret',
     },

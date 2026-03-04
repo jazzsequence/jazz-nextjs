@@ -57,6 +57,23 @@ export async function Greeting({ searchParams }: GreetingProps = {}) {
                     undefined,
         };
 
+        // Debug logging (temporary)
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[Greeting Debug]', {
+            country: endpoints.country,
+            timezone: endpoints.timezone,
+            serverTime: new Date().toISOString(),
+            cfTimezone: headersList.get('cf-timezone'),
+            vercelTimezone: headersList.get('x-vercel-ip-timezone'),
+            // Guard entries() for test compatibility
+            allHeaders: 'entries' in headersList
+              ? Array.from(headersList.entries()).filter(([key]) =>
+                  key.startsWith('cf-') || key.startsWith('x-vercel-') || key.startsWith('cloudfront-')
+                )
+              : [],
+          });
+        }
+
         // Match audiences based on current time/day metrics and geo-location
         // Uses actual Altis audience configurations with rules (in user's timezone)
         matchedIds = matchAudiences(audiences, endpoints);
