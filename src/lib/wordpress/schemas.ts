@@ -77,7 +77,10 @@ export const WPBaseContentSchema = z.object({
   comment_status: z.enum(['open', 'closed']),
   ping_status: z.enum(['open', 'closed']),
   template: z.string(),
-  meta: z.record(z.any()),
+  // WordPress sometimes returns meta as empty array instead of object
+  meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).transform(val =>
+    Array.isArray(val) ? {} as Record<string, unknown> : val
+  ) as unknown as z.ZodType<Record<string, unknown>>,
   _embedded: WPEmbeddedSchema,
 })
 

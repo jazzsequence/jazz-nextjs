@@ -9,6 +9,19 @@ import { getBuildInfo } from '@/lib/build-info'
 
 export const revalidate = 3600 // ISR: Revalidate every hour
 
+/**
+ * Check if error is a WordPress 404 Not Found error
+ * Multiple detection methods for reliability in production builds
+ */
+function isNotFoundError(error: unknown): boolean {
+  return (
+    error instanceof WPNotFoundError ||
+    (error as Error)?.name === 'WPNotFoundError' ||
+    (error as Error)?.constructor?.name === 'WPNotFoundError' ||
+    ((error as { statusCode?: number })?.statusCode === 404)
+  )
+}
+
 interface PageProps {
   params: Promise<{ slug: string }>
 }
@@ -70,9 +83,18 @@ export default async function Page({ params }: PageProps) {
 
     if (page.status === 'rejected') {
       const error = page.reason
-      if (error instanceof WPNotFoundError) {
+
+      // Log error for debugging
+      console.error('[Page Fetch Error]', {
+        slug,
+        errorName: (error as Error)?.name,
+        errorMessage: (error as Error)?.message,
+      })
+
+      if (isNotFoundError(error)) {
         notFound()
       }
+
       throw error
     }
 
@@ -105,7 +127,14 @@ export default async function Page({ params }: PageProps) {
       </>
     )
   } catch (error) {
-    if (error instanceof WPNotFoundError) {
+    // Log error for debugging
+    console.error('[Page Error]', {
+      slug: (await params).slug,
+      errorName: (error as Error)?.name,
+      errorMessage: (error as Error)?.message,
+    })
+
+    if (isNotFoundError(error)) {
       notFound()
     }
 
@@ -126,6 +155,9 @@ export default async function Page({ params }: PageProps) {
         <main className="container mx-auto px-4 py-8">
           <p className="text-red-600">
             Unable to load page. Please try again later.
+          </p>
+          <p className="text-gray-600 text-sm mt-2">
+            Error: {(error as Error)?.message || 'Unknown error'}
           </p>
         </main>
         <Footer />
