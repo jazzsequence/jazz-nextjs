@@ -4,7 +4,7 @@ import { Greeting } from '@/components/Greeting';
 
 // Mock the WordPress greeting fetcher
 vi.mock('@/lib/wordpress/greeting', () => ({
-  fetchGreetingVariants: vi.fn(),
+  fetchGreetingData: vi.fn(),
 }));
 
 // Mock the audience matcher
@@ -12,7 +12,7 @@ vi.mock('@/lib/audience-matcher', () => ({
   matchAudiences: vi.fn(),
 }));
 
-import { fetchGreetingVariants } from '@/lib/wordpress/greeting';
+import { fetchGreetingData } from '@/lib/wordpress/greeting';
 import { matchAudiences } from '@/lib/audience-matcher';
 
 const mockVariants = [
@@ -48,6 +48,32 @@ const mockVariants = [
   },
 ];
 
+const mockAudiences = [
+  {
+    id: 16719,
+    rules: [{ field: 'metrics.hour', operator: 'lt', value: '11', type: 'string' }],
+  },
+  {
+    id: 16720,
+    rules: [
+      { field: 'metrics.hour', operator: 'gte', value: '11', type: 'string' },
+      { field: 'metrics.hour', operator: 'lt', value: '17', type: 'string' },
+    ],
+  },
+  {
+    id: 16722,
+    rules: [{ field: 'metrics.hour', operator: 'gte', value: '17', type: 'string' }],
+  },
+  {
+    id: 16726,
+    rules: [
+      { field: 'metrics.day', operator: '=', value: '4', type: 'string' },
+      { field: 'metrics.hour', operator: 'gt', value: '17', type: 'string' },
+      { field: 'metrics.hour', operator: 'lte', value: '21', type: 'string' },
+    ],
+  },
+];
+
 describe('Greeting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,7 +81,7 @@ describe('Greeting', () => {
 
   describe('audience matching', () => {
     it('should display morning greeting at 9am', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16719]); // Morning audience
 
       render(<Greeting />);
@@ -66,7 +92,7 @@ describe('Greeting', () => {
     });
 
     it('should display afternoon greeting at 3pm', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16720]); // Afternoon audience
 
       render(<Greeting />);
@@ -77,7 +103,7 @@ describe('Greeting', () => {
     });
 
     it('should display evening greeting at 8pm', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16722]); // Evening audience
 
       render(<Greeting />);
@@ -88,7 +114,7 @@ describe('Greeting', () => {
     });
 
     it('should display D&D greeting on Thursday evening', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16722, 16726]); // Evening AND D&D
 
       render(<Greeting />);
@@ -100,7 +126,7 @@ describe('Greeting', () => {
     });
 
     it('should display fallback when no audiences match', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]); // No matches
 
       render(<Greeting />);
@@ -113,7 +139,7 @@ describe('Greeting', () => {
 
   describe('content rendering', () => {
     it('should render HTML content', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
       render(<Greeting />);
@@ -131,7 +157,7 @@ describe('Greeting', () => {
         content: '<p>Safe content</p><script>alert("xss")</script>',
       }];
 
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(xssVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: xssVariants, audiences: [] });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
       const { container } = render(<Greeting />);
@@ -145,7 +171,7 @@ describe('Greeting', () => {
 
   describe('loading state', () => {
     it('should show loading state while fetching', () => {
-      vi.mocked(fetchGreetingVariants).mockReturnValue(new Promise(() => {})); // Never resolves
+      vi.mocked(fetchGreetingData).mockReturnValue(new Promise(() => {})); // Never resolves
 
       render(<Greeting />);
 
@@ -154,7 +180,7 @@ describe('Greeting', () => {
     });
 
     it('should hide loading state after data loads', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
       render(<Greeting />);
@@ -167,7 +193,7 @@ describe('Greeting', () => {
 
   describe('error handling', () => {
     it('should handle fetch errors gracefully', async () => {
-      vi.mocked(fetchGreetingVariants).mockRejectedValue(new Error('Network error'));
+      vi.mocked(fetchGreetingData).mockRejectedValue(new Error('Network error'));
 
       render(<Greeting />);
 
@@ -178,7 +204,7 @@ describe('Greeting', () => {
     });
 
     it('should handle empty variants array', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue([]);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: [], audiences: [] });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
       render(<Greeting />);
@@ -192,7 +218,7 @@ describe('Greeting', () => {
 
   describe('audience selection priority', () => {
     it('should use first matching audience if multiple match', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16720, 16722]); // Multiple matches
 
       render(<Greeting />);
@@ -206,7 +232,7 @@ describe('Greeting', () => {
 
   describe('accessibility', () => {
     it('should render heading as h1 for SEO', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
       render(<Greeting />);
@@ -218,7 +244,7 @@ describe('Greeting', () => {
     });
 
     it('should have proper semantic HTML structure', async () => {
-      vi.mocked(fetchGreetingVariants).mockResolvedValue(mockVariants);
+      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
       const { container } = render(<Greeting />);

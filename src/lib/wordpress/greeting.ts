@@ -1,11 +1,18 @@
 /**
  * WordPress Greeting Block Fetcher
  *
- * Fetches and parses personalized greeting variants from jazzsequence.com homepage.
+ * Fetches personalized greeting variants from WordPress REST API.
  * Integrates with Altis Accelerate personalization system.
  */
 
 import { decode } from 'html-entities';
+import type { Audience } from '@/lib/audience-matcher';
+
+const API_BASE_URL = process.env.WORDPRESS_API_URL || 'https://jazzsequence.com/wp-json/wp/v2';
+const GREETING_BLOCK_ID = 16738;
+
+const WORDPRESS_USERNAME = process.env.WORDPRESS_USERNAME;
+const WORDPRESS_APP_PASSWORD = process.env.WORDPRESS_APP_PASSWORD;
 
 export interface GreetingVariant {
   audienceId: number | null;
@@ -14,85 +21,152 @@ export interface GreetingVariant {
   content: string;
 }
 
-/**
- * Fetch greeting block variants from WordPress homepage.
- *
- * Parses `<template>` tags with data-parent-id="16738" (greeting block ID).
- * Returns all variants including fallback and audience-targeted versions.
- *
- * @returns Array of greeting variants
- */
-export async function fetchGreetingVariants(): Promise<GreetingVariant[]> {
-  try {
-    const response = await fetch('https://jazzsequence.com/');
+export interface GreetingData {
+  variants: GreetingVariant[];
+  audiences: Audience[];
+}
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+/**
+ * Generate authentication headers for WordPress REST API
+ */
+function getAuthHeaders(): HeadersInit {
+  if (WORDPRESS_USERNAME && WORDPRESS_APP_PASSWORD) {
+    const credentials = `${WORDPRESS_USERNAME}:${WORDPRESS_APP_PASSWORD}`;
+    const encoded = Buffer.from(credentials).toString('base64');
+    return {
+      Authorization: `Basic ${encoded}`,
+    };
+  }
+  return {};
+}
+
+/**
+ * Fetch greeting block variants and audience configurations from WordPress REST API.
+ *
+ * Fetches from:
+ * - `/wp-json/wp/v2/blocks/16738` - Greeting block with variants
+ * - `/wp-json/accelerate/v1/audiences` - Audience configurations
+ *
+ * @returns Greeting variants and audience configurations
+ */
+export async function fetchGreetingData(): Promise<GreetingData> {
+  try {
+    // Fetch block data and audiences in parallel
+    const [blockResponse, audiencesResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/blocks/${GREETING_BLOCK_ID}`, {
+        headers: getAuthHeaders(),
+      }),
+      fetch('https://jazzsequence.com/wp-json/accelerate/v1/audiences', {
+        headers: getAuthHeaders(),
+      }),
+    ]);
+
+    if (!blockResponse.ok) {
+      throw new Error(`Block fetch failed: ${blockResponse.status} ${blockResponse.statusText}`);
     }
 
-    const html = await response.text();
+    if (!audiencesResponse.ok) {
+      throw new Error(`Audiences fetch failed: ${audiencesResponse.status} ${audiencesResponse.statusText}`);
+    }
 
-    // Parse all template tags with data-parent-id="16738"
-    const templates = extractTemplates(html);
+    const blockData = await blockResponse.json();
+    const audiencesData = await audiencesResponse.json();
 
-    return templates.map(template => parseTemplate(template));
+    // Parse variants from ab_test_block array
+    const variants = parseBlockVariants(blockData.ab_test_block || []);
+
+    // Parse audiences into our format
+    const audiences = parseAudiences(audiencesData);
+
+    return {
+      variants,
+      audiences,
+    };
   } catch (error) {
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error('Failed to fetch greeting variants');
+    throw new Error('Failed to fetch greeting data');
   }
 }
 
 /**
- * Extract template tags from HTML string.
+ * @deprecated Use fetchGreetingData() instead
  */
-function extractTemplates(html: string): string[] {
-  const templates: string[] = [];
-  const regex = /<template[^>]*data-parent-id="16738"[^>]*>[\s\S]*?<\/template>/g;
-  let match;
-
-  while ((match = regex.exec(html)) !== null) {
-    templates.push(match[0]);
-  }
-
-  return templates;
+export async function fetchGreetingVariants(): Promise<GreetingVariant[]> {
+  const data = await fetchGreetingData();
+  return data.variants;
 }
 
 /**
- * Parse a single template tag into a GreetingVariant.
+ * Parse block variants from WordPress ab_test_block array
  */
-function parseTemplate(templateHtml: string): GreetingVariant {
-  // Check if this is the fallback variant
-  const isFallback = templateHtml.includes('data-fallback');
-
-  // Extract audience ID if present
-  const audienceMatch = templateHtml.match(/data-audience="(\d+)"/);
-  const audienceId = audienceMatch ? parseInt(audienceMatch[1], 10) : null;
-
-  // Extract heading (h2 tag)
-  // Using [\s\S] instead of . with /s flag for ES5 compatibility
-  const headingMatch = templateHtml.match(/<h2[^>]*>([\s\S]*?)<\/h2>/);
-  const heading = headingMatch ? decode(headingMatch[1].trim(), { level: 'html5' }) : '';
-
-  // Extract all paragraph content
-  const paragraphs: string[] = [];
-  // Using [\s\S] instead of . with /gs flags for ES5 compatibility
-  const paragraphRegex = /<p[^>]*>([\s\S]*?)<\/p>/g;
-  let paragraphMatch;
-
-  while ((paragraphMatch = paragraphRegex.exec(templateHtml)) !== null) {
-    // Preserve HTML tags in content but decode entities
-    const paragraphContent = paragraphMatch[1].trim();
-    paragraphs.push(decode(paragraphContent, { level: 'html5' }));
-  }
-
-  const content = paragraphs.join('\n\n');
-
-  return {
-    audienceId,
-    isFallback,
-    heading,
-    content,
+function parseBlockVariants(blocks: Array<{
+  blockName: string;
+  attrs: {
+    audience?: number;
+    fallback?: boolean;
   };
+  innerBlocks: Array<{
+    blockName: string;
+    innerHTML: string;
+  }>;
+}>): GreetingVariant[] {
+  return blocks
+    .filter(block => block.blockName === 'altis/variant')
+    .map(block => {
+      const isFallback = block.attrs.fallback || false;
+      const audienceId = block.attrs.audience || null;
+
+      // Find heading block (core/heading)
+      const headingBlock = block.innerBlocks.find(b => b.blockName === 'core/heading');
+      const headingHtml = headingBlock?.innerHTML || '';
+
+      // Extract heading text from HTML
+      const headingMatch = headingHtml.match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/);
+      const heading = headingMatch ? decode(headingMatch[1].trim(), { level: 'html5' }) : '';
+
+      // Find all paragraph blocks (core/paragraph)
+      const paragraphBlocks = block.innerBlocks.filter(b => b.blockName === 'core/paragraph');
+      const paragraphs = paragraphBlocks.map(p => {
+        const pMatch = p.innerHTML.match(/<p[^>]*>([\s\S]*?)<\/p>/);
+        return pMatch ? decode(pMatch[1].trim(), { level: 'html5' }) : '';
+      });
+
+      const content = paragraphs.join('\n\n');
+
+      return {
+        audienceId,
+        isFallback,
+        heading,
+        content,
+      };
+    });
+}
+
+/**
+ * Parse audiences from Accelerate API response
+ */
+function parseAudiences(audiencesData: Array<{
+  id: number;
+  audience: {
+    groups: Array<{
+      rules: Array<{
+        field: string;
+        operator: string;
+        value: string;
+        type: string;
+      }>;
+    }>;
+  };
+}>): Audience[] {
+  return audiencesData.map(aud => ({
+    id: aud.id,
+    rules: aud.audience.groups[0]?.rules.map(rule => ({
+      field: rule.field,
+      operator: rule.operator as '=' | 'lt' | 'gt' | 'lte' | 'gte',
+      value: rule.value,
+      type: rule.type,
+    })) || [],
+  }));
 }

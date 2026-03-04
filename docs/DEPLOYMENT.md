@@ -301,7 +301,24 @@ Set environment variables in Pantheon dashboard, not in committed files:
 
 Never commit `.env` files to version control.
 
-### WordPress Application Passwords
+### Local Development Environment Variables
+
+For local development, create a `.env.local` file in the project root. See `.env.local.example` for the required format.
+
+**CRITICAL**: WordPress application passwords must have all spaces removed, both locally AND in Pantheon.
+
+WordPress displays application passwords with spaces for readability (e.g., `4Wjp 1234 abcd efgh`), but you must remove ALL spaces when storing them:
+- **Local**: `.env.local` file
+- **Pantheon**: Environment variables in dashboard
+
+**Example `.env.local`**:
+```bash
+WORDPRESS_API_URL=https://jazzsequence.com/wp-json/wp/v2
+WORDPRESS_USERNAME=your_username
+WORDPRESS_APP_PASSWORD=4Wjp1234abcdefgh  # NO SPACES!
+```
+
+### WordPress Application Passwords (Pantheon)
 
 **CRITICAL**: WordPress application passwords must have all spaces removed when stored in Pantheon environment variables.
 

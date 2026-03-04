@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
-import { fetchGreetingVariants, type GreetingVariant } from '@/lib/wordpress/greeting';
+import { fetchGreetingData, type GreetingVariant } from '@/lib/wordpress/greeting';
 import { matchAudiences } from '@/lib/audience-matcher';
 
 export function Greeting() {
@@ -12,7 +12,7 @@ export function Greeting() {
   useEffect(() => {
     async function loadGreeting() {
       try {
-        const variants = await fetchGreetingVariants();
+        const { variants, audiences } = await fetchGreetingData();
 
         if (variants.length === 0) {
           // No variants available, create a default fallback
@@ -26,15 +26,8 @@ export function Greeting() {
           return;
         }
 
-        // Get all audience IDs from variants
-        const audiences = variants
-          .filter((v) => v.audienceId !== null)
-          .map((v) => ({
-            id: v.audienceId as number,
-            rules: [], // Rules are evaluated server-side in Altis
-          }));
-
-        // Match audiences based on current time/day
+        // Match audiences based on current time/day metrics
+        // Uses actual Altis audience configurations with rules
         const matchedIds = matchAudiences(audiences);
 
         // Select variant: first matching audience, or fallback

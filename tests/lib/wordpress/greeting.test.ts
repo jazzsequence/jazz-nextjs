@@ -1,66 +1,199 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchGreetingVariants } from '@/lib/wordpress/greeting';
+import { fetchGreetingData, fetchGreetingVariants } from '@/lib/wordpress/greeting';
 
-// Mock fetch for testing
-const mockHomepageHtml = `
-<main>
-  <template data-fallback data-parent-id="16738">
-    <h2>Hi, I'm Chris</h2>
-    <p>I make websites and things.</p>
-  </template>
+// Mock API responses
+const mockBlockData = {
+  id: 16738,
+  ab_test_block: [
+    {
+      blockName: 'altis/variant',
+      attrs: { fallback: true },
+      innerBlocks: [
+        {
+          blockName: 'core/heading',
+          innerHTML: "<h2 class=\"wp-block-heading\">Hi, I'm Chris</h2>",
+        },
+        {
+          blockName: 'core/paragraph',
+          innerHTML: '<p>I make websites and things.</p>',
+        },
+      ],
+    },
+    {
+      blockName: 'altis/variant',
+      attrs: { audience: 16719 },
+      innerBlocks: [
+        {
+          blockName: 'core/heading',
+          innerHTML: "<h2 class=\"wp-block-heading\">Good morning, I'm Chris</h2>",
+        },
+        {
+          blockName: 'core/paragraph',
+          innerHTML: '<p>I make websites and things.</p>',
+        },
+      ],
+    },
+    {
+      blockName: 'altis/variant',
+      attrs: { audience: 16720 },
+      innerBlocks: [
+        {
+          blockName: 'core/heading',
+          innerHTML: "<h2 class=\"wp-block-heading\">Good afternoon, I'm Chris</h2>",
+        },
+        {
+          blockName: 'core/paragraph',
+          innerHTML: '<p>I make websites and things.</p>',
+        },
+      ],
+    },
+    {
+      blockName: 'altis/variant',
+      attrs: { audience: 16722 },
+      innerBlocks: [
+        {
+          blockName: 'core/heading',
+          innerHTML: "<h2 class=\"wp-block-heading\">Good evening, I'm Chris</h2>",
+        },
+        {
+          blockName: 'core/paragraph',
+          innerHTML: '<p>I make websites and things.</p>',
+        },
+      ],
+    },
+    {
+      blockName: 'altis/variant',
+      attrs: { audience: 16726 },
+      innerBlocks: [
+        {
+          blockName: 'core/heading',
+          innerHTML: "<h2 class=\"wp-block-heading\">Welcome adventurer, I'm Chris</h2>",
+        },
+        {
+          blockName: 'core/paragraph',
+          innerHTML: '<p>D&amp;D themed content.</p>',
+        },
+      ],
+    },
+    {
+      blockName: 'altis/variant',
+      attrs: { audience: 16377 },
+      innerBlocks: [
+        {
+          blockName: 'core/heading',
+          innerHTML: '<h2 class="wp-block-heading">嗨，我是 Chris</h2>',
+        },
+        {
+          blockName: 'core/paragraph',
+          innerHTML: '<p>中文内容。</p>',
+        },
+      ],
+    },
+  ],
+};
 
-  <template data-parent-id="16738" data-audience="16719">
-    <h2>Good morning, I'm Chris</h2>
-    <p>I make websites and things.</p>
-  </template>
+const mockAudiencesData = [
+  {
+    id: 16719,
+    audience: {
+      groups: [
+        {
+          rules: [
+            { field: 'metrics.hour', operator: 'lt', value: '11', type: 'string' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: 16720,
+    audience: {
+      groups: [
+        {
+          rules: [
+            { field: 'metrics.hour', operator: 'gte', value: '11', type: 'string' },
+            { field: 'metrics.hour', operator: 'lt', value: '17', type: 'string' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: 16722,
+    audience: {
+      groups: [
+        {
+          rules: [
+            { field: 'metrics.hour', operator: 'gte', value: '17', type: 'string' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: 16726,
+    audience: {
+      groups: [
+        {
+          rules: [
+            { field: 'metrics.day', operator: '=', value: '4', type: 'string' },
+            { field: 'metrics.hour', operator: 'gt', value: '17', type: 'string' },
+            { field: 'metrics.hour', operator: 'lte', value: '21', type: 'string' },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    id: 16377,
+    audience: {
+      groups: [
+        {
+          rules: [
+            { field: 'endpoints.country', operator: '=', value: 'CN', type: 'string' },
+          ],
+        },
+      ],
+    },
+  },
+];
 
-  <template data-parent-id="16738" data-audience="16720">
-    <h2>Good afternoon, I'm Chris</h2>
-    <p>I make websites and things.</p>
-  </template>
-
-  <template data-parent-id="16738" data-audience="16722">
-    <h2>Good evening, I'm Chris</h2>
-    <p>I make websites and things.</p>
-  </template>
-
-  <template data-parent-id="16738" data-audience="16726">
-    <h2>Welcome adventurer, I'm Chris</h2>
-    <p>D&D themed content.</p>
-  </template>
-
-  <template data-parent-id="16738" data-audience="16377">
-    <h2>嗨，我是 Chris</h2>
-    <p>中文内容。</p>
-  </template>
-</main>
-`;
-
-describe('fetchGreetingVariants', () => {
+describe('fetchGreetingData', () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
-  it('should fetch and parse all greeting variants from homepage', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockHomepageHtml,
-    });
+  it('should fetch and parse all greeting variants and audiences', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
+    const result = await fetchGreetingData();
 
-    expect(variants).toHaveLength(6); // 5 audience variants + 1 fallback
-    expect(global.fetch).toHaveBeenCalledWith('https://jazzsequence.com/');
+    expect(result.variants).toHaveLength(6);
+    expect(result.audiences).toHaveLength(5);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('should parse fallback variant correctly', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockHomepageHtml,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
-    const fallback = variants.find(v => v.isFallback);
+    const result = await fetchGreetingData();
+    const fallback = result.variants.find(v => v.isFallback);
 
     expect(fallback).toBeDefined();
     expect(fallback?.audienceId).toBeNull();
@@ -69,13 +202,18 @@ describe('fetchGreetingVariants', () => {
   });
 
   it('should parse audience-targeted variants correctly', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockHomepageHtml,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
-    const morning = variants.find(v => v.audienceId === 16719);
+    const result = await fetchGreetingData();
+    const morning = result.variants.find(v => v.audienceId === 16719);
 
     expect(morning).toBeDefined();
     expect(morning?.audienceId).toBe(16719);
@@ -84,14 +222,19 @@ describe('fetchGreetingVariants', () => {
   });
 
   it('should extract heading text correctly', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockHomepageHtml,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
+    const result = await fetchGreetingData();
 
-    const headings = variants.map(v => v.heading);
+    const headings = result.variants.map(v => v.heading);
     expect(headings).toContain("Hi, I'm Chris");
     expect(headings).toContain("Good morning, I'm Chris");
     expect(headings).toContain("Good afternoon, I'm Chris");
@@ -101,64 +244,108 @@ describe('fetchGreetingVariants', () => {
   });
 
   it('should extract paragraph content correctly', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockHomepageHtml,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
-    const fallback = variants.find(v => v.isFallback);
+    const result = await fetchGreetingData();
+    const fallback = result.variants.find(v => v.isFallback);
 
     expect(fallback?.content).toContain('I make websites and things');
   });
 
   it('should handle multiple paragraphs', async () => {
-    const htmlWithMultipleParagraphs = `
-      <template data-parent-id="16738" data-audience="16377">
-        <h2>嗨，我是 Chris</h2>
-        <p>第一段内容。</p>
-        <p>第二段内容。</p>
-      </template>
-    `;
+    const blockDataWithMultipleParagraphs = {
+      ...mockBlockData,
+      ab_test_block: [
+        {
+          blockName: 'altis/variant',
+          attrs: { audience: 16377 },
+          innerBlocks: [
+            {
+              blockName: 'core/heading',
+              innerHTML: '<h2>嗨，我是 Chris</h2>',
+            },
+            {
+              blockName: 'core/paragraph',
+              innerHTML: '<p>第一段内容。</p>',
+            },
+            {
+              blockName: 'core/paragraph',
+              innerHTML: '<p>第二段内容。</p>',
+            },
+          ],
+        },
+      ],
+    };
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => htmlWithMultipleParagraphs,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => blockDataWithMultipleParagraphs,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
-    const chinese = variants.find(v => v.audienceId === 16377);
+    const result = await fetchGreetingData();
+    const chinese = result.variants.find(v => v.audienceId === 16377);
 
     expect(chinese?.content).toContain('第一段内容');
     expect(chinese?.content).toContain('第二段内容');
   });
 
   it('should decode HTML entities', async () => {
-    const htmlWithEntities = `
-      <template data-fallback data-parent-id="16738">
-        <h2>Hi, I&#8217;m Chris</h2>
-        <p>I make websites &amp; things.</p>
-      </template>
-    `;
+    const blockDataWithEntities = {
+      ...mockBlockData,
+      ab_test_block: [
+        {
+          blockName: 'altis/variant',
+          attrs: { fallback: true },
+          innerBlocks: [
+            {
+              blockName: 'core/heading',
+              innerHTML: "<h2>Hi, I&#8217;m Chris</h2>",
+            },
+            {
+              blockName: 'core/paragraph',
+              innerHTML: '<p>I make websites &amp; things.</p>',
+            },
+          ],
+        },
+      ],
+    };
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => htmlWithEntities,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => blockDataWithEntities,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
-    const fallback = variants.find(v => v.isFallback);
+    const result = await fetchGreetingData();
+    const fallback = result.variants.find(v => v.isFallback);
 
     // &#8217; = RIGHT SINGLE QUOTATION MARK (U+2019, curly apostrophe)
     // &amp; = AMPERSAND (U+0026, &)
-    expect(fallback?.heading).toBe("Hi, I\u2019m Chris"); // Using unicode escape for curly apostrophe
-    expect(fallback?.content).toContain('websites & things'); // & should be decoded
+    expect(fallback?.heading).toBe("Hi, I\u2019m Chris");
+    expect(fallback?.content).toContain('websites & things');
   });
 
   it('should handle fetch errors gracefully', async () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
 
-    await expect(fetchGreetingVariants()).rejects.toThrow('Network error');
+    await expect(fetchGreetingData()).rejects.toThrow('Network error');
   });
 
   it('should handle HTTP errors', async () => {
@@ -168,33 +355,46 @@ describe('fetchGreetingVariants', () => {
       statusText: 'Not Found',
     });
 
-    await expect(fetchGreetingVariants()).rejects.toThrow();
+    await expect(fetchGreetingData()).rejects.toThrow();
   });
 
-  it('should handle missing greeting block gracefully', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => '<html><body><p>No greeting block here</p></body></html>',
-    });
+  it('should handle missing ab_test_block gracefully', async () => {
+    const blockDataWithoutVariants = { id: 16738 };
 
-    const variants = await fetchGreetingVariants();
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => blockDataWithoutVariants,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    expect(variants).toHaveLength(0);
+    const result = await fetchGreetingData();
+
+    expect(result.variants).toHaveLength(0);
+    expect(result.audiences).toHaveLength(5);
   });
 
   it('should parse all 6 expected variants from real structure', async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => mockHomepageHtml,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
+    const result = await fetchGreetingData();
 
     // Should have exactly 6 variants
-    expect(variants).toHaveLength(6);
+    expect(result.variants).toHaveLength(6);
 
     // Check all expected audience IDs are present
-    const audienceIds = variants.map(v => v.audienceId).filter(id => id !== null);
+    const audienceIds = result.variants.map(v => v.audienceId).filter(id => id !== null);
     expect(audienceIds).toContain(16719); // Morning
     expect(audienceIds).toContain(16720); // Afternoon
     expect(audienceIds).toContain(16722); // Evening
@@ -202,28 +402,91 @@ describe('fetchGreetingVariants', () => {
     expect(audienceIds).toContain(16377); // Chinese
 
     // Check fallback exists
-    const fallback = variants.find(v => v.isFallback);
+    const fallback = result.variants.find(v => v.isFallback);
     expect(fallback).toBeDefined();
   });
 
   it('should preserve HTML in content', async () => {
-    const htmlWithFormatting = `
-      <template data-fallback data-parent-id="16738">
-        <h2>Hi, I'm Chris</h2>
-        <p>I make <strong>websites</strong> and <em>things</em>.</p>
-      </template>
-    `;
+    const blockDataWithFormatting = {
+      ...mockBlockData,
+      ab_test_block: [
+        {
+          blockName: 'altis/variant',
+          attrs: { fallback: true },
+          innerBlocks: [
+            {
+              blockName: 'core/heading',
+              innerHTML: "<h2>Hi, I'm Chris</h2>",
+            },
+            {
+              blockName: 'core/paragraph',
+              innerHTML: '<p>I make <strong>websites</strong> and <em>things</em>.</p>',
+            },
+          ],
+        },
+      ],
+    };
 
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      text: async () => htmlWithFormatting,
-    });
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => blockDataWithFormatting,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
 
-    const variants = await fetchGreetingVariants();
-    const fallback = variants.find(v => v.isFallback);
+    const result = await fetchGreetingData();
+    const fallback = result.variants.find(v => v.isFallback);
 
     // Should preserve HTML tags in content
     expect(fallback?.content).toContain('<strong>');
     expect(fallback?.content).toContain('<em>');
+  });
+
+  it('should parse audience rules correctly', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
+
+    const result = await fetchGreetingData();
+
+    // Check morning audience rules
+    const morning = result.audiences.find(a => a.id === 16719);
+    expect(morning?.rules).toHaveLength(1);
+    expect(morning?.rules[0].field).toBe('metrics.hour');
+    expect(morning?.rules[0].operator).toBe('lt');
+    expect(morning?.rules[0].value).toBe('11');
+
+    // Check D&D audience rules (multiple rules)
+    const dnd = result.audiences.find(a => a.id === 16726);
+    expect(dnd?.rules).toHaveLength(3);
+  });
+});
+
+describe('fetchGreetingVariants (deprecated)', () => {
+  it('should return only variants array for backwards compatibility', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockBlockData,
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockAudiencesData,
+      });
+
+    const variants = await fetchGreetingVariants();
+
+    expect(variants).toHaveLength(6);
+    expect(variants[0]).toHaveProperty('heading');
+    expect(variants[0]).toHaveProperty('content');
   });
 });
