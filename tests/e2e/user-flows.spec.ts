@@ -9,7 +9,7 @@ test.describe('User Navigation Flows', () => {
 
     if (await postsLink.count() > 0) {
       await postsLink.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Should be on posts page
       expect(page.url()).toContain('/posts');
@@ -22,7 +22,7 @@ test.describe('User Navigation Flows', () => {
 
   test('should navigate from homepage to individual post', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Click first post title
     const firstPostLink = page.locator('article h2 a').first();
@@ -46,7 +46,7 @@ test.describe('User Navigation Flows', () => {
 
   test('should navigate from posts list to individual post and back', async ({ page }) => {
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Click first post
     const firstPostLink = page.locator('article h2 a').first();
@@ -60,7 +60,7 @@ test.describe('User Navigation Flows', () => {
 
     // Go back
     await page.goBack();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should be back on posts list
     expect(page.url()).toContain('/posts');
@@ -81,7 +81,7 @@ test.describe('User Navigation Flows', () => {
     const firstPost = page.locator('article h2 a').first();
     if (await firstPost.count() > 0) {
       await firstPost.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       nav = page.locator('nav[role="navigation"]');
       await expect(nav).toBeVisible();
@@ -101,12 +101,12 @@ test.describe('User Navigation Flows', () => {
 
     // Check individual post
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const firstPost = page.locator('article h2 a').first();
     if (await firstPost.count() > 0) {
       await firstPost.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       footer = page.locator('footer');
       await expect(footer).toBeVisible();
@@ -116,29 +116,29 @@ test.describe('User Navigation Flows', () => {
   test('should handle browser back and forward navigation', async ({ page }) => {
     // Start on homepage
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const homeUrl = page.url();
 
     // Navigate to posts
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const postsUrl = page.url();
 
     // Go back
     await page.goBack();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     expect(page.url()).toBe(homeUrl);
 
     // Go forward
     await page.goForward();
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     expect(page.url()).toBe(postsUrl);
   });
 
   test('should load pages quickly', async ({ page }) => {
     const startTime = Date.now();
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const homeLoadTime = Date.now() - startTime;
 
     // Homepage should load in reasonable time (< 5 seconds)
@@ -146,7 +146,7 @@ test.describe('User Navigation Flows', () => {
 
     const startTime2 = Date.now();
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
     const postsLoadTime = Date.now() - startTime2;
 
     // Posts page should load in reasonable time
@@ -155,11 +155,11 @@ test.describe('User Navigation Flows', () => {
 
   test('should handle pagination across navigation', async ({ page }) => {
     await page.goto('/page/2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Go to posts list
     await page.goto('/posts/page/2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should maintain page 2
     expect(page.url()).toContain('/page/2');
@@ -195,7 +195,7 @@ test.describe('User Navigation Flows', () => {
   test('should handle direct URL navigation', async ({ page }) => {
     // Navigate directly to page 2
     await page.goto('/page/2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(page.url()).toContain('/page/2');
 

@@ -12,7 +12,7 @@ test.describe('Posts List Page', () => {
     await page.goto('/posts');
 
     // Wait for posts to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for article elements (post cards)
     const articles = page.locator('article');
@@ -29,7 +29,7 @@ test.describe('Posts List Page', () => {
 
   test('should display post metadata', async ({ page }) => {
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const firstArticle = page.locator('article').first();
 
@@ -48,7 +48,7 @@ test.describe('Posts List Page', () => {
 
   test('should have clickable post links', async ({ page }) => {
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const firstLink = page.locator('article h2 a').first();
     const href = await firstLink.getAttribute('href');
@@ -67,14 +67,14 @@ test.describe('Posts List Page', () => {
 
   test('should navigate to page 2', async ({ page }) => {
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Look for page 2 link
     const page2Link = page.locator('a[href="/posts?page=2"]');
 
     if (await page2Link.isVisible()) {
       await page2Link.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Should be on page 2
       expect(page.url()).toContain('page=2');
@@ -83,7 +83,7 @@ test.describe('Posts List Page', () => {
 
   test('should show proper page count in pagination', async ({ page }) => {
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const pagination = page.locator('nav[aria-label="Pagination"]');
 
@@ -131,7 +131,7 @@ test.describe('Posts List Page', () => {
     });
 
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(consoleErrors).toHaveLength(0);
   });

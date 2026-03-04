@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Pagination Component', () => {
   test('should display pagination on homepage', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check if pagination exists
     const pagination = page.locator('nav[aria-label="Pagination"]');
@@ -16,7 +16,7 @@ test.describe('Pagination Component', () => {
 
   test('should display pagination on posts list', async ({ page }) => {
     await page.goto('/posts');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const pagination = page.locator('nav[aria-label="Pagination"]');
     const exists = await pagination.count() > 0;
@@ -28,7 +28,7 @@ test.describe('Pagination Component', () => {
 
   test('should show current page highlighted', async ({ page }) => {
     await page.goto('/?page=1');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const currentPage = page.locator('[aria-current="page"]');
     const exists = await currentPage.count() > 0;
@@ -42,7 +42,7 @@ test.describe('Pagination Component', () => {
 
   test('should navigate to page 2 when clicked', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const page2Link = page.getByRole('link', { name: 'Go to page 2' });
     const exists = await page2Link.count() > 0;
@@ -64,7 +64,7 @@ test.describe('Pagination Component', () => {
 
   test('should have working Next button', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const nextButton = page.locator('a:has-text("Next")');
     const exists = await nextButton.count() > 0;
@@ -85,7 +85,7 @@ test.describe('Pagination Component', () => {
 
   test('should have working Previous button on page 2', async ({ page }) => {
     await page.goto('/page/2');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const prevButton = page.locator('a:has-text("Previous")');
     const exists = await prevButton.count() > 0;
@@ -107,7 +107,7 @@ test.describe('Pagination Component', () => {
 
   test('should disable Previous button on page 1', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const prevButton = page.locator('text=Previous').first();
     const exists = await prevButton.count() > 0;
@@ -127,7 +127,7 @@ test.describe('Pagination Component', () => {
   test('should disable Next button on last page', async ({ page }) => {
     // First, find out how many pages there are
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const pageLinks = page.locator('nav[aria-label="Pagination"] a[href*="page="]');
     const count = await pageLinks.count();
@@ -136,7 +136,7 @@ test.describe('Pagination Component', () => {
       // Get the highest page number
       const lastPageLink = pageLinks.last();
       await lastPageLink.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       const nextButton = page.locator('text=Next').first();
       const ariaDisabled = await nextButton.getAttribute('aria-disabled');
@@ -147,7 +147,7 @@ test.describe('Pagination Component', () => {
 
   test('should show ellipsis for many pages', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const ellipsis = page.locator('text=...');
     const count = await ellipsis.count();
@@ -167,7 +167,7 @@ test.describe('Pagination Component', () => {
 
     if (exists) {
       await page2Link.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       expect(page.url()).toContain('/page/2');
     }
@@ -175,7 +175,7 @@ test.describe('Pagination Component', () => {
 
   test('should be keyboard navigable', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const page2Link = page.getByRole('link', { name: 'Go to page 2' });
     const exists = await page2Link.count() > 0;

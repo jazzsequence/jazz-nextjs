@@ -23,7 +23,7 @@ test.describe('Navigation Component', () => {
     }
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Find menu items with children (dropdown)
     const menuItemsWithDropdown = page.locator('nav[role="navigation"] li.group');
@@ -53,7 +53,7 @@ test.describe('Navigation Component', () => {
     }
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const menuItemWithDropdown = page.locator('nav[role="navigation"] li.group').first();
 
@@ -74,7 +74,7 @@ test.describe('Navigation Component', () => {
     if (href && !href.startsWith('http')) {
       // Click the link
       await firstLink.click();
-      await page.waitForLoadState('networkidle');
+      await page.waitForLoadState('domcontentloaded');
 
       // Should navigate to the link
       expect(page.url()).toContain(href);

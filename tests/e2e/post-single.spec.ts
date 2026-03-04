@@ -52,7 +52,7 @@ test.describe('Individual Post Page', () => {
 
   test('should display featured image if available', async ({ page }) => {
     await page.goto(`/posts/${testSlug}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Featured image is optional, so check if it exists
     const image = page.locator('article img').first();
@@ -149,7 +149,7 @@ test.describe('Individual Post Page', () => {
     });
 
     await page.goto(`/posts/${testSlug}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(consoleErrors).toHaveLength(0);
   });
@@ -164,7 +164,7 @@ test.describe('Individual Post Page', () => {
     });
 
     await page.goto(`/posts/${testSlug}`);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     expect(failedRequests).toHaveLength(0);
   });

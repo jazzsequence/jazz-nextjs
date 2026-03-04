@@ -12,12 +12,18 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Use multiple workers for parallel test execution */
-  workers: process.env.CI ? 2 : 4,  // 4 workers locally, 2 on CI for speed
+  workers: process.env.CI ? 1 : 4,  // Single worker in CI for stability, 4 locally for speed
+  /* Global timeout to prevent infinite hangs */
+  timeout: 30_000,  // 30 seconds per test
+  /* Timeout for expect() assertions */
+  expect: {
+    timeout: 10_000,  // 10 seconds per assertion
+  },
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? [
-    ['github'],
     ['html', { open: 'never' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],
+    ['github'],  // Move github reporter last to prevent blocking
   ] : 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -26,6 +32,19 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    /* Explicit headless mode for CI */
+    headless: true,
+    /* Timeout for individual actions (clicks, fills, etc.) */
+    actionTimeout: 10_000,  // 10 seconds
+    /* Timeout for page navigations */
+    navigationTimeout: 30_000,  // 30 seconds
+    /* Browser launch options for CI stability */
+    launchOptions: {
+      args: [
+        '--disable-dev-shm-usage',  // Critical for containerized environments
+        '--no-sandbox',  // Often needed in GitHub Actions
+      ],
+    },
   },
 
   /* Load test environment variables */

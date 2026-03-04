@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 test.describe('Image Rendering', () => {
   test('featured images should load successfully on post cards', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Find post cards with images
     const images = page.locator('article img');
@@ -44,7 +44,7 @@ test.describe('Image Rendering', () => {
   test('featured images should load on individual posts', async ({ page }) => {
     // First get a post slug that has an image
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const postWithImage = page.locator('article:has(img) h2 a').first();
     const postCount = await postWithImage.count();
@@ -58,7 +58,7 @@ test.describe('Image Rendering', () => {
 
     // Navigate to the post
     await page.goto(href!);
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for featured image
     const featuredImage = page.locator('article img').first();
@@ -84,7 +84,7 @@ test.describe('Image Rendering', () => {
 
   test('images should have proper Next.js Image optimization attributes', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const images = page.locator('article img');
     const imageCount = await images.count();
@@ -110,7 +110,7 @@ test.describe('Image Rendering', () => {
 
   test('images should not show broken image icon', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const images = page.locator('article img');
     const imageCount = await images.count();
@@ -135,7 +135,7 @@ test.describe('Image Rendering', () => {
 
   test('CDN image URLs should be accessible', async ({ page }) => {
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     const images = page.locator('article img');
     const imageCount = await images.count();

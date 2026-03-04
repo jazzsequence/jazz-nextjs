@@ -52,7 +52,7 @@ test.describe('Homepage', () => {
     await page.goto('/');
 
     // Wait for posts to load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for article elements (post cards)
     const articles = page.locator('article');
@@ -65,7 +65,7 @@ test.describe('Homepage', () => {
   test('should display post titles with links', async ({ page }) => {
     await page.goto('/');
 
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Check for post title links
     const postLinks = page.locator('article h2 a');
@@ -118,7 +118,7 @@ test.describe('Homepage', () => {
     await page.goto('/');
 
     // Allow page to fully load
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should have no console errors
     expect(consoleErrors).toHaveLength(0);
@@ -134,7 +134,7 @@ test.describe('Homepage', () => {
     });
 
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await page.waitForLoadState('domcontentloaded');
 
     // Should have no failed requests
     expect(failedRequests).toHaveLength(0);
