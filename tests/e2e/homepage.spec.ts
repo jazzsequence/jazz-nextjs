@@ -1,12 +1,28 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Homepage', () => {
-  test('should display Recent Posts heading', async ({ page }) => {
+  test('should display personalized greeting', async ({ page }) => {
     await page.goto('/');
 
-    // Check for main heading
+    // Check for greeting heading (time-based: morning/afternoon/evening)
     const heading = page.locator('h1');
-    await expect(heading).toContainText('Recent Posts');
+    await expect(heading).toContainText("Chris");
+
+    // Should be one of the time-based greetings or fallback
+    const text = await heading.textContent();
+    const validGreetings = [
+      "Good morning",
+      "Good afternoon",
+      "Good evening",
+      "Welcome adventurer", // D&D Thursday
+      "Hi, I'm Chris" // Fallback
+    ];
+
+    const hasValidGreeting = validGreetings.some(greeting =>
+      text?.includes(greeting)
+    );
+
+    expect(hasValidGreeting).toBe(true);
   });
 
   test('should display navigation menu', async ({ page }) => {
