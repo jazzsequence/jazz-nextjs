@@ -167,7 +167,8 @@ test.describe('Pagination Component', () => {
 
     if (exists) {
       await page2Link.click();
-      await page.waitForLoadState('domcontentloaded');
+      // Wait for URL to change (Next.js client-side navigation)
+      await page.waitForURL('**/page/2', { timeout: 5000 });
 
       expect(page.url()).toContain('/page/2');
     }

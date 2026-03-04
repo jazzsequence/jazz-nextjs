@@ -124,14 +124,14 @@ test.describe('User Navigation Flows', () => {
     await page.waitForLoadState('domcontentloaded');
     const postsUrl = page.url();
 
-    // Go back
+    // Go back - wait for URL to change
     await page.goBack();
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForURL(homeUrl, { timeout: 5000 });
     expect(page.url()).toBe(homeUrl);
 
-    // Go forward
+    // Go forward - wait for URL to change
     await page.goForward();
-    await page.waitForLoadState('domcontentloaded');
+    await page.waitForURL(postsUrl, { timeout: 5000 });
     expect(page.url()).toBe(postsUrl);
   });
 
