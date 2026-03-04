@@ -9,9 +9,12 @@ import { getBuildInfo } from '@/lib/build-info'
 
 export const revalidate = 3600 // ISR: Revalidate every hour
 
+interface PageProps {
+  params: Promise<{ parent: string; child: string }>
+}
+
 /**
  * Check if error is a WordPress 404 Not Found error
- * Multiple detection methods for reliability in production builds
  */
 function isNotFoundError(error: unknown): boolean {
   return (
@@ -22,16 +25,11 @@ function isNotFoundError(error: unknown): boolean {
   )
 }
 
-interface PageProps {
-  params: Promise<{ slug: string }>
-}
-
 /**
- * Generate static paths for all WordPress pages at build time
+ * Generate static paths for child pages at build time
  */
 export async function generateStaticParams() {
   // Return empty array - pages will be generated on-demand with ISR
-  // This prevents build-time failures if WordPress is unreachable
   return []
 }
 
@@ -39,10 +37,10 @@ export async function generateStaticParams() {
  * Generate metadata for SEO
  */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params
+  const { child } = await params
 
   try {
-    const page = await fetchPost<WPPage>('pages', slug, {
+    const page = await fetchPost<WPPage>('pages', child, {
       isr: { revalidate: 3600 },
     })
 
@@ -60,24 +58,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 /**
- * WordPress Page Display
+ * WordPress Child Page Display
  *
- * Handles all WordPress pages (page post type) with ISR caching
- * Examples: /music, /about, /now, etc.
+ * Handles child pages with hierarchical URLs
+ * Examples: /music/loafmen, /music/blind-chaos
  */
-export default async function Page({ params }: PageProps) {
-  const { slug } = await params
+export default async function ChildPage({ params }: PageProps) {
+  const { child } = await params
 
   // Fetch page data (simplify - don't use Promise.allSettled to isolate issue)
   let pageData: WPPage
   try {
-    pageData = await fetchPost<WPPage>('pages', slug, {
-      isr: { revalidate: 3600, tags: ['pages', `page-${slug}`] },
+    pageData = await fetchPost<WPPage>('pages', child, {
+      isr: { revalidate: 3600, tags: ['pages', `page-${child}`] },
       embed: true,
     })
   } catch (error) {
-    console.error('[Page Fetch Error]', {
-      slug,
+    console.error('[Child Page Fetch Error]', {
+      child,
       errorName: (error as Error)?.name,
       errorMessage: (error as Error)?.message,
       isWPNotFoundError: error instanceof WPNotFoundError,

@@ -45,7 +45,11 @@ vi.mock('@/components/PostContent', () => ({
 }))
 
 vi.mock('@/components/Navigation', () => ({
-  default: () => <nav data-testid="navigation">Navigation</nav>,
+  default: ({ error }: { error?: string }) => (
+    <nav data-testid="navigation">
+      {error ? <p className="text-red-600">{error}</p> : 'Navigation'}
+    </nav>
+  ),
 }))
 
 vi.mock('@/components/Footer', () => ({
@@ -118,6 +122,7 @@ describe('WordPress Page', () => {
 
   it('should show error UI when page fetch fails with non-404 error', async () => {
     vi.mocked(client.fetchPost).mockRejectedValue(new Error('Server error'))
+    vi.mocked(client.fetchMenuItems).mockRejectedValue(new Error('Menu error'))
 
     const params = Promise.resolve({ slug: 'about' })
     const component = await Page({ params })
@@ -125,6 +130,7 @@ describe('WordPress Page', () => {
     render(component)
 
     expect(screen.getByText('Unable to load page. Please try again later.')).toBeInTheDocument()
+    expect(screen.getByText('Failed to fetch menu items')).toBeInTheDocument()
     expect(screen.getByTestId('navigation')).toBeInTheDocument()
     expect(screen.getByTestId('footer')).toBeInTheDocument()
   })
