@@ -122,11 +122,13 @@ When dependencies are updated:
 ## Best Practices
 
 1. **Test-First Development**: Write tests before implementation code
-2. **Single Message Operations**: All related operations in one message for parallelization
-3. **Background Execution**: Long-running tasks use `run_in_background: true`
-4. **No Polling**: Trust agents to return results rather than checking status
-5. **Incremental Commits**: Small, focused commits with clear messages
-6. **Never Skip Quality Checks**: Always run test, lint, and build before commit
+2. **Test Standalone Builds**: Use `npm run start:test` to verify production behavior before deploying
+3. **Single Message Operations**: All related operations in one message for parallelization
+4. **Background Execution**: Long-running tasks use `run_in_background: true`
+5. **No Polling**: Trust agents to return results rather than checking status
+6. **Incremental Commits**: Small, focused commits with clear messages
+7. **Never Skip Quality Checks**: Always run test, lint, and build before commit
+8. **Error Handling**: Use `error.name` instead of `instanceof` for production compatibility
 
 ## Session Management
 
@@ -144,6 +146,8 @@ See [TESTING.md](TESTING.md) for complete testing guide.
 - API mocking: MSW 2.12.10
 - Always write tests before implementation (TDD)
 - All tests must pass before commit
+- Test standalone builds with `npm run start:test` before deploying
+- Use `error.name` checks instead of `instanceof` for production compatibility
 
 ### Automated Testing on Pantheon
 

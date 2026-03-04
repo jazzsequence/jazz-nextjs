@@ -276,8 +276,11 @@ Before deploying to Test or Live:
 
 - [ ] All tests passing: `npm test`
 - [ ] Build succeeds locally: `npm run build`
+- [ ] Standalone build tested: `npm run start:test`
+- [ ] E2E tests pass against standalone build
 - [ ] No secrets in committed files
 - [ ] Environment variables configured in Pantheon dashboard
+- [ ] WordPress application passwords have NO spaces (critical for Pantheon)
 - [ ] Documentation updated
 - [ ] CLAUDE.md and AI_USAGE.md current
 

@@ -61,9 +61,24 @@ npm run test:e2e
 # E2E with UI
 npm run test:e2e:ui
 
+# E2E against standalone build (production mode)
+npm run test:e2e:standalone
+
+# Test standalone build locally
+npm run start:test
+
 # Coverage
 npm test -- --coverage
 ```
+
+### Standalone Build Testing
+
+The `npm run start:test` command builds and tests the standalone production build locally:
+- Builds with `npm run build`
+- Starts standalone server on port 3000
+- Runs E2E tests against localhost:3000
+- Simulates Pantheon production environment
+- Essential for testing production-specific behaviors (error handling, caching, etc.)
 
 ## Writing Tests
 
@@ -256,6 +271,39 @@ Opens browser interface for:
 - Handlers registered correctly
 - URL matches exactly (including trailing slashes)
 
+## Error Handling in Tests
+
+### Production Build Considerations
+
+When testing code that runs in standalone builds (production mode), be aware of error handling differences:
+
+**Development/Test Environment:**
+```typescript
+if (error instanceof WPAPIError) {
+  // Works in dev and unit tests
+}
+```
+
+**Production Standalone Build:**
+```typescript
+if (error.name === 'WPAPIError') {
+  // More reliable in production builds
+  // instanceof may not work due to bundling/minification
+}
+```
+
+**Best Practice for Code:**
+- Use `error.name` checks instead of `instanceof` for error type detection
+- Ensures consistent behavior in both dev and production
+- Particularly important for error classes from external modules
+
+**Testing Both Patterns:**
+```typescript
+// Test both patterns to ensure compatibility
+expect(error instanceof WPAPIError).toBe(true)
+expect(error.name).toBe('WPAPIError')
+```
+
 ## Best Practices
 
 1. **Isolate Tests**: Each test should be independent
@@ -265,6 +313,8 @@ Opens browser interface for:
 5. **Avoid Implementation Details**: Test behavior, not internals
 6. **Keep Tests Fast**: Mock slow operations (network, database)
 7. **Update Tests with Code**: When code changes, update tests immediately
+8. **Test Standalone Builds**: Use `npm run start:test` to verify production behavior
+9. **Use `error.name` for Error Type Checking**: More reliable than `instanceof` in production
 
 ## Resources
 
