@@ -178,4 +178,87 @@ describe('matchAudiences', () => {
       expect(matchAudiences([{ id: 1, rules }])).toContain(1);
     });
   });
+
+  describe('geo-targeting (endpoint-based)', () => {
+    it('should match country endpoint rule', () => {
+      const chinaRules: AudienceRule[] = [
+        { field: 'endpoints.country', operator: '=', value: 'CN', type: 'string' }
+      ];
+
+      const endpoints = { country: 'CN' };
+      expect(matchAudiences([{ id: 16377, rules: chinaRules }], endpoints)).toContain(16377);
+    });
+
+    it('should NOT match wrong country', () => {
+      const chinaRules: AudienceRule[] = [
+        { field: 'endpoints.country', operator: '=', value: 'CN', type: 'string' }
+      ];
+
+      const endpoints = { country: 'US' };
+      expect(matchAudiences([{ id: 16377, rules: chinaRules }], endpoints)).not.toContain(16377);
+    });
+
+    it('should NOT match when country is undefined', () => {
+      const chinaRules: AudienceRule[] = [
+        { field: 'endpoints.country', operator: '=', value: 'CN', type: 'string' }
+      ];
+
+      expect(matchAudiences([{ id: 16377, rules: chinaRules }], {})).not.toContain(16377);
+    });
+
+    it('should support city endpoint', () => {
+      const seattleRules: AudienceRule[] = [
+        { field: 'endpoints.city', operator: '=', value: 'Seattle', type: 'string' }
+      ];
+
+      const endpoints = { city: 'Seattle' };
+      expect(matchAudiences([{ id: 1, rules: seattleRules }], endpoints)).toContain(1);
+    });
+
+    it('should support region endpoint', () => {
+      const californiaRules: AudienceRule[] = [
+        { field: 'endpoints.region', operator: '=', value: 'CA', type: 'string' }
+      ];
+
+      const endpoints = { region: 'CA' };
+      expect(matchAudiences([{ id: 1, rules: californiaRules }], endpoints)).toContain(1);
+    });
+
+    it('should combine time-based and geo-targeting rules', () => {
+      // Morning in China
+      vi.setSystemTime(new Date('2024-01-01T09:00:00'));
+
+      const morningChinaRules: AudienceRule[] = [
+        { field: 'metrics.hour', operator: 'lt', value: '11', type: 'string' },
+        { field: 'endpoints.country', operator: '=', value: 'CN', type: 'string' }
+      ];
+
+      const endpoints = { country: 'CN' };
+      expect(matchAudiences([{ id: 1, rules: morningChinaRules }], endpoints)).toContain(1);
+    });
+
+    it('should NOT match when time matches but country does not', () => {
+      vi.setSystemTime(new Date('2024-01-01T09:00:00'));
+
+      const morningChinaRules: AudienceRule[] = [
+        { field: 'metrics.hour', operator: 'lt', value: '11', type: 'string' },
+        { field: 'endpoints.country', operator: '=', value: 'CN', type: 'string' }
+      ];
+
+      const endpoints = { country: 'US' };
+      expect(matchAudiences([{ id: 1, rules: morningChinaRules }], endpoints)).not.toContain(1);
+    });
+
+    it('should NOT match when country matches but time does not', () => {
+      vi.setSystemTime(new Date('2024-01-01T15:00:00')); // 3pm, not morning
+
+      const morningChinaRules: AudienceRule[] = [
+        { field: 'metrics.hour', operator: 'lt', value: '11', type: 'string' },
+        { field: 'endpoints.country', operator: '=', value: 'CN', type: 'string' }
+      ];
+
+      const endpoints = { country: 'CN' };
+      expect(matchAudiences([{ id: 1, rules: morningChinaRules }], endpoints)).not.toContain(1);
+    });
+  });
 });

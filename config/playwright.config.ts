@@ -12,7 +12,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Use multiple workers for parallel test execution */
-  workers: process.env.TEST_ALL_BROWSERS ? 3 : undefined,
+  workers: process.env.CI ? 2 : 4,  // 4 workers locally, 2 on CI for speed
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: process.env.CI ? [
     ['github'],
@@ -70,9 +70,10 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests (skip if testing remote) */
   webServer: process.env.BASE_URL ? undefined : {
-    command: 'npm run dev',
+    command: 'npm run build && npm run start',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,  // Allow 2 minutes for build
     env: {
       REVALIDATE_SECRET: process.env.REVALIDATE_SECRET || 'test-secret',
     },

@@ -9,7 +9,7 @@ import { getBuildInfo } from '@/lib/build-info';
 import type { WPPost } from '@/lib/wordpress/types';
 
 interface HomePageProps {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; greeting?: string }>;
 }
 
 interface PostsData {
@@ -76,7 +76,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <Navigation menuItems={menuItemsData} error={menuError} />
 
       <main className="container mx-auto px-4 py-8">
-        <Greeting />
+        <Greeting searchParams={searchParams} />
 
         <div className="text-xs text-gray-500 mb-6 font-mono">
           Build: {new Date(buildInfoData.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver' })} MT • Commit: {buildInfoData.commitShort}

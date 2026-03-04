@@ -1,8 +1,13 @@
+import { headers } from 'next/headers';
 import DOMPurify from 'isomorphic-dompurify';
 import { fetchGreetingData } from '@/lib/wordpress/greeting';
-import { matchAudiences } from '@/lib/audience-matcher';
+import { matchAudiences, type EndpointData } from '@/lib/audience-matcher';
 
-export async function Greeting() {
+interface GreetingProps {
+  searchParams?: Promise<{ greeting?: string }>;
+}
+
+export async function Greeting({ searchParams }: GreetingProps = {}) {
   let variant;
 
   try {
@@ -17,9 +22,45 @@ export async function Greeting() {
         content: '<p>Welcome to my website.</p>',
       };
     } else {
-      // Match audiences based on current time/day metrics
-      // Uses actual Altis audience configurations with rules
-      const matchedIds = matchAudiences(audiences);
+      // Check for ?greeting= query parameter (for E2E testing)
+      const params = searchParams ? await searchParams : undefined;
+      const greetingParam = params?.greeting;
+
+      let matchedIds: number[];
+
+      if (greetingParam && process.env.NODE_ENV !== 'production') {
+        // E2E testing mode: Force specific greeting variant
+        // Accepts audience ID (e.g., "16719") or named variant ("morning", "afternoon", "evening", "dnd", "china", "fallback")
+        const namedVariants: Record<string, number | null> = {
+          morning: 16719,
+          afternoon: 16720,
+          evening: 16722,
+          dnd: 16726,
+          china: 16377,
+          fallback: null,
+        };
+
+        const audienceId = namedVariants[greetingParam.toLowerCase()] ?? parseInt(greetingParam, 10);
+        matchedIds = isNaN(audienceId as number) ? [] : [audienceId as number];
+      } else {
+        // Normal mode: Match based on time/day and geo-location
+        // Extract geo-location and timezone data from headers
+        const headersList = await headers();
+        const endpoints: EndpointData = {
+          country: headersList.get('cf-ipcountry') || // Cloudflare
+                   headersList.get('x-vercel-ip-country') || // Vercel
+                   headersList.get('cloudfront-viewer-country') || // AWS CloudFront
+                   headersList.get('x-country-code') || // Generic
+                   undefined,
+          timezone: headersList.get('cf-timezone') || // Cloudflare
+                    headersList.get('x-vercel-ip-timezone') || // Vercel
+                    undefined,
+        };
+
+        // Match audiences based on current time/day metrics and geo-location
+        // Uses actual Altis audience configurations with rules (in user's timezone)
+        matchedIds = matchAudiences(audiences, endpoints);
+      }
 
       // Select variant: first matching audience, or fallback
       let selectedVariant = undefined;
