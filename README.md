@@ -61,11 +61,16 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 ```bash
 npm run build
 npm start
+
+# Test standalone build locally (production mode)
+npm run start:test
 ```
+
+The `start:test` script starts the standalone server on port 3000 and runs E2E tests against it, simulating the Pantheon production environment.
 
 ### Testing
 
-**Current Status**: ✅ 75/75 tests passing
+**Current Status**: ✅ All tests passing (75+ unit/integration, 87 E2E)
 
 ```bash
 # Unit and integration tests (Vitest)
@@ -82,6 +87,9 @@ npm run test:e2e
 
 # E2E with UI
 npm run test:e2e:ui
+
+# E2E against standalone build (production mode)
+npm run test:e2e:standalone
 ```
 
 **Test Coverage:**
@@ -156,16 +164,30 @@ See [API_CLIENT_DESIGN.md](docs/API_CLIENT_DESIGN.md) for complete documentation
 
 ```
 jazz-nextjs/
+├── app/                     # Next.js App Router pages
+│   ├── page.tsx            # Homepage
+│   ├── [slug]/             # WordPress pages route (dynamic pages)
+│   │   └── page.tsx
+│   ├── posts/              # Blog posts
+│   │   ├── page.tsx        # Posts archive
+│   │   ├── [slug]/         # Individual post pages
+│   │   └── page/[page]/    # Paginated posts
+│   └── layout.tsx          # Root layout
 ├── src/
 │   └── lib/
 │       └── wordpress/       # WordPress API integration
 │           ├── client.ts    # Generic API client (retry, rate limiting, validation)
 │           ├── types.ts     # TypeScript type definitions
-│           └── schemas.ts   # Zod validation schemas
+│           ├── schemas.ts   # Zod validation schemas
+│           └── greeting.ts  # Greeting utility with query params
+├── scripts/
+│   ├── test-standalone.js   # Standalone build testing script
+│   └── slack-notify.js      # Slack deployment notifications
 ├── tests/
 │   ├── lib/wordpress/       # API client tests (75 tests)
 │   │   ├── client.test.ts   # Client functionality tests
 │   │   └── types.test.ts    # Schema validation tests
+│   ├── e2e/                 # Playwright E2E tests (87 tests)
 │   ├── mocks/               # MSW handlers for API mocking
 │   └── setup.ts             # Test configuration (MSW, rate limiter reset)
 ├── config/
@@ -176,6 +198,7 @@ jazz-nextjs/
 │   ├── DEPLOYMENT.md        # Deployment guide
 │   ├── TESTING.md           # Testing methodology (TDD)
 │   ├── CONTENT_UPDATES.md   # ISR and content sync strategies
+│   ├── E2E_HANG_ANALYSIS.md # E2E testing troubleshooting
 │   └── AI_USAGE.md          # AI tooling documentation
 ├── .github/workflows/
 │   └── test-pantheon.yml    # CI/CD with Playwright report deployment
@@ -188,8 +211,10 @@ jazz-nextjs/
 - **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Complete deployment guide for Pantheon
 - **[CONTENT_UPDATES.md](docs/CONTENT_UPDATES.md)** - Content synchronization strategies and ISR
 - **[TESTING.md](docs/TESTING.md)** - Testing guide and TDD methodology
+- **[E2E_HANG_ANALYSIS.md](docs/E2E_HANG_ANALYSIS.md)** - E2E testing troubleshooting and best practices
 - **[AI_USAGE.md](docs/AI_USAGE.md)** - How AI tools are used in development
 - **[CLAUDE.md](CLAUDE.md)** - Development standards and workflow
+- **[AGENTS.md](AGENTS.md)** - Agent workflows and pre-commit review process
 
 ## Technology Stack
 

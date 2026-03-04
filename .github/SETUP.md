@@ -38,10 +38,13 @@ This document describes the required GitHub secrets and configuration for automa
 - ✅ Automated cache clearing after deployment
 - ✅ Fresh content before running tests
 - ✅ Full end-to-end testing workflow
+- ✅ Dashboard URL generation for Slack notifications
 
 ### Without PANTHEON_MACHINE_TOKEN:
 - ❌ Cache clearing step will fail
+- ❌ Dashboard URL generation will fail
 - ⚠️  Tests may run against stale cached content
+- ⚠️  Slack notifications may not have dashboard links
 - ⚠️  Manual cache clearing required: `terminus env:clear-cache jazz-nextjs15.dev`
 
 ## Testing the Setup

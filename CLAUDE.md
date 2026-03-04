@@ -75,6 +75,9 @@
 # Build
 npm run build
 
+# Test standalone build locally (production mode)
+npm run start:test
+
 # Test
 npm test
 
@@ -84,6 +87,7 @@ npm run lint
 
 - **CRITICAL**: ALWAYS run tests before committing (TDD London School)
 - **CRITICAL**: ALWAYS verify build succeeds before committing
+- **CRITICAL**: Test standalone builds with `npm run start:test` when testing production behavior
 - **CRITICAL**: NEVER commit code that fails tests or build
 - **CRITICAL**: Fix TypeScript/ESLint errors properly, never whitelist/disable rules
 - Write tests FIRST, then implement code to make tests pass
@@ -109,6 +113,8 @@ terminus node:logs:build:list jazz-nextjs.<env>
 - `output: "standalone"` in next.config.js (required for Pantheon)
 - GitHub Application must be installed and authorized
 - Environment variables set in Pantheon dashboard, never committed
+- Test standalone builds locally with `npm run start:test` before deploying
+- Use `error.name` instead of `instanceof` for error checking in production builds
 
 ## Security Rules
 
