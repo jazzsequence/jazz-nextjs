@@ -2,10 +2,10 @@ import Image from 'next/image';
 import { format } from 'date-fns';
 import parse from 'html-react-parser';
 import DOMPurify from 'isomorphic-dompurify';
-import type { WPPost } from '@/lib/wordpress/types';
+import type { WPContent } from '@/lib/wordpress/types';
 
 interface PostContentProps {
-  post: WPPost;
+  post: WPContent;
 }
 
 export default function PostContent({ post }: PostContentProps) {
