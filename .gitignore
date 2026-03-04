@@ -44,6 +44,7 @@ yarn-error.log*
 .claude/
 .claude-flow/
 .mcp.json
+.reviewer-approval
 
 # typescript
 *.tsbuildinfo

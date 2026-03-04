@@ -36,7 +36,8 @@ export function GreetingClient({ variants, audiences, serverCountry, greetingPar
     let matchedIds: number[];
 
     // Check for ?greeting= query parameter (for E2E testing)
-    if (greetingParam && process.env.NODE_ENV !== 'production') {
+    // Allow in all environments so E2E tests work against production builds
+    if (greetingParam) {
       // E2E testing mode: Force specific greeting variant
       const namedVariants: Record<string, number | null> = {
         morning: 16719,
@@ -53,6 +54,17 @@ export function GreetingClient({ variants, audiences, serverCountry, greetingPar
       // Normal mode: Match based on time/day using BROWSER timezone
       // Get browser's timezone
       const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const now = new Date();
+
+      // DEBUG: Temporary logging to diagnose timezone issue
+      console.log('[GreetingClient DEBUG]', {
+        browserTimezone,
+        currentTime: now.toLocaleString(),
+        currentHour: now.getHours(),
+        serverCountry,
+        audienceCount: audiences.length,
+        variantCount: variants.length,
+      });
 
       // Match audiences based on browser timezone and server-detected country
       const endpoints: EndpointData = {
@@ -61,6 +73,10 @@ export function GreetingClient({ variants, audiences, serverCountry, greetingPar
       };
 
       matchedIds = matchAudiences(audiences, endpoints);
+
+      // DEBUG: Log matching results
+      console.log('[GreetingClient DEBUG] Matched IDs:', matchedIds);
+      console.log('[GreetingClient DEBUG] Variants:', variants.map(v => ({ id: v.audienceId, heading: v.heading })));
     }
 
     // Select variant: first matching audience, or fallback

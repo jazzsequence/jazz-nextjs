@@ -132,19 +132,10 @@ jobs:
             # BUILD_SUCCESS and DEPLOYMENT_SUCCESS both indicate deployment is complete
             if [ "$BUILD_STATUS" == "DEPLOYMENT_SUCCESS" ] || [ "$BUILD_STATUS" == "BUILD_SUCCESS" ]; then
               echo "✅ Build and deployment successful (status: $BUILD_STATUS)"
-              echo ""
-              echo "Recent build logs:"
-              terminus env:logs ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --type=nginx-error --since=10m || true
               echo "deployment_ready=true" >> $GITHUB_OUTPUT
               exit 0
             elif [[ "$BUILD_STATUS" == *"FAILURE"* ]]; then
-              echo "❌ Build or deployment failed"
-              echo ""
-              echo "Build logs (last 100 lines):"
-              terminus env:logs ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} --type=nginx-error --lines=100 || echo "Unable to fetch logs"
-              echo ""
-              echo "Environment info:"
-              terminus env:info ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} || true
+              echo "❌ Build or deployment failed (status: $BUILD_STATUS)"
               echo "deployment_ready=false" >> $GITHUB_OUTPUT
               exit 1
             elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]]; then
@@ -175,6 +166,32 @@ jobs:
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
+
+      - name: Verify Pantheon site is accessible
+        run: |
+          echo "Testing connectivity to: ${{ steps.env.outputs.base_url }}"
+          echo "Waiting for site to be fully ready..."
+
+          MAX_ATTEMPTS=12
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
+
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.env.outputs.base_url }}" || echo "000")
+
+            if [ "$HTTP_CODE" == "200" ]; then
+              echo "✅ Site is accessible (HTTP $HTTP_CODE)"
+              exit 0
+            else
+              echo "⏳ Site returned HTTP $HTTP_CODE, waiting..."
+              sleep 5
+            fi
+          done
+
+          echo "❌ Site not accessible after 60 seconds"
+          exit 1
 
       - name: Run E2E tests against Pantheon
         id: e2e-tests

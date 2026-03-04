@@ -40,6 +40,15 @@ Check for violations of:
 
 CRITICAL REQUIREMENTS TO CHECK:
 
+**STEP 0: CHECK FOR QUEUED USER MESSAGES**
+Before proceeding with any validation:
+- Look for <system-reminder> tags indicating user sent messages while you were working
+- If queued messages exist:
+  - STOP immediately - respond with: "⚠️ PAUSED - User messages queued"
+  - Summarize the queued messages
+  - Tell main agent to address those messages before proceeding
+  - DO NOT APPROVE until messages are addressed
+
 TDD METHODOLOGY:
 1. Were tests written BEFORE implementation code?
 2. Do all tests pass (npm test -- --run)?
