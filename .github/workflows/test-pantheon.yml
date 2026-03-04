@@ -160,9 +160,6 @@ jobs:
           echo "deployment_ready=false" >> $GITHUB_OUTPUT
           exit 1
 
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
       - name: Clear Pantheon cache
         run: |
           echo "Clearing Pantheon CDN cache for ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }}..."
@@ -175,6 +172,9 @@ jobs:
         run: npm test -- --run
         env:
           CI: true
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests against Pantheon
         id: e2e-tests
