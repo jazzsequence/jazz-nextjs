@@ -259,6 +259,7 @@ npx @claude-flow/cli@latest doctor --fix
 **Commit Standards:**
 - Make incremental commits as work progresses
 - Each logical unit of work should be committed separately
+- **NEVER amend commits** - always create new commits instead (amended commits require force push which is forbidden)
 - Co-author commits with Claude (not Claude Flow):
   ```
   Co-Authored-By: Claude <claude@anthropic.com>

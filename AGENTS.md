@@ -88,9 +88,10 @@ GIT PRACTICES:
 24. Incremental commits (not one massive commit)?
 25. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
 26. Commit messages clear and descriptive?
+27. NEVER amend commits (always create new commits instead)?
 
 E2E TEST COVERAGE:
-27. For user-facing changes (app/, components/), are E2E tests included?
+28. For user-facing changes (app/, components/), are E2E tests included?
     - New pages/components → E2E tests required
     - Modified pages/components → Update E2E tests
     - Check: Are there E2E test changes in tests/e2e/ for UI changes?
