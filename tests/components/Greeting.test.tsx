@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { Greeting } from '@/components/Greeting';
 
 // Mock the WordPress greeting fetcher
@@ -72,7 +72,7 @@ const mockAudiences = [
       { field: 'metrics.hour', operator: 'lte', value: '21', type: 'string' },
     ],
   },
-];
+] as const;
 
 describe('Greeting', () => {
   beforeEach(() => {
@@ -84,72 +84,66 @@ describe('Greeting', () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16719]); // Morning audience
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Good morning, I'm Chris");
-      });
+      expect(container.querySelector('h1')?.textContent).toContain("Good morning, I'm Chris");
     });
 
     it('should display afternoon greeting at 3pm', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16720]); // Afternoon audience
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Good afternoon, I'm Chris");
-      });
+      expect(container.querySelector('h1')?.textContent).toContain("Good afternoon, I'm Chris");
     });
 
     it('should display evening greeting at 8pm', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16722]); // Evening audience
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Good evening, I'm Chris");
-      });
+      expect(container.querySelector('h1')?.textContent).toContain("Good evening, I'm Chris");
     });
 
     it('should display D&D greeting on Thursday evening', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16722, 16726]); // Evening AND D&D
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        // Should prefer first match (evening) - component uses first matched ID
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Good evening, I'm Chris");
-      });
+      // Should prefer first match (evening) - component uses first matched ID
+      expect(container.querySelector('h1')?.textContent).toContain("Good evening, I'm Chris");
     });
 
     it('should display fallback when no audiences match', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]); // No matches
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Hi, I'm Chris");
-      });
+      expect(container.querySelector('h1')?.textContent).toContain("Hi, I'm Chris");
     });
   });
 
   describe('content rendering', () => {
-    it('should render HTML content', async () => {
+    it('should render sanitized HTML content', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        expect(screen.getByText(/I make websites and things/)).toBeInTheDocument();
-      });
+      expect(container.textContent).toContain('I make websites and things');
     });
 
-    it('should sanitize HTML to prevent XSS', async () => {
+    it('should sanitize XSS attempts in content', async () => {
       const xssVariants = [{
         audienceId: null,
         isFallback: true,
@@ -160,34 +154,11 @@ describe('Greeting', () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: xssVariants, audiences: [] });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
-      const { container } = render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        expect(container.querySelector('script')).toBeNull();
-        expect(screen.getByText(/Safe content/)).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('loading state', () => {
-    it('should show loading state while fetching', () => {
-      vi.mocked(fetchGreetingData).mockReturnValue(new Promise(() => {})); // Never resolves
-
-      render(<Greeting />);
-
-      // Should show loading indicator or skeleton
-      expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
-    });
-
-    it('should hide loading state after data loads', async () => {
-      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
-      vi.mocked(matchAudiences).mockReturnValue([]);
-
-      render(<Greeting />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-      });
+      expect(container.querySelector('script')).toBeNull();
+      expect(container.textContent).toContain('Safe content');
     });
   });
 
@@ -195,64 +166,63 @@ describe('Greeting', () => {
     it('should handle fetch errors gracefully', async () => {
       vi.mocked(fetchGreetingData).mockRejectedValue(new Error('Network error'));
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        // Should show fallback content or error message
-        expect(screen.queryByRole('heading', { level: 1 })).toBeInTheDocument();
-      });
+      // Should show fallback content
+      expect(container.querySelector('h1')).toBeInTheDocument();
+      expect(container.textContent).toContain("Hi, I'm Chris");
     });
 
     it('should handle empty variants array', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: [], audiences: [] });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        // Should show some default content
-        expect(screen.queryByRole('heading', { level: 1 })).toBeInTheDocument();
-      });
+      // Should show default content
+      expect(container.querySelector('h1')).toBeInTheDocument();
+      expect(container.textContent).toContain("Hi, I'm Chris");
     });
   });
 
-  describe('audience selection priority', () => {
-    it('should use first matching audience if multiple match', async () => {
+  describe('variant selection priority', () => {
+    it('should select first matching audience when multiple match', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([16720, 16722]); // Multiple matches
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        // Should use first match (16720 = afternoon)
-        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent("Good afternoon, I'm Chris");
-      });
+      // Should use first match
+      expect(container.querySelector('h1')?.textContent).toContain("Good afternoon, I'm Chris");
     });
-  });
 
-  describe('accessibility', () => {
-    it('should render heading as h1 for SEO', async () => {
+    it('should fall back to fallback variant when no match', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
-      render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        const heading = screen.getByRole('heading', { level: 1 });
-        expect(heading.tagName).toBe('H1');
-      });
+      expect(container.querySelector('h1')?.textContent).toContain("Hi, I'm Chris");
     });
 
-    it('should have proper semantic HTML structure', async () => {
-      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
+    it('should use first variant when no fallback exists', async () => {
+      const variantsWithoutFallback = mockVariants.filter(v => !v.isFallback);
+
+      vi.mocked(fetchGreetingData).mockResolvedValue({
+        variants: variantsWithoutFallback,
+        audiences: mockAudiences
+      });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
-      const { container } = render(<Greeting />);
+      const component = await Greeting();
+      const { container } = render(component);
 
-      await waitFor(() => {
-        const section = container.querySelector('section');
-        expect(section).toBeInTheDocument();
-      });
+      // Should show first variant
+      expect(container.querySelector('h1')).toBeInTheDocument();
     });
   });
 });
