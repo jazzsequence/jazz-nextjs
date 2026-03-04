@@ -54,17 +54,6 @@ export function GreetingClient({ variants, audiences, serverCountry, greetingPar
       // Normal mode: Match based on time/day using BROWSER timezone
       // Get browser's timezone
       const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const now = new Date();
-
-      // DEBUG: Temporary logging to diagnose timezone issue
-      console.log('[GreetingClient DEBUG]', {
-        browserTimezone,
-        currentTime: now.toLocaleString(),
-        currentHour: now.getHours(),
-        serverCountry,
-        audienceCount: audiences.length,
-        variantCount: variants.length,
-      });
 
       // Match audiences based on browser timezone and server-detected country
       const endpoints: EndpointData = {
@@ -73,10 +62,6 @@ export function GreetingClient({ variants, audiences, serverCountry, greetingPar
       };
 
       matchedIds = matchAudiences(audiences, endpoints);
-
-      // DEBUG: Log matching results
-      console.log('[GreetingClient DEBUG] Matched IDs:', matchedIds);
-      console.log('[GreetingClient DEBUG] Variants:', variants.map(v => ({ id: v.audienceId, heading: v.heading })));
     }
 
     // Select variant: first matching audience, or fallback
