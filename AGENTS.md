@@ -15,10 +15,19 @@
 ```
 
 This installs a pre-commit hook that automatically:
-- ✅ Runs all tests before every commit
-- ✅ Runs linter before every commit
+- ✅ Runs all unit tests before every commit (npm test)
+- ✅ Runs linter before every commit (npm run lint)
+- ✅ Validates build succeeds (npm run build)
+- ✅ **Runs E2E tests before every commit (npm run test:e2e)** ← CRITICAL
 - ✅ Blocks commits containing secrets
 - ⚠️ Reminds you to get reviewer agent approval (manual gate)
+
+**Why E2E tests are mandatory:**
+E2E tests catch runtime errors that unit tests miss, including:
+- Next.js routing conflicts (different dynamic segment names)
+- Server startup failures
+- Integration issues between components
+- Cache invalidation bugs
 
 ---
 
@@ -51,10 +60,21 @@ Before proceeding with any validation:
 
 TDD METHODOLOGY:
 1. Were tests written BEFORE implementation code?
-2. Do all tests pass (npm test -- --run)?
+2. Do all unit tests pass (npm test -- --run)?
 3. Is lint clean (npm run lint)?
-4. Are tests and implementation in separate commits?
-5. Build successful (npm run build)?
+4. Does build succeed (npm run build)?
+5. **Do E2E tests pass (npm run test:e2e)?** ← MANDATORY
+6. Are tests and implementation in separate commits?
+
+**CRITICAL: All 5 commands must pass before commit:**
+```bash
+npm test -- --run          # Unit tests
+npm run lint               # Linter
+npm run build              # Build validation
+npm run test:e2e           # E2E tests (catches routing conflicts)
+```
+
+The pre-commit hook enforces all of these automatically.
 
 FILE ORGANIZATION:
 6. Are test files in /tests directory (not /src)?

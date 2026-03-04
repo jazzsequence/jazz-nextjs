@@ -72,26 +72,41 @@
 ## Build & Test
 
 ```bash
-# Build
-npm run build
-
-# Test standalone build locally (production mode)
-npm run start:test
-
-# Test
+# Unit tests
 npm test
 
 # Lint
 npm run lint
+
+# Build
+npm run build
+
+# E2E tests (MANDATORY - catches routing conflicts and runtime errors)
+npm run test:e2e
+
+# Test standalone build locally (production mode)
+npm run start:test
 ```
 
-- **CRITICAL**: ALWAYS run tests before committing (TDD London School)
+- **CRITICAL**: ALWAYS run ALL tests before committing (unit + E2E)
 - **CRITICAL**: ALWAYS verify build succeeds before committing
-- **CRITICAL**: Test standalone builds with `npm run start:test` when testing production behavior
-- **CRITICAL**: NEVER commit code that fails tests or build
+- **CRITICAL**: E2E tests are MANDATORY (catches routing conflicts that unit tests miss)
+- **CRITICAL**: NEVER commit code that fails tests, E2E tests, or build
 - **CRITICAL**: Fix TypeScript/ESLint errors properly, never whitelist/disable rules
 - Write tests FIRST, then implement code to make tests pass
-- All three commands (test, lint, build) must pass before any commit
+- **All FIVE commands must pass before any commit:**
+  1. `npm test` - Unit tests
+  2. `npm run lint` - Linter
+  3. `npm run build` - Build validation
+  4. `npm run test:e2e` - E2E tests (catches Next.js routing conflicts)
+  5. Reviewer agent approval
+
+**Why E2E tests are mandatory:**
+- Unit tests validate components in isolation
+- E2E tests validate the entire application runtime
+- Next.js routing conflicts ONLY appear at server runtime
+- Example: "different slug names" error crashes server but passes unit tests
+- Pre-commit hook enforces all validations automatically
 
 ## Deployment
 

@@ -10,7 +10,7 @@ import { getBuildInfo } from '@/lib/build-info'
 export const revalidate = 3600 // ISR: Revalidate every hour
 
 interface PageProps {
-  params: Promise<{ parent: string; child: string }>
+  params: Promise<{ slug: string; child: string }>
 }
 
 /**
@@ -62,11 +62,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
  *
  * Handles child pages with hierarchical URLs
  * Examples: /music/loafmen, /music/blind-chaos
+ *
+ * Note: WordPress handles parent-child relationships internally.
+ * We fetch by child slug only - WordPress knows the hierarchy.
  */
 export default async function ChildPage({ params }: PageProps) {
   const { child } = await params
 
-  // Fetch page data (simplify - don't use Promise.allSettled to isolate issue)
+  // Fetch page data by child slug
   let pageData: WPPage
   try {
     pageData = await fetchPost<WPPage>('pages', child, {

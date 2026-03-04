@@ -42,6 +42,48 @@ else
 fi
 echo ""
 
+# Check 2: Run all tests (unit + E2E)
+echo "2️⃣  Running tests..."
+echo ""
+
+# Unit tests
+echo "   Running unit tests..."
+if ! npm test -- --run --reporter=dot 2>&1 | tail -5; then
+    echo -e "${RED}❌ BLOCKED: Unit tests failed${NC}"
+    echo "   Fix test failures before committing"
+    exit 1
+fi
+echo -e "${GREEN}✅ Unit tests passed${NC}"
+
+# Linter
+echo "   Running linter..."
+if ! npm run lint 2>&1 | grep -E "(error|warning|✔)" | tail -3; then
+    echo -e "${RED}❌ BLOCKED: Linter failed${NC}"
+    echo "   Fix linting errors before committing"
+    exit 1
+fi
+echo -e "${GREEN}✅ Linter passed${NC}"
+
+# Build validation
+echo "   Running build..."
+if ! npm run build > /tmp/build-log.txt 2>&1; then
+    echo -e "${RED}❌ BLOCKED: Build failed${NC}"
+    tail -20 /tmp/build-log.txt
+    exit 1
+fi
+echo -e "${GREEN}✅ Build successful${NC}"
+
+# E2E tests (CRITICAL: catches routing conflicts and runtime errors)
+echo "   Running E2E tests..."
+if ! npm run test:e2e 2>&1 | tail -10; then
+    echo -e "${RED}❌ BLOCKED: E2E tests failed${NC}"
+    echo "   E2E tests catch routing conflicts and runtime errors"
+    echo "   Fix failures before committing"
+    exit 1
+fi
+echo -e "${GREEN}✅ E2E tests passed${NC}"
+echo ""
+
 # Check 3: No secrets
 echo "3️⃣  Checking for secrets..."
 for file in $(git diff --cached --name-only); do
