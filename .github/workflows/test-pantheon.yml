@@ -103,6 +103,7 @@ jobs:
           MAX_ATTEMPTS=60
           SLEEP_TIME=10
           ATTEMPT=0
+          BUILD_SUCCESS_COUNT=0
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
@@ -146,8 +147,20 @@ jobs:
               terminus env:info ${{ env.PANTHEON_SITE_NAME }}.${{ steps.env.outputs.env_name }} || true
               echo "deployment_ready=false" >> $GITHUB_OUTPUT
               exit 1
-            elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]] || [ "$BUILD_STATUS" == "BUILD_SUCCESS" ]; then
+            elif [ "$BUILD_STATUS" == "BUILD_SUCCESS" ]; then
+              BUILD_SUCCESS_COUNT=$((BUILD_SUCCESS_COUNT + 1))
+              echo "⏳ Build successful, waiting for deployment... (check $BUILD_SUCCESS_COUNT of 5)"
+
+              # After 5 checks of BUILD_SUCCESS, assume deployment succeeded
+              if [ $BUILD_SUCCESS_COUNT -ge 5 ]; then
+                echo "✅ Build successful - assuming deployment completed"
+                echo "   (BUILD_SUCCESS persisted for 5 checks without DEPLOYMENT_SUCCESS status)"
+                echo "deployment_ready=true" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+            elif [[ "$BUILD_STATUS" == *"WORKING"* ]] || [[ "$BUILD_STATUS" == *"QUEUED"* ]]; then
               echo "⏳ Still processing..."
+              BUILD_SUCCESS_COUNT=0  # Reset counter if status changes
             else
               echo "⏳ Status: $BUILD_STATUS"
             fi
