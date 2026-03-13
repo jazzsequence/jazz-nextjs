@@ -315,6 +315,17 @@ async function fetchAndValidate<T extends z.ZodTypeAny>(
   const result = schema.safeParse(data)
 
   if (!result.success) {
+    // Log detailed validation errors in development/test
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Zod Validation Error]', {
+        url,
+        errors: result.error.errors.map(err => ({
+          path: err.path.join('.'),
+          message: err.message,
+          code: err.code,
+        }))
+      })
+    }
     throw new WPValidationError(
       `Validation failed for ${url}`,
       result.error
@@ -347,6 +358,17 @@ async function fetchAndValidateWithResponse<T extends z.ZodTypeAny>(
   const result = schema.safeParse(data)
 
   if (!result.success) {
+    // Log detailed validation errors in development/test
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('[Zod Validation Error]', {
+        url,
+        errors: result.error.errors.map(err => ({
+          path: err.path.join('.'),
+          message: err.message,
+          code: err.code,
+        }))
+      })
+    }
     throw new WPValidationError(
       `Validation failed for ${url}`,
       result.error

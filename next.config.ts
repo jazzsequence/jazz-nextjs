@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         hostname: "sfo2.digitaloceanspaces.com",
         pathname: "/cdn.jazzsequence/**",
       },
+      {
+        protocol: "https",
+        hostname: "jazzsequence.com",
+        pathname: "/wp-content/uploads/**",
+      },
     ],
   },
 };

@@ -9,13 +9,13 @@ import { z } from 'zod'
 export const WPRenderedSchema = z.object({
   rendered: z.string(),
   protected: z.boolean().optional(),
-})
+}).passthrough() // Allow extra fields from WordPress plugins
 
 export const WPAvatarSchema = z.object({
   '24': z.string().optional(),
   '48': z.string().optional(),
   '96': z.string().optional(),
-})
+}).passthrough() // Allow extra avatar sizes from plugins
 
 export const WPAuthorSchema = z.object({
   id: z.number(),
@@ -25,22 +25,22 @@ export const WPAuthorSchema = z.object({
   link: z.string(),
   slug: z.string(),
   avatar_urls: WPAvatarSchema,
-})
+}).passthrough() // Allow extra author fields from plugins
 
 export const WPFeaturedMediaSchema = z.object({
   id: z.number(),
   source_url: z.string(),
   alt_text: z.string(),
   media_details: z.object({
-    width: z.number().nullable(),
-    height: z.number().nullable(),
+    width: z.coerce.number().nullable(), // Coerce strings to numbers (WordPress inconsistency)
+    height: z.coerce.number().nullable(), // Coerce strings to numbers (WordPress inconsistency)
     sizes: z.record(z.object({
       source_url: z.string(),
-      width: z.number(),
-      height: z.number(),
-    })).optional(),
-  }).optional(),
-})
+      width: z.coerce.number(), // Coerce strings to numbers (WordPress inconsistency)
+      height: z.coerce.number(), // Coerce strings to numbers (WordPress inconsistency)
+    }).passthrough()).optional(), // Allow extra size properties
+  }).passthrough().optional(), // Allow extra media_details fields
+}).passthrough() // Allow extra media fields from plugins
 
 export const WPTermSchema = z.object({
   id: z.number(),
@@ -50,13 +50,13 @@ export const WPTermSchema = z.object({
   link: z.string().optional(),
   description: z.string().optional(),
   count: z.number().optional(),
-})
+}).passthrough() // Allow extra term fields from plugins
 
 export const WPEmbeddedSchema = z.object({
   author: z.array(WPAuthorSchema).optional(),
   'wp:featuredmedia': z.array(WPFeaturedMediaSchema).optional(),
   'wp:term': z.array(z.array(WPTermSchema)).optional(),
-}).optional()
+}).passthrough().optional() // Allow extra _embedded fields from plugins
 
 // Base content schema
 export const WPBaseContentSchema = z.object({
@@ -82,7 +82,7 @@ export const WPBaseContentSchema = z.object({
     Array.isArray(val) ? {} as Record<string, unknown> : val
   ) as unknown as z.ZodType<Record<string, unknown>>,
   _embedded: WPEmbeddedSchema,
-})
+}).passthrough() // Allow extra base fields from WordPress plugins
 
 // Post schema
 export const WPPostSchema = WPBaseContentSchema.extend({
@@ -91,14 +91,14 @@ export const WPPostSchema = WPBaseContentSchema.extend({
   format: z.enum(['standard', 'aside', 'chat', 'gallery', 'link', 'image', 'quote', 'status', 'video', 'audio']),
   categories: z.array(z.number()),
   tags: z.array(z.number()),
-})
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Page schema
 export const WPPageSchema = WPBaseContentSchema.extend({
   type: z.literal('page'),
   parent: z.number(),
   menu_order: z.number(),
-})
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Game schema
 export const WPGameSchema = WPBaseContentSchema.extend({
@@ -111,8 +111,8 @@ export const WPGameSchema = WPBaseContentSchema.extend({
     gc_age: z.number().optional(),
     gc_difficulty: z.string().optional(),
     gc_more_info: z.string().optional(),
-  }),
-})
+  }).passthrough(), // Allow extra meta fields from plugins
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Recipe schema
 export const WPIngredientSchema = z.object({
@@ -133,8 +133,8 @@ export const WPRecipeSchema = WPBaseContentSchema.extend({
     rb_cook_time: z.string().optional(),
     rb_servings: z.number().optional(),
     rb_notes: z.string().optional(),
-  }),
-})
+  }).passthrough(), // Allow extra meta fields from plugins
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Media schema
 export const WPMediaSchema = WPBaseContentSchema.extend({
@@ -142,8 +142,8 @@ export const WPMediaSchema = WPBaseContentSchema.extend({
   meta: z.object({
     media_url: z.string().optional(),
     media_source: z.enum(['youtube', 'wordpresstv']).optional(),
-  }),
-})
+  }).passthrough(), // Allow extra meta fields from plugins
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Artist schema
 export const WPArtistSchema = WPBaseContentSchema.extend({
@@ -159,8 +159,8 @@ export const WPArtistSchema = WPBaseContentSchema.extend({
     artist_alonetone: z.string().optional(),
     artist_rpm: z.string().optional(),
     artist_press: z.string().optional(),
-  }),
-})
+  }).passthrough(), // Allow extra meta fields from plugins
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Movie schema
 export const WPMovieSchema = WPBaseContentSchema.extend({
@@ -169,7 +169,7 @@ export const WPMovieSchema = WPBaseContentSchema.extend({
   actor: z.array(z.number()),
   collection: z.array(z.number()),
   meta: z.record(z.any()),
-})
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Address schema
 export const WPAddressSchema = WPBaseContentSchema.extend({
@@ -185,8 +185,8 @@ export const WPAddressSchema = WPBaseContentSchema.extend({
     ab_state: z.string().optional(),
     ab_zip: z.string().optional(),
     ab_country: z.string().optional(),
-  }),
-})
+  }).passthrough(), // Allow extra meta fields from plugins
+}).passthrough() // Allow unknown fields from WordPress plugins
 
 // Category schema
 export const WPCategorySchema = z.object({
