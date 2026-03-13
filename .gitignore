@@ -46,6 +46,11 @@ yarn-error.log*
 .mcp.json
 .reviewer-approval
 
+# Session working files (never commit)
+docs/SESSION_NOTES.md
+docs/EOD_SESSION_NOTES_*.md
+**/session-notes*.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

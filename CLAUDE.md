@@ -261,11 +261,26 @@ npx @claude-flow/cli@latest doctor --fix
 
 ## Documentation & Commit Practices
 
+### Core Documentation Files (Keep in Memory)
+
+**CRITICAL: Load these files at session start using @ references:**
+- @AGENTS.md - Project-specific agent instructions and reviewer workflow
+- @docs/REVIEWER_WORKFLOW.md - Pre-commit enforcement and validation requirements
+- @docs/REVIEWER_SETUP.md - Step-by-step setup guide for reviewer workflow
+- @docs/API_CLIENT_DESIGN.md - WordPress API client architecture
+- @docs/DEPLOYMENT.md - Pantheon deployment procedures
+- @docs/TESTING.md - TDD methodology and testing standards
+
 ### Documentation Updates
 - ALWAYS update CLAUDE.md when workflow or configuration changes
 - ALWAYS update relevant documentation files when making architectural changes
 - Keep documentation in sync with code changes
-- Document Claude Flow usage in `/docs/AI_USAGE.md`
+- Document Claude Flow usage in @docs/AI_USAGE.md
+- **NEVER commit session notes** - these are working files only:
+  - `docs/SESSION_NOTES.md` (gitignored)
+  - `docs/EOD_SESSION_NOTES_*.md` (gitignored)
+  - Any `**/session-notes*.md` files (gitignored)
+  - Session notes track progress during a session but should not be in version control
 
 ### Git Commit Practices
 

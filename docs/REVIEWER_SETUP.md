@@ -15,11 +15,13 @@ This document provides complete step-by-step instructions to reproduce the revie
 
 ## Architecture Overview
 
-The reviewer workflow has 3 components:
+The reviewer workflow has **3 layers of programmatic enforcement**:
 
-1. **Claude Code's Agent tool** - Built-in, spawns reviewer agents
-2. **Pre-commit hook** - Bash script that validates approval flag
-3. **Approval flag** - Timestamp file written by main agent
+1. **PreToolUse Hook** (Layer 1) - Blocks git commit before it starts
+2. **Pre-commit Hook** (Layer 2) - Secondary validation after commit starts
+3. **Behavioral Instructions** (Layer 3) - AI spawns reviewer proactively
+
+See @docs/REVIEWER_WORKFLOW.md for complete technical details on the three-layer enforcement model.
 
 ```
 User Request
@@ -34,9 +36,13 @@ Reviewer returns APPROVE/REJECT
     ↓
 Main Agent writes approval flag ← Uses Claude Code's Write tool
     ↓
-git commit triggers hook
+git commit triggers PreToolUse hook (Layer 1)
     ↓
-Hook validates flag timestamp
+Hook validates approval (blocks if missing/expired)
+    ↓
+git commit triggers pre-commit hook (Layer 2)
+    ↓
+Hook re-validates and deletes flag
     ↓
 Commit allowed/blocked
 ```
@@ -174,6 +180,20 @@ Create or edit `.claude/settings.json`:
       "Write(*)",
       "Agent(subagent_type=reviewer)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/helpers/hook-handler.cjs pre-bash",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -186,7 +206,87 @@ Create or edit `.claude/settings.json`:
 - `"Bash(date*)"` - For getting Unix timestamp
 - `"Agent(subagent_type=reviewer)"` - Auto-approve spawning reviewer agents
 
+**PreToolUse Hook Configuration:**
+- Intercepts all `Bash` tool calls before execution
+- Runs `.claude/helpers/hook-handler.cjs` to validate git commits
+- Blocks commits without reviewer approval (Layer 1 enforcement)
+
 **Note:** `.claude/settings.json` is **project-specific** and **gitignored** by default. Each developer needs to create this file locally.
+
+### Step 2b: Create PreToolUse Hook Handler
+
+Create `.claude/helpers/hook-handler.cjs`:
+
+```javascript
+#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+
+// Pre-bash handler: Validate git commits have reviewer approval
+const args = process.argv.slice(2);
+if (args[0] === 'pre-bash') {
+  const stdin = fs.readFileSync(0, 'utf-8');
+  const toolInput = JSON.parse(stdin);
+  const cmd = toolInput.command || '';
+
+  if (cmd.includes('git commit')) {
+    var userCommit = process.env.USER_COMMIT === '1';
+
+    if (!userCommit) {
+      var approvalFile = path.join(process.cwd(), '.git/hooks/reviewer-approved');
+
+      if (!fs.existsSync(approvalFile)) {
+        console.error('[BLOCKED] No reviewer approval found');
+        console.error('');
+        console.error('Required before git commit:');
+        console.error('  1. Spawn reviewer agent with Agent tool');
+        console.error('  2. Get APPROVE decision from agent');
+        console.error('  3. Main agent creates approval flag');
+        console.error('  4. Then commit within 5 minutes');
+        console.error('');
+        console.error('For manual commits: USER_COMMIT=1 git commit -m "message"');
+        process.exit(1);
+      }
+
+      var approvalTime = parseInt(fs.readFileSync(approvalFile, 'utf8').trim(), 10);
+
+      if (isNaN(approvalTime) || approvalTime <= 0) {
+        console.error('[BLOCKED] Invalid approval file (corrupted timestamp)');
+        process.exit(1);
+      }
+
+      var currentTime = Math.floor(Date.now() / 1000);
+      var timeDiff = currentTime - approvalTime;
+
+      if (timeDiff >= 300) {
+        console.error(`[BLOCKED] Reviewer approval expired (${timeDiff}s old)`);
+        console.error('');
+        console.error('Approval is older than 5 minutes.');
+        console.error('Spawn reviewer agent again and get fresh approval.');
+        process.exit(1);
+      }
+
+      console.log(`[OK] Reviewer approved (${timeDiff}s ago)`);
+    } else {
+      console.log('[OK] User commit (bypassing reviewer)');
+    }
+  }
+
+  console.log('[OK] Command validated');
+  process.exit(0);
+}
+
+console.error('[ERROR] Unknown hook command');
+process.exit(1);
+```
+
+Make executable:
+```bash
+mkdir -p .claude/helpers
+chmod +x .claude/helpers/hook-handler.cjs
+```
+
+**This provides Layer 1 enforcement** - blocking git commits before they start.
 
 ### Step 3: Create Project Requirements Document
 
@@ -312,7 +412,7 @@ Use the bypass flag for your own edits:
 USER_COMMIT=1 git commit -m "Your message"
 \`\`\`
 
-See [REVIEWER_WORKFLOW.md](docs/REVIEWER_WORKFLOW.md) for details.
+See @docs/REVIEWER_WORKFLOW.md for complete technical details on the three-layer enforcement model.
 ```
 
 ## Common Issues
