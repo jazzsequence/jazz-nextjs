@@ -208,6 +208,155 @@ await Write({
 - Approval expires after 5 minutes (prevents stale approvals)
 - Hook does NOT re-run tests (agent already did that)
 
+---
+
+**STEP 3: Connect to WordPress MCP Server**
+
+At session start, verify MCP server connection is active:
+
+```typescript
+// Check MCP server is connected
+ListMcpResourcesTool({ server: "jazzsequence-wordpress" })
+```
+
+If not connected, restart Claude Code. The MCP server provides AI-native access to WordPress content structure at jazzsequence.com.
+
+**See "WordPress MCP Server Workflow" section below for full usage instructions.**
+
+---
+
+## WordPress MCP Server Workflow - CRITICAL
+
+**ALWAYS use the WordPress MCP server as your FIRST resource for understanding jazzsequence.com.**
+
+### Why MCP Server Matters
+
+The MCP server provides:
+- **Schema discovery** - Automatic introspection of WordPress structure
+- **Content exploration** - Query custom post types, taxonomies, metadata
+- **Field mapping** - Understand plugin-added fields and custom fields
+- **Relationship mapping** - Discover content relationships
+- **CRUD operations** - Create/read/update/delete content when needed
+
+**Use MCP BEFORE making assumptions about WordPress data structure.**
+
+### Available MCP Tools
+
+**Core Abilities**:
+```typescript
+// Discover all registered WordPress abilities
+mcp-adapter-discover-abilities
+
+// Get detailed schema for specific ability
+mcp-adapter-get-ability-info({ ability_name: "..." })
+
+// Execute WordPress abilities
+mcp-adapter-execute-ability({ ability_name: "...", params: {...} })
+```
+
+**Content Abilities** (via jazzsequence-mcp-abilities plugin):
+- Create/read/update/delete posts, pages, custom post types
+- Query posts by criteria (post type, taxonomy, meta, date ranges)
+- Manage post metadata and featured images
+
+**Media Abilities**:
+- Upload/query media files
+- Update media metadata
+
+**Taxonomy Abilities**:
+- Manage categories, tags, custom taxonomies
+- Query term relationships
+
+**NinjaForms Abilities**:
+- Create/manage forms, fields, actions, calculations
+- 15+ form management tools
+
+### MCP Usage Examples
+
+**Example 1: Discover Custom Post Types**
+```
+User asks: "What custom post types exist?"
+
+AI: Use mcp-adapter-discover-abilities or mcp-adapter-execute-ability
+→ Result: gc_game, rb_recipe, plague-artist, movie, ab_address, media
+
+AI: "jazzsequence.com has these custom post types: games (gc_game), recipes (rb_recipe), artists (plague-artist), movies (movie), addresses (ab_address), and media."
+```
+
+**Example 2: Understand Post Type Schema**
+```
+User asks: "What fields does gc_game have?"
+
+AI: Use mcp-adapter-get-ability-info for gc_game abilities
+→ Result: Full schema with all custom fields, metadata, taxonomies
+
+AI: "The gc_game post type has these fields: [list fields from schema]"
+```
+
+**Example 3: Query Recent Content**
+```
+User asks: "Show me the latest 5 game posts"
+
+AI: Use mcp-adapter-execute-ability with query parameters
+→ Result: Latest 5 gc_game posts with all metadata
+
+AI: "Here are the latest 5 games: [format results]"
+```
+
+### MCP vs REST API - When to Use What
+
+**Use MCP Server for**:
+- ✅ Schema discovery and introspection
+- ✅ Understanding WordPress content structure
+- ✅ Exploring custom fields and metadata
+- ✅ Discovering post types and taxonomies
+- ✅ Content relationship mapping
+- ✅ CRUD operations (when needed for testing/admin)
+
+**Use REST API Client (`src/lib/wordpress/client.ts`) for**:
+- ✅ Production data fetching (faster, cached)
+- ✅ ISR integration with Next.js
+- ✅ Bulk content queries
+- ✅ Public-facing content delivery
+- ✅ Client-side data fetching
+
+**They work together**: MCP informs schema understanding, REST API delivers production content.
+
+### Workflow Pattern
+
+**Correct Workflow**:
+```typescript
+// 1. FIRST: Use MCP to understand schema
+AI asks MCP: "What fields does gc_game have?"
+MCP returns: Full schema with custom fields
+
+// 2. THEN: Use REST API client with informed understanding
+const games = await fetchPosts('gc_game', {
+  perPage: 10,
+  // Now we know what fields to expect from MCP discovery
+})
+```
+
+**WRONG Workflow**:
+```typescript
+// ❌ NEVER: Guess schema without checking MCP
+const games = await fetchPosts('gc_game', { perPage: 10 })
+// What fields exist? What metadata? ¯\_(ツ)_/¯ Guessing...
+```
+
+### MCP Server Configuration
+
+**Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
+**Server Name**: `jazzsequence-wordpress` (in `~/.config/claude/mcp.json`)
+**Proxy**: `~/.config/claude/mcp-wordpress-http-proxy.js`
+
+**Troubleshooting**:
+If MCP server not available:
+1. Check `~/.config/claude/mcp.json` exists
+2. Verify proxy script exists
+3. Restart Claude Code
+4. See `docs/SESSION_NOTES.md` for full setup details
+
 ## Critical Development Workflows
 
 ### 1. Test-Driven Development (TDD) - MANDATORY

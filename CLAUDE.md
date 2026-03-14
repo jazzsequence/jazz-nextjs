@@ -1,341 +1,293 @@
-# Claude Code Configuration - Claude Flow V3
+# Claude Code Configuration - Jazz-NextJS
 
-## Behavioral Rules (Always Enforced)
+**Project**: Next.js headless frontend for jazzsequence.com WordPress site
+
+This document is a **digest** - detailed documentation is in `@docs/`. Load relevant docs at session start.
+
+---
+
+## Critical Behavioral Rules
 
 - Do what has been asked; nothing more, nothing less
-- **DRY (Don't Repeat Yourself)**: Always minimize code duplication with functions, generics, or abstractions
-- NEVER create files unless they're absolutely necessary for achieving your goal
-- ALWAYS prefer editing an existing file to creating a new one
-- NEVER proactively create documentation files (*.md) or README files unless explicitly requested
-- NEVER save working files, text/mds, or tests to the root folder
-- Never continuously check status after spawning a swarm — wait for results
-- ALWAYS read a file before editing it
-- NEVER commit secrets, credentials, or .env files
+- **DRY (Don't Repeat Yourself)**: Minimize code duplication
+- **NEVER create files** unless absolutely necessary
+- **ALWAYS prefer editing** existing files over creating new ones
+- **NEVER proactively create** documentation files unless requested
+- **NEVER save to root folder** - use `/src`, `/tests`, `/docs`, `/config`, `/scripts`
+- **ALWAYS read files before editing** them
+- **NEVER commit secrets**, credentials, or `.env` files
+- **NEVER use compound commands** (`cmd1 && cmd2`) - run commands separately for auto-approval
 
-## Local Environment
+---
 
-**Available Tools:**
-- `ag` (The Silver Searcher) - Faster alternative to grep for code searching
-  - Usage: `ag "pattern" path/` instead of `grep -r "pattern" path/`
-  - Respects .gitignore automatically
-  - Significantly faster for large codebases
+## Quick Start
+
+### Essential Commands
+
+```bash
+npm test              # Unit tests
+npm run lint          # Linter
+npm run build         # Build
+npm run test:e2e      # E2E tests (MANDATORY)
+npm run start:test    # Test standalone build
+```
+
+**All 5 commands MUST pass before committing** + Reviewer agent approval
+
+See: `@docs/configuration/build-and-test.md`
+
+### WordPress MCP Server (CRITICAL)
+
+**ALWAYS use MCP server FIRST** for understanding jazzsequence.com content structure.
+
+```typescript
+// Verify MCP connection at session start
+// Server name depends on restart status:
+ListMcpResourcesTool(server="jazzsequence")           // After restart
+ListMcpResourcesTool(server="jazzsequence-wordpress") // Before restart
+```
+
+**Configuration**: `~/.config/claude/mcp.json`
+**Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
+
+**Full workflow**: `@docs/workflows/mcp-server.md`
+
+### Test-Driven Development
+
+**ALWAYS write tests BEFORE implementation code** (TDD London School)
+
+**Full workflow**: `@docs/workflows/tdd-workflow.md`
+
+### Reviewer Approval Workflow
+
+**Use Write() tool for approval flags** (auto-approved):
+```typescript
+// After reviewer approves, main agent creates flag:
+const timestamp = await Bash({ command: "date +%s" });
+await Write({
+  file_path: "/Users/chris.reynolds/git/jazz-nextjs/.git/hooks/reviewer-approved",
+  content: timestamp.trim()
+});
+```
+
+**DO NOT use cat/echo for approval** - those require manual approval.
+
+See: `@docs/REVIEWER_WORKFLOW.md`
+
+---
 
 ## File Organization
 
-- NEVER save to root folder — use the directories below
-- Use `/src` for source code files ONLY (no test files)
-- Use `/tests` for ALL test files (*.test.ts, *.spec.ts)
-  - Mirror `/src` structure in `/tests` (e.g., `src/lib/foo.ts` → `tests/lib/foo.test.ts`)
-- Use `/docs` for documentation and markdown files
-- Use `/config` for configuration files
-- Use `/scripts` for utility scripts
-- Use `/examples` for example code
+```
+/src                  # Source code ONLY (no tests)
+/tests                # ALL test files (mirror /src structure)
+/docs                 # Documentation
+/config               # Configuration files
+/scripts              # Utility scripts
+/examples             # Example code
+```
+
+**NEVER save to root folder**
+
+---
+
+## Local Environment
+
+**Available Tools**:
+- `ag` (The Silver Searcher) - Faster grep alternative
+  - Usage: `ag "pattern" path/`
+  - Respects .gitignore automatically
+- `jq` - JSON processor for parsing API responses
+  - Usage: `curl ... | jq '.field'`
+  - Installed and available
+
+**Node.js**: 24.13.0 (matches Pantheon, managed via `.nvmrc`)
+**Package Manager**: npm 11.11.0
+
+---
+
+## Documentation Index
+
+### Core Workflows
+- `@docs/workflows/mcp-server.md` - WordPress MCP server usage (CRITICAL)
+- `@docs/workflows/tdd-workflow.md` - Test-driven development methodology
+- `@docs/REVIEWER_WORKFLOW.md` - Pre-commit enforcement (3-layer validation)
+- `@docs/REVIEWER_SETUP.md` - Reviewer workflow setup guide
+
+### Configuration
+- `@docs/configuration/build-and-test.md` - Build commands & quality checks
+- `@docs/configuration/git-workflow.md` - Commit practices & git safety
+- `@docs/configuration/DEPLOYMENT.md` - Pantheon deployment procedures
+
+### Architecture & Design
+- `@docs/API_CLIENT_DESIGN.md` - WordPress API client architecture
+- `@docs/architecture/SLACK_NOTIFICATIONS.md` - Deployment notifications
+
+### Reference
+- `@docs/TESTING.md` - Complete testing guide
+- `@docs/CONTENT_UPDATES.md` - ISR and content sync strategies
+- `@docs/AI_USAGE.md` - AI tool usage and methodology
+- `@AGENTS.md` - Project-specific agent instructions
+- `@README.md` - Project overview and setup
+
+### Session Notes (Gitignored)
+- `docs/SESSION_NOTES.md` - Current session progress
+- `docs/EOD_SESSION_NOTES_*.md` - End-of-day snapshots
+
+---
+
+## Session Start Checklist
+
+**At the beginning of EVERY session**:
+
+1. **Load core documentation**:
+   - `@AGENTS.md` - Agent instructions
+   - `@docs/REVIEWER_WORKFLOW.md` - Enforcement rules
+   - `@docs/workflows/mcp-server.md` - MCP usage
+
+2. **Verify MCP server connection**:
+   ```typescript
+   ListMcpResourcesTool(server="jazzsequence")
+   // Or: server="jazzsequence-wordpress" if not restarted yet
+   ```
+
+3. **Install pre-commit hooks** (if needed):
+   ```bash
+   ./.githooks/install.sh
+   ```
+
+---
 
 ## Project Architecture
 
-- Follow Domain-Driven Design with bounded contexts
-- Keep files under 500 lines
-- Use typed interfaces for all public APIs
-- Prefer TDD London School (mock-first) for new code
-- Use event sourcing for state changes
-- Ensure input validation at system boundaries
+### Tech Stack
+- **Framework**: Next.js 16.1.6 (Turbopack)
+- **React**: 19.2.4
+- **WordPress**: Headless CMS (jazzsequence.com)
+- **Testing**: Vitest 4.0.18, Playwright 1.58.2
+- **Styling**: Tailwind CSS 3.4
+- **Validation**: Zod schemas with `.passthrough()` for plugin fields
 
-### Project Config
+### Design Patterns
+- Domain-Driven Design with bounded contexts
+- TDD London School (mock-first)
+- Generic API design (eliminates duplication)
+- Event sourcing for state changes
+- Input validation at system boundaries
 
-- **Topology**: hierarchical-mesh
-- **Max Agents**: 15
-- **Memory**: hybrid
-- **HNSW**: Enabled
-- **Neural**: Enabled
+### WordPress Integration
+- **Content Source**: `https://jazzsequence.com/wp-json/wp/v2/`
+- **MCP Server**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
+- **CDN Images**: `sfo2.digitaloceanspaces.com/cdn.jazzsequence/`
+- **ISR**: 3600s revalidation
+- **Rate Limiting**: 10 req/sec, burst of 20
 
-### Design Documentation
+**Custom Post Types**: `gc_game`, `rb_recipe`, `plague-artist`, `movie`, `ab_address`, `media`
 
-**WordPress API Client** (`/docs/API_CLIENT_DESIGN.md`)
-- **Implementation**: `src/lib/wordpress/client.ts`
-- **Tests**: `tests/lib/wordpress/client.test.ts` (75/75 passing)
-- **Architecture**: Generic `fetchPosts(postType, options)` API for all content types
-- **Features**: Zod validation, retry logic, rate limiting, ISR integration
-- **Post Types**: posts, pages, gc_game, rb_recipe, plague-artist, movie, media, ab_address
-- **Key Design**: Ultra-generic API eliminates code duplication, single config per post type
-- **Rate Limiter**: Token bucket (10 req/sec, burst of 20)
-- **Retry Logic**: Exponential backoff with jitter (±20%), 3 retries max
-- **ISR**: Automatic cache tag generation, Next.js integration
+---
 
-**Slack Deployment Notifications** (`/docs/SLACK_NOTIFICATIONS.md`)
-- **Implementation**: `scripts/slack-notify.js`
-- **Tests**: `tests/scripts/slack-notify.test.ts` (12/12 passing)
-- **Trigger**: GitHub Actions workflow after Pantheon deployments
-- **Features**: Block Kit formatting, emoji status indicators, build metrics
-- **Channel**: #firehose (configurable)
-- **Security**: Bot token stored in GitHub secrets, never committed
+## Command Execution Rules
 
-## Build & Test
+### NEVER Use Compound Commands
 
+**WRONG**:
 ```bash
-# Unit tests
-npm test
-
-# Lint
-npm run lint
-
-# Build
-npm run build
-
-# E2E tests (MANDATORY - catches routing conflicts and runtime errors)
-npm run test:e2e
-
-# Test standalone build locally (production mode)
-npm run start:test
+npm test && git add . && git commit  # ❌ Harder to auto-approve
+cmd1 && cmd2 && cmd3                 # ❌ Chains require manual approval
 ```
 
-- **CRITICAL**: ALWAYS run ALL tests before committing (unit + E2E)
-- **CRITICAL**: ALWAYS verify build succeeds before committing
-- **CRITICAL**: E2E tests are MANDATORY (catches routing conflicts that unit tests miss)
-- **CRITICAL**: NEVER commit code that fails tests, E2E tests, or build
-- **CRITICAL**: Fix TypeScript/ESLint errors properly, never whitelist/disable rules
-- Write tests FIRST, then implement code to make tests pass
-- **All FIVE commands must pass before any commit:**
-  1. `npm test` - Unit tests
-  2. `npm run lint` - Linter
-  3. `npm run build` - Build validation
-  4. `npm run test:e2e` - E2E tests (catches Next.js routing conflicts)
-  5. Reviewer agent approval
+**RIGHT**:
+```bash
+npm test                             # ✅ Separate commands
+git add src/file.ts                  # ✅ Auto-approved individually
+git commit -m "message"              # ✅ Clean approval flow
+```
 
-**Why E2E tests are mandatory:**
-- Unit tests validate components in isolation
-- E2E tests validate the entire application runtime
-- Next.js routing conflicts ONLY appear at server runtime
-- Example: "different slug names" error crashes server but passes unit tests
-- Pre-commit hook enforces all validations automatically
+**Why**: Compound commands with `&&` or `;` are harder for permission system to parse and auto-approve. Run commands separately for smooth workflow.
+
+### Use Write() for Approval Flags
+
+**Auto-approved** (use this):
+```typescript
+await Write({
+  file_path: "/path/to/file",
+  content: "content"
+})
+```
+
+**Requires manual approval** (don't use for automation):
+```bash
+cat > file << EOF       # ❌ Requires approval
+echo "content" > file   # ❌ Requires approval
+```
+
+---
 
 ## Deployment
 
-See [DEPLOYMENT.md](/docs/DEPLOYMENT.md) for full deployment guide.
+**Platform**: Pantheon (Next.js hosting)
+**Build**: Standalone mode (required)
+**Environments**: Dev, Test, Live
 
-**Quick deployment commands:**
-```bash
-# Deploy to Test
-git tag pantheon_test_N -a -m "Deploy to Test" && git push origin --tags
+**Before deploying**:
+- [ ] All tests pass
+- [ ] Build succeeds
+- [ ] E2E tests pass
+- [ ] Standalone build tested
+- [ ] No secrets committed
+- [ ] Documentation updated
 
-# Deploy to Live
-git tag pantheon_live_N -a -m "Deploy to Live" && git push origin --tags
+See: `@docs/configuration/DEPLOYMENT.md`
 
-# Monitor deployment
-terminus node:logs:build:list jazz-nextjs.<env>
-```
-
-**Key requirements:**
-- `output: "standalone"` in next.config.js (required for Pantheon)
-- GitHub Application must be installed and authorized
-- Environment variables set in Pantheon dashboard, never committed
-- Test standalone builds locally with `npm run start:test` before deploying
-- Use `error.name` instead of `instanceof` for error checking in production builds
+---
 
 ## Security Rules
 
-- NEVER hardcode API keys, secrets, or credentials in source files
-- NEVER commit .env files or any file containing secrets
-- Always validate user input at system boundaries
-- Always sanitize file paths to prevent directory traversal
-- Run `npx @claude-flow/cli@latest security scan` after security-related changes
+- **NEVER commit**: Secrets, API keys, `.env` files, credentials
+- **ALWAYS validate**: User input at system boundaries
+- **ALWAYS sanitize**: File paths (prevent directory traversal)
+- Run `npx @claude-flow/cli@latest security scan` after security changes
 
-## Concurrency: 1 MESSAGE = ALL RELATED OPERATIONS
+---
 
-- All operations MUST be concurrent/parallel in a single message
-- Use Claude Code's Task tool for spawning agents, not just MCP
-- ALWAYS batch ALL todos in ONE TodoWrite call (5-10+ minimum)
-- ALWAYS spawn ALL agents in ONE message with full instructions via Task tool
-- ALWAYS batch ALL file reads/writes/edits in ONE message
-- ALWAYS batch ALL Bash commands in ONE message
+## Claude Flow V3 Configuration
 
-## Swarm Orchestration
+**Topology**: hierarchical-mesh
+**Max Agents**: 15
+**Memory**: Hybrid (AgentDB with HNSW indexing)
+**Neural**: Enabled
 
-- MUST initialize the swarm using CLI tools when starting complex tasks
-- MUST spawn concurrent agents using Claude Code's Task tool
-- Never use CLI tools alone for execution — Task tool agents do the actual work
-- MUST call CLI tools AND Task tool in ONE message for complex work
+### Key Resources
+- Swarm orchestration: `swarm-orchestration` skill
+- Memory management: `claude-flow-memory` skill
+- GitHub operations: `github:*` skills
 
-### 3-Tier Model Routing (ADR-026)
+See: `@docs/AI_USAGE.md` for full AI tool usage
 
-| Tier | Handler | Latency | Cost | Use Cases |
-|------|---------|---------|------|-----------|
-| **1** | Agent Booster (WASM) | <1ms | $0 | Simple transforms (var→const, add types) — Skip LLM |
-| **2** | Haiku | ~500ms | $0.0002 | Simple tasks, low complexity (<30%) |
-| **3** | Sonnet/Opus | 2-5s | $0.003-0.015 | Complex reasoning, architecture, security (>30%) |
+---
 
-- Always check for `[AGENT_BOOSTER_AVAILABLE]` or `[TASK_MODEL_RECOMMENDATION]` before spawning agents
-- Use Edit tool directly when `[AGENT_BOOSTER_AVAILABLE]`
+## Key Principles
 
-## Swarm Configuration & Anti-Drift
+1. **TDD First**: Tests before implementation (London School)
+2. **MCP First**: Use MCP server to understand WordPress structure
+3. **DRY**: Minimize duplication via generics and abstractions
+4. **YAGNI**: Don't build for hypothetical future requirements
+5. **Documentation**: Keep docs updated with code changes
+6. **Security**: No secrets in code, validate at boundaries
+7. **Quality**: All tests + lint + build must pass before commit
+8. **Commands**: Run separately, avoid `&&` chaining
+9. **Automation**: Use Write() for auto-approved file creation
 
-- ALWAYS use hierarchical topology for coding swarms
-- Keep maxAgents at 6-8 for tight coordination
-- Use specialized strategy for clear role boundaries
-- Use `raft` consensus for hive-mind (leader maintains authoritative state)
-- Run frequent checkpoints via `post-task` hooks
-- Keep shared memory namespace for all agents
+---
 
-```bash
-npx @claude-flow/cli@latest swarm init --topology hierarchical --max-agents 8 --strategy specialized
-```
+## Support & Resources
 
-## Swarm Execution Rules
+- **Documentation**: All detailed docs in `@docs/`
+- **Project Issues**: GitHub Issues
+- **Claude Code Help**: `/help` command
+- **Feedback**: https://github.com/anthropics/claude-code/issues
 
-- ALWAYS use `run_in_background: true` for all agent Task calls
-- ALWAYS put ALL agent Task calls in ONE message for parallel execution
-- After spawning, STOP — do NOT add more tool calls or check status
-- Never poll TaskOutput or check swarm status — trust agents to return
-- When agent results arrive, review ALL results before proceeding
+---
 
-## V3 CLI Commands
-
-### Core Commands
-
-| Command | Subcommands | Description |
-|---------|-------------|-------------|
-| `init` | 4 | Project initialization |
-| `agent` | 8 | Agent lifecycle management |
-| `swarm` | 6 | Multi-agent swarm coordination |
-| `memory` | 11 | AgentDB memory with HNSW search |
-| `task` | 6 | Task creation and lifecycle |
-| `session` | 7 | Session state management |
-| `hooks` | 17 | Self-learning hooks + 12 workers |
-| `hive-mind` | 6 | Byzantine fault-tolerant consensus |
-
-### Quick CLI Examples
-
-```bash
-npx @claude-flow/cli@latest init --wizard
-npx @claude-flow/cli@latest agent spawn -t coder --name my-coder
-npx @claude-flow/cli@latest swarm init --v3-mode
-npx @claude-flow/cli@latest memory search --query "authentication patterns"
-npx @claude-flow/cli@latest doctor --fix
-```
-
-## Available Agents (60+ Types)
-
-### Core Development
-`coder`, `reviewer`, `tester`, `planner`, `researcher`
-
-### Specialized
-`security-architect`, `security-auditor`, `memory-specialist`, `performance-engineer`
-
-### Swarm Coordination
-`hierarchical-coordinator`, `mesh-coordinator`, `adaptive-coordinator`
-
-### GitHub & Repository
-`pr-manager`, `code-review-swarm`, `issue-tracker`, `release-manager`
-
-### SPARC Methodology
-`sparc-coord`, `sparc-coder`, `specification`, `pseudocode`, `architecture`
-
-## Memory Commands Reference
-
-```bash
-# Store (REQUIRED: --key, --value; OPTIONAL: --namespace, --ttl, --tags)
-npx @claude-flow/cli@latest memory store --key "pattern-auth" --value "JWT with refresh" --namespace patterns
-
-# Search (REQUIRED: --query; OPTIONAL: --namespace, --limit, --threshold)
-npx @claude-flow/cli@latest memory search --query "authentication patterns"
-
-# List (OPTIONAL: --namespace, --limit)
-npx @claude-flow/cli@latest memory list --namespace patterns --limit 10
-
-# Retrieve (REQUIRED: --key; OPTIONAL: --namespace)
-npx @claude-flow/cli@latest memory retrieve --key "pattern-auth" --namespace patterns
-```
-
-## Quick Setup
-
-```bash
-claude mcp add claude-flow -- npx -y @claude-flow/cli@latest
-npx @claude-flow/cli@latest daemon start
-npx @claude-flow/cli@latest doctor --fix
-```
-
-## Claude Code vs CLI Tools
-
-- Claude Code's Task tool handles ALL execution: agents, file ops, code generation, git
-- CLI tools handle coordination via Bash: swarm init, memory, hooks, routing
-- NEVER use CLI tools as a substitute for Task tool agents
-
-## Documentation & Commit Practices
-
-### Core Documentation Files (Keep in Memory)
-
-**CRITICAL: Load these files at session start using @ references:**
-- @AGENTS.md - Project-specific agent instructions and reviewer workflow
-- @docs/REVIEWER_WORKFLOW.md - Pre-commit enforcement and validation requirements
-- @docs/REVIEWER_SETUP.md - Step-by-step setup guide for reviewer workflow
-- @docs/API_CLIENT_DESIGN.md - WordPress API client architecture
-- @docs/DEPLOYMENT.md - Pantheon deployment procedures
-- @docs/TESTING.md - TDD methodology and testing standards
-
-### Documentation Updates
-- ALWAYS update CLAUDE.md when workflow or configuration changes
-- ALWAYS update relevant documentation files when making architectural changes
-- Keep documentation in sync with code changes
-- Document Claude Flow usage in @docs/AI_USAGE.md
-- **NEVER commit session notes** - these are working files only:
-  - `docs/SESSION_NOTES.md` (gitignored)
-  - `docs/EOD_SESSION_NOTES_*.md` (gitignored)
-  - Any `**/session-notes*.md` files (gitignored)
-  - Session notes track progress during a session but should not be in version control
-
-### Git Commit Practices
-
-**Pre-commit Validation (MANDATORY):**
-- A pre-commit hook validates reviewer agent approval before allowing commits
-- Spawn reviewer agent BEFORE staging files (see AGENTS.md for full workflow)
-- Agent runs tests/lint and creates approval flag if all checks pass
-- Approval expires after 5 minutes (prevents stale approvals)
-- Hook validates approval flag at commit time - blocks commits without it
-- This ensures comprehensive oversight of all 26 behavioral requirements
-
-**Commit Standards:**
-- Make incremental commits as work progresses
-- Each logical unit of work should be committed separately
-- **NEVER amend commits** - always create new commits instead (amended commits require force push which is forbidden)
-- Co-author commits with Claude (not Claude Flow):
-  ```
-  Co-Authored-By: Claude <claude@anthropic.com>
-  ```
-- First commit may be larger, subsequent commits should be focused and small
-- Never commit secrets, .env files, or credentials
-
-**Git Command Workflow (IMPORTANT):**
-- NEVER chain git commands with `&&` or `;`
-- Run `git add` in one command
-- Run `git commit` in a separate command
-- Run tests in separate command(s) before git operations
-- Example correct workflow:
-  ```bash
-  npm test -- --run
-  npm run lint
-  git add src/file.ts
-  git commit -m "message"
-  ```
-- Example WRONG (do not do this):
-  ```bash
-  npm test && git add . && git commit -m "message"  # ❌ Don't chain
-  ```
-
-**Allowed Prompts (Project-Specific):**
-Configured in `.claude/settings.json` (project-specific, gitignored):
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(git commit *)",
-      "Bash(git add *)"
-    ]
-  }
-}
-```
-
-Both `git add` and `git commit` are auto-approved for smooth TDD workflow in this project only.
-
-## Support
-
-- Documentation: https://github.com/ruvnet/claude-flow
-- Issues: https://github.com/ruvnet/claude-flow/issues
+**Last Updated**: 2026-03-14
+**Version**: 1.0.0 (Digest format)
