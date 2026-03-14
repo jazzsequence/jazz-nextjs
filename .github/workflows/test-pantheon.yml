@@ -112,6 +112,14 @@ jobs:
             BUILDS_RESPONSE=$(curl -s "https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/${{ steps.env.outputs.env_name }}/build/list?limit=10" \
               -H "X-Pantheon-Session: $SESSION_TOKEN")
 
+            # Validate JSON response before parsing
+            if ! echo "$BUILDS_RESPONSE" | jq empty 2>/dev/null; then
+              echo "⚠️  Invalid JSON response from Pantheon API"
+              echo "Response: $BUILDS_RESPONSE"
+              sleep $SLEEP_TIME
+              continue
+            fi
+
             # Find build matching this commit SHA
             BUILD=$(echo "$BUILDS_RESPONSE" | jq -r ".[] | select(.commit == \"$COMMIT_SHA\")")
 
