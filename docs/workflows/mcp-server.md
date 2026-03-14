@@ -9,17 +9,13 @@ The MCP (Model Context Protocol) server provides AI-native access to WordPress c
 ## Configuration
 
 **Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
-**MCP Server**: `jazzsequence` (configured in `~/.config/claude/mcp.json`)
+**MCP Server**: `jazzsequence-wordpress` (configured in `~/.config/claude/mcp.json`)
 **Proxy**: `~/.config/claude/mcp-wordpress-http-proxy.js`
 
 ## Status Check
 
 ```typescript
 // Verify MCP server is connected
-// After Claude Code restart, use:
-ListMcpResourcesTool(server="jazzsequence")
-
-// If not restarted yet, may appear as:
 ListMcpResourcesTool(server="jazzsequence-wordpress")
 ```
 

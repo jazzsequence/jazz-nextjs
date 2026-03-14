@@ -42,9 +42,7 @@ See: `@docs/configuration/build-and-test.md`
 
 ```typescript
 // Verify MCP connection at session start
-// Server name depends on restart status:
-ListMcpResourcesTool(server="jazzsequence")           // After restart
-ListMcpResourcesTool(server="jazzsequence-wordpress") // Before restart
+ListMcpResourcesTool(server="jazzsequence-wordpress")
 ```
 
 **Configuration**: `~/.config/claude/mcp.json`
@@ -147,8 +145,7 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 
 2. **Verify MCP server connection**:
    ```typescript
-   ListMcpResourcesTool(server="jazzsequence")
-   // Or: server="jazzsequence-wordpress" if not restarted yet
+   ListMcpResourcesTool(server="jazzsequence-wordpress")
    ```
 
 3. **Install pre-commit hooks** (if needed):
