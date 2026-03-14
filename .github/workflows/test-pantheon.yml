@@ -19,7 +19,6 @@ on:
 
 env:
   PANTHEON_SITE_NAME: jazz-nextjs15
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true  # Opt into Node.js 24 for GitHub Actions
 
 permissions:
   contents: write  # Required for GitHub Pages deployment
@@ -34,10 +33,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -60,7 +59,7 @@ jobs:
           echo "base_url=${BASE_URL}" >> $GITHUB_OUTPUT
 
       - name: Setup PHP (required for Terminus)
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@v3
         with:
           php-version: '8.4'
 
@@ -216,7 +215,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: playwright-report
           path: |
@@ -226,7 +225,7 @@ jobs:
 
       - name: Deploy Playwright report to GitHub Pages
         if: always()
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@v5
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./playwright-report
