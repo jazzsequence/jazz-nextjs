@@ -9,8 +9,9 @@ The MCP (Model Context Protocol) server provides AI-native access to WordPress c
 ## Configuration
 
 **Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
-**MCP Server**: `jazzsequence-wordpress` (configured in `~/.config/claude/mcp.json`)
-**Proxy**: `~/.config/claude/mcp-wordpress-http-proxy.js`
+**MCP Server**: `jazzsequence-wordpress`
+**Config Location**: `~/.claude.json` (project `mcpServers` section)
+**Proxy Script**: `~/.config/claude/mcp-wordpress-http-proxy.js`
 
 ## Status Check
 
@@ -130,8 +131,8 @@ const games = await fetchPosts('gc_game', { perPage: 10 })
 
 ### MCP Server Not Available
 
-1. Check `~/.config/claude/mcp.json` exists
-2. Verify proxy script: `~/.config/claude/mcp-wordpress-http-proxy.js`
+1. Check `~/.claude.json` has jazzsequence-wordpress in project's `mcpServers` section
+2. Verify proxy script exists: `~/.config/claude/mcp-wordpress-http-proxy.js`
 3. Test manually:
    ```bash
    export WORDPRESS_MCP_ENDPOINT="https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server"

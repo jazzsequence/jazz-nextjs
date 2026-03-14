@@ -45,7 +45,7 @@ See: `@docs/configuration/build-and-test.md`
 ListMcpResourcesTool(server="jazzsequence-wordpress")
 ```
 
-**Configuration**: `~/.config/claude/mcp.json`
+**Configuration**: `~/.claude.json` (project mcpServers section)
 **Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
 
 **Full workflow**: `@docs/workflows/mcp-server.md`
