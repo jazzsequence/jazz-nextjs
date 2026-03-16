@@ -36,17 +36,19 @@ npm run start:test    # Test standalone build
 
 See: `@docs/configuration/build-and-test.md`
 
-### WordPress MCP Server (CRITICAL)
+### MCP Servers (CRITICAL)
 
-**ALWAYS use MCP server FIRST** for understanding jazzsequence.com content structure.
+Two MCP servers are registered and available:
 
-```typescript
-// Verify MCP connection at session start
-ListMcpResourcesTool(server="jazzsequence-wordpress")
-```
+**1. `jazzsequence-wordpress`** — 66 tools for live WordPress CRUD and discovery.
+**ALWAYS use this FIRST** for understanding jazzsequence.com content structure.
 
-**Configuration**: `~/.config/claude/mcp.json` (global, shared across all projects)
-**Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
+- **Configuration**: `.mcp.json` (project-level — do NOT also add to global `~/.config/claude/mcp.json`)
+- **Proxy**: `~/.config/claude/mcp-wordpress-http-proxy.js`
+- **Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
+
+**2. `mcp__github__*`** — Native GitHub operations (PRs, issues, file reads, code search).
+Prefer these over `gh` CLI for reading remote files and creating PRs/issues.
 
 **Full workflow**: `@docs/workflows/mcp-server.md`
 
