@@ -36,16 +36,15 @@ test.describe('Games Page', () => {
 
   test('should render game cards', async ({ page }) => {
     await page.goto('/games')
-    await page.waitForLoadState('domcontentloaded')
+    // networkidle ensures ISR on-demand generation completes before asserting
+    await page.waitForLoadState('networkidle')
 
-    // There should be at least one game card (button) in the grid
+    // Grid is always rendered (even empty state); extended timeout for ISR cold-start
     const grid = page.getByTestId('games-grid')
+    await expect(grid).toBeVisible({ timeout: 20000 })
 
-    // Wait for grid to appear (ISR page, data comes from server)
-    await expect(grid).toBeVisible()
-
-    // The count paragraph should show games
-    const countText = page.locator('p').filter({ hasText: /game/ })
+    // The count paragraph (inside games-grid) should show games
+    const countText = grid.locator('p').filter({ hasText: /\d+ game/ })
     await expect(countText).toBeVisible()
   })
 
