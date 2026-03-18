@@ -121,11 +121,17 @@ FILES TO REVIEW:
 - Run npm test -- --run (verify all tests pass)
 - Run npm run lint (verify lint clean)
 - Run npm run build (verify build succeeds)
+- Run npm run test:e2e (verify E2E tests pass) ← MANDATORY, run LAST
 - Check git status (modified/new files)
 - Review all file changes
 - Verify documentation updates
 - Check package.json for license compatibility if dependencies changed
-- **NEW**: Check if user-facing changes (app/, src/components/) have E2E tests
+- Check if user-facing changes (app/, src/components/) have E2E tests
+
+**CRITICAL SEQUENCING RULE:**
+Run all 4 commands sequentially. Do NOT use background tasks.
+Do NOT give a verdict until you have seen the output of ALL 4 commands.
+If E2E tests are still running, WAIT. A verdict without E2E results is invalid.
 
 DELIVERABLE:
 Provide clear APPROVE or REJECT decision with specific findings for ALL categories.
