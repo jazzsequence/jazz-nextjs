@@ -22,6 +22,15 @@ vi.mock('@/lib/wordpress/client', () => ({
       featured_image: null,
     } satisfies GCGame,
   ]),
+  fetchMenuItems: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('@/components/Navigation', () => ({
+  default: () => <nav data-testid="navigation" />,
+}))
+
+vi.mock('@/components/Footer', () => ({
+  default: () => <footer data-testid="footer" />,
 }))
 
 vi.mock('next/image', () => ({
@@ -48,5 +57,17 @@ describe('GamesPage', () => {
     const Page = await GamesPage()
     const { container } = render(Page)
     expect(container.querySelector('[data-testid="games-grid"]')).toBeTruthy()
+  })
+
+  it('renders navigation', async () => {
+    const Page = await GamesPage()
+    render(Page)
+    expect(screen.getByTestId('navigation')).toBeTruthy()
+  })
+
+  it('renders footer', async () => {
+    const Page = await GamesPage()
+    render(Page)
+    expect(screen.getByTestId('footer')).toBeTruthy()
   })
 })

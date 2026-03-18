@@ -131,9 +131,18 @@ export function GamesGrid({ games }: GamesGridProps) {
       {filtered.length === 0 ? (
         <p className="py-16 text-center text-gray-400">No games match the current filters.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          {filtered.map((game) => (
-            <GameCard key={game.id} game={game} onClick={setActiveGame} />
+        <div
+          key={`${selectedAttribute}-${difficulty}-${players}`}
+          className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+        >
+          {filtered.map((game, i) => (
+            <div
+              key={game.id}
+              className="game-card-appear"
+              style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
+            >
+              <GameCard game={game} onClick={setActiveGame} />
+            </div>
           ))}
         </div>
       )}
