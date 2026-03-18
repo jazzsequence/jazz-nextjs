@@ -23,6 +23,7 @@ import {
   WPAddressesSchema,
   WPMenusSchema,
   WPMenuItemsSchema,
+  GCGamesSchema,
 } from './schemas'
 import type {
   WPPost,
@@ -37,12 +38,16 @@ import type {
   WPMenu,
   WPMenuItem,
   WPAPIListResponse,
+  GCGame,
 } from './types'
 
 // ===== Configuration =====
 
 const API_BASE_URL =
   process.env.WORDPRESS_API_URL || 'https://jazzsequence.com/wp-json/wp/v2'
+
+const GC_API_BASE_URL =
+  process.env.GC_API_URL || 'https://jazzsequence.com/wp-json/gc/v1'
 
 const WORDPRESS_USERNAME = process.env.WORDPRESS_USERNAME
 const WORDPRESS_APP_PASSWORD = process.env.WORDPRESS_APP_PASSWORD
@@ -827,5 +832,37 @@ export async function fetchMenuItems(
       statusCode,
       'menu-items'
     )
+  }
+}
+
+// ===== Games Collector Functions =====
+
+/**
+ * Fetch all published games from the custom public REST endpoint.
+ * No authentication required. Fetches up to 500 games in a single request.
+ *
+ * @see GET /wp-json/gc/v1/games
+ */
+export async function fetchGames(
+  options: Pick<FetchOptions, 'isr' | 'cache'> = {}
+): Promise<GCGame[]> {
+  const { isr, cache } = options
+  const url = `${GC_API_BASE_URL}/games?per_page=500&orderby=title&order=ASC`
+
+  const isrOptions = cache || isr || { revalidate: 3600 }
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = ['gc_game', 'games']
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    return await fetchAndValidate(url, GCGamesSchema, cacheOptions)
+  } catch (error) {
+    if (error instanceof WPValidationError) {
+      throw error
+    }
+    const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
+    throw new WPAPIError('Failed to fetch games', statusCode, 'gc/v1/games')
   }
 }
