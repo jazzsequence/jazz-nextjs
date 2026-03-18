@@ -234,6 +234,35 @@ export const WPAPIErrorSchema = z.object({
   }),
 })
 
+// Games Collector custom endpoint schema (GET /wp-json/gc/v1/games)
+// This is a flat, purpose-built response — not the standard WP REST shape.
+export const GCFeaturedImageSchema = z.object({
+  id: z.number(),
+  url: z.string(),
+  width: z.number().nullable(),
+  height: z.number().nullable(),
+  alt: z.string(),
+}).nullable()
+
+export const GCGameSchema = z.object({
+  id: z.number(),
+  slug: z.string(),
+  date: z.string(),
+  title: WPRenderedSchema,
+  min_players: z.number().nullable(),
+  max_players: z.number().nullable(),
+  time: z.string().nullable(),
+  age: z.number().nullable(),
+  difficulty: z.string().nullable(),
+  url: z.string().nullable(),
+  bgg_id: z.number().nullable(),
+  attributes: z.array(z.string()),
+  attribute_slugs: z.array(z.string()),
+  featured_image: GCFeaturedImageSchema,
+})
+
+export const GCGamesSchema = z.array(GCGameSchema)
+
 // Array response schemas
 export const WPPostsSchema = z.array(WPPostSchema)
 export const WPPagesSchema = z.array(WPPageSchema)

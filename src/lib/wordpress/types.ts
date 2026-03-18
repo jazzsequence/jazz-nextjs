@@ -183,6 +183,32 @@ export interface WPAddress extends WPBaseContent {
   }
 }
 
+// Games Collector custom endpoint types (GET /wp-json/gc/v1/games)
+export interface GCFeaturedImage {
+  id: number
+  url: string
+  width: number | null
+  height: number | null
+  alt: string
+}
+
+export interface GCGame {
+  id: number
+  slug: string
+  date: string
+  title: { rendered: string }
+  min_players: number | null
+  max_players: number | null
+  time: string | null
+  age: number | null
+  difficulty: string | null
+  url: string | null
+  bgg_id: number | null
+  attributes: string[]
+  attribute_slugs: string[]
+  featured_image: GCFeaturedImage | null
+}
+
 // Category
 export interface WPCategory {
   id: number
