@@ -375,7 +375,7 @@ See Layer 1 implementation above.
 ### Can approval file be forged?
 
 **Yes**, but:
-- File is in `.git/hooks/` (not committed)
+- File is at project root (`reviewer-approved`) and gitignored — never committed
 - Only affects local commits
 - Still blocked if commit attempted >5 minutes later
 - Pre-commit hook also validates (two checks)
