@@ -60,3 +60,4 @@ next-env.d.ts
 secrets.json
 # next-agents-md
 .next-docs/
+reviewer-approved

@@ -28,7 +28,7 @@ if (cmd.includes('git commit')) {
   var userCommit = process.env.USER_COMMIT === '1';
 
   if (!userCommit) {
-    var approvalFile = path.join(process.cwd(), '.git/hooks/reviewer-approved');
+    var approvalFile = path.join(process.cwd(), 'reviewer-approved');
 
     // Check if approval file exists
     if (!fs.existsSync(approvalFile)) {
@@ -211,7 +211,7 @@ USER_COMMIT=1 git commit -m "test"
 
 ```bash
 # Create approval flag manually (simulating reviewer)
-echo "$(date +%s)" > .git/hooks/reviewer-approved
+echo "$(date +%s)" > reviewer-approved
 
 # Try commit
 git commit -m "test"
@@ -226,7 +226,7 @@ git commit -m "test"
 
 ```bash
 # Create old approval (6 minutes ago)
-echo "$(($(date +%s) - 360))" > .git/hooks/reviewer-approved
+echo "$(($(date +%s) - 360))" > reviewer-approved
 
 # Try commit
 git commit -m "test"

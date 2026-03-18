@@ -190,7 +190,7 @@ const timestamp = await Bash({ command: "date +%s" });
 
 // Write approval file (auto-approved with Write(*) permission)
 await Write({
-  file_path: "/Users/chris.reynolds/git/jazz-nextjs/.git/hooks/reviewer-approved",
+  file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
   content: timestamp.trim()
 });
 ```
