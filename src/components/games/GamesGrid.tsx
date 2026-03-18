@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { GCGame } from '@/lib/wordpress/types'
 import { GameCard } from './GameCard'
 import { GameModal } from './GameModal'
@@ -131,20 +132,22 @@ export function GamesGrid({ games }: GamesGridProps) {
       {filtered.length === 0 ? (
         <p className="py-16 text-center text-gray-400">No games match the current filters.</p>
       ) : (
-        <div
-          key={`${selectedAttribute}-${difficulty}-${players}`}
-          className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
-        >
-          {filtered.map((game, i) => (
-            <div
-              key={game.id}
-              className="game-card-appear"
-              style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
-            >
-              <GameCard game={game} onClick={setActiveGame} />
-            </div>
-          ))}
-        </div>
+        <motion.div layout className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+          <AnimatePresence mode="popLayout">
+            {filtered.map((game) => (
+              <motion.div
+                key={game.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+              >
+                <GameCard game={game} onClick={setActiveGame} />
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {/* Modal */}
