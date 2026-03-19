@@ -94,9 +94,29 @@ export function GreetingClient({ variants, audiences, serverCountry, greetingPar
   const sanitizedContent = DOMPurify.sanitize(variant.content);
 
   return (
-    <section>
-      <h1>{variant.heading}</h1>
-      <div dangerouslySetInnerHTML={{ __html: sanitizedContent }} />
+    <section
+      data-testid="greeting-card"
+      className="relative rounded-xl overflow-hidden border border-brand-border mb-12"
+      style={{ background: 'linear-gradient(135deg, #0d0d1a 0%, #1a0d2e 40%, #0d1a2e 100%)' }}
+    >
+      {/* Retrowave grid overlay */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: 'linear-gradient(#2a2a4a33 1px, transparent 1px), linear-gradient(90deg, #2a2a4a33 1px, transparent 1px)',
+          backgroundSize: '2rem 2rem',
+        }}
+      />
+      <div className="relative px-8 py-12 sm:px-12">
+        <h1 className="font-heading text-brand-text text-4xl sm:text-5xl font-bold mb-4 leading-tight">
+          {variant.heading}
+        </h1>
+        <div
+          className="text-brand-text-sub text-lg leading-relaxed max-w-2xl"
+          dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+        />
+      </div>
     </section>
   );
 }

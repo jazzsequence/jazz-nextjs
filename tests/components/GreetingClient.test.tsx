@@ -192,6 +192,22 @@ describe('GreetingClient', () => {
     });
   });
 
+  describe('featured card presentation', () => {
+    it('renders inside a featured card wrapper', () => {
+      vi.mocked(matchAudiences).mockReturnValue([]);
+
+      const { container } = render(
+        <GreetingClient
+          variants={mockVariants}
+          audiences={mockAudiences}
+          serverCountry={undefined}
+        />
+      )
+
+      expect(container.querySelector('[data-testid="greeting-card"]')).toBeTruthy()
+    })
+  })
+
   describe('empty data handling', () => {
     it('should show default fallback when no variants', () => {
       const { container } = render(
