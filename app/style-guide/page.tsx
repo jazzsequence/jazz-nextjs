@@ -476,7 +476,7 @@ export default function StyleGuidePage() {
                   }} />
                   <div style={{ position: 'absolute', bottom: '0.75rem', left: '0.75rem', right: '0.75rem' }}>
                     <div style={{ ...t.eyebrow, display: 'block', marginBottom: '0.25rem' }}>Music</div>
-                    <div style={{ ...t.h2, fontSize: '0.9375rem', lineHeight: 1.3 }}>teh s3quence 016</div>
+                    <div style={{ ...t.h3, fontSize: '0.9375rem', lineHeight: 1.3 }}>teh s3quence 016</div>
                   </div>
                 </div>
                 <div style={{ padding: '0.875rem', background: c.surface }}>
@@ -498,7 +498,7 @@ export default function StyleGuidePage() {
                 }} />
                 <div style={{ position: 'absolute', inset: 0, padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                   <div style={{ ...t.eyebrow, display: 'block', marginBottom: '0.375rem' }}>Featured</div>
-                  <h3 style={{ ...t.h2, fontSize: '1.125rem', margin: '0 0 0.75rem' }}>Hero Realms</h3>
+                  <h3 style={{ ...t.h3, fontSize: '1.125rem', margin: '0 0 0.75rem' }}>Hero Realms</h3>
                   <button style={{ background: c.magenta, color: '#0d0d1a', border: 'none', borderRadius: '0.375rem', padding: '0.375rem 0.875rem', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content' }}>
                     View details
                   </button>
