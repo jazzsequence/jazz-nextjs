@@ -108,7 +108,8 @@ test.describe('Greeting Component', () => {
 
       // Tab through page - greeting should be reachable
       await page.keyboard.press('Tab');
-      const activeElement = page.locator(':focus');
+      // Use .first() to avoid strict-mode violation from Next.js dev portal injecting a focusable element
+      const activeElement = page.locator(':focus').first();
 
       // Should be able to navigate the page
       await expect(activeElement).toBeVisible();

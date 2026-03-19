@@ -5,7 +5,7 @@ test.describe('Individual Post Page', () => {
 
   // Get a real post slug before running tests
   test.beforeAll(async ({ request }) => {
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+    const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
     const response = await request.get(`${baseUrl}/`);
     const html = await response.text();
 

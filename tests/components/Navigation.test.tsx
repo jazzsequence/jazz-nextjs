@@ -239,6 +239,37 @@ describe('Navigation', () => {
     });
   });
 
+  describe('HTML entity decoding', () => {
+    it('decodes numeric HTML entities in menu item titles', () => {
+      const itemsWithEntities: WPMenuItem[] = [
+        {
+          id: 10,
+          title: { rendered: 'TTRPG Social Contract &#038; Safety Tools' },
+          url: 'https://example.com/ttrpg',
+          attr_title: '', description: '', type: 'custom', type_label: 'Custom Link',
+          object: 'custom', object_id: 0, parent: 0, menu_order: 1, target: '', classes: [],
+        },
+      ]
+      render(<Navigation menuItems={itemsWithEntities} />)
+      expect(screen.getByText('TTRPG Social Contract & Safety Tools')).toBeTruthy()
+      expect(screen.queryByText('TTRPG Social Contract &#038; Safety Tools')).toBeNull()
+    })
+
+    it('decodes &amp; named entities in menu item titles', () => {
+      const itemsWithEntities: WPMenuItem[] = [
+        {
+          id: 11,
+          title: { rendered: 'D&amp;D Battle Tracker' },
+          url: 'https://example.com/dnd',
+          attr_title: '', description: '', type: 'custom', type_label: 'Custom Link',
+          object: 'custom', object_id: 0, parent: 0, menu_order: 2, target: '', classes: [],
+        },
+      ]
+      render(<Navigation menuItems={itemsWithEntities} />)
+      expect(screen.getByText('D&D Battle Tracker')).toBeTruthy()
+    })
+  })
+
   describe('empty state', () => {
     it('should handle empty menu items array', () => {
       render(<Navigation menuItems={[]} />);

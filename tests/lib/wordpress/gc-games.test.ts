@@ -63,7 +63,7 @@ describe('GCGameSchema', () => {
   })
 
   it('rejects missing required id', () => {
-    const { id: _id, ...withoutId } = mockGame
+    const withoutId = Object.fromEntries(Object.entries(mockGame).filter(([k]) => k !== 'id'))
     const result = GCGameSchema.safeParse(withoutId)
     expect(result.success).toBe(false)
   })

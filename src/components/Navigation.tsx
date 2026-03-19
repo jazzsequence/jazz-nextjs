@@ -4,6 +4,17 @@ import Link from 'next/link';
 import { transformMenuUrl } from '@/lib/url-transform';
 import type { WPMenuItem } from '@/lib/wordpress/types';
 
+/** Decode HTML entities (e.g. &#038; → &) in menu item titles from the WordPress API. */
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+}
+
 interface NavigationProps {
   menuItems?: WPMenuItem[];
   isLoading?: boolean;
@@ -78,7 +89,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
         {...(linkTarget && { target: linkTarget })}
         {...(linkRel && { rel: linkRel })}
       >
-        {item.title.rendered}
+        {decodeHtmlEntities(item.title.rendered)}
         {hasChildren && !isChild && (
           <svg
             className="inline-block w-4 h-4 ml-1"
