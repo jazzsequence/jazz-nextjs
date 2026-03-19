@@ -524,7 +524,7 @@ export default function StyleGuidePage() {
               }} />
               <div style={{ position: 'relative' }}>
                 <div style={{ ...t.eyebrow, display: 'block', marginBottom: '0.5rem' }}>Featured</div>
-                <h2 style={{ ...t.h2, marginBottom: '0.5rem' }}>teh s3quence 016</h2>
+                <h2 style={{ ...t.h3, marginBottom: '0.5rem' }}>teh s3quence 016</h2>
                 <p style={{ ...t.body, marginBottom: '1rem', maxWidth: '40ch' }}>
                   Spring 2012 mix — tracks that hint of the Summer to come.
                 </p>
