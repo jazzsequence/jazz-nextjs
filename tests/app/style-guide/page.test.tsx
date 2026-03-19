@@ -29,4 +29,16 @@ describe('StyleGuidePage', () => {
     expect(screen.getByRole('navigation', { name: /main navigation/i })).toBeTruthy()
     expect(screen.getAllByText('jazzsequence').length).toBeGreaterThanOrEqual(2)
   })
+
+  it('renders Font Awesome icon classes in the footer social links', () => {
+    const { container } = render(<StyleGuidePage />)
+    // Check for FA icon elements in the footer
+    const faIcons = container.querySelectorAll('i[class*="fa-"]')
+    expect(faIcons.length).toBeGreaterThan(0)
+  })
+
+  it('renders the image overlay section', () => {
+    render(<StyleGuidePage />)
+    expect(screen.getByText(/image overlay/i)).toBeTruthy()
+  })
 })
