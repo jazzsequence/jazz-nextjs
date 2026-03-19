@@ -2,21 +2,56 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Design tokens ─────────────────────────────────────────────────────────── */
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Colors */
+  --color-bg:           #0d0d1a;
+  --color-surface:      #13132b;
+  --color-surface-high: #1c1c3a;
+  --color-border:       #2a2a4a;
+  --color-text:         #f0eeff;
+  --color-text-sub:     #c4c0e0;
+  --color-muted:        #a09abb;
+  --color-cyan:         #00e5cc;
+  --color-magenta:      #ff2d78;
+  --color-purple:       #9d5cff;
+  --color-header:       #0a0a18;
+
+  /* Typography */
+  --font-mono:    "Victor Mono", monospace;
+  --font-body:    "Space Grotesk", system-ui, sans-serif;
+  --font-heading: "Geist Sans", system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ── Base styles ────────────────────────────────────────────────────────────── */
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  line-height: 1.75;
+}
+
+h1, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+}
+
+h2 {
+  font-family: var(--font-mono);
+}
+
+code, kbd, pre, samp {
+  font-family: var(--font-mono);
+}
+
+/* ── Link defaults ──────────────────────────────────────────────────────────── */
+
+a {
+  color: var(--color-cyan);
+}
+
+a:hover {
+  color: var(--color-magenta);
 }
