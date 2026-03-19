@@ -52,6 +52,13 @@ describe('PostCard', () => {
     expect(link).toHaveAttribute('href', '/posts/test-post');
   });
 
+  it('renders with dark brand surface (not white)', () => {
+    const { container } = render(<PostCard post={mockPost} />);
+    const article = container.querySelector('article');
+    expect(article?.className).toContain('bg-brand-surface');
+    expect(article?.className).not.toContain('bg-white');
+  });
+
   it('should handle missing excerpt gracefully', () => {
     const postWithoutExcerpt: WPPost = {
       ...mockPost,

@@ -69,7 +69,7 @@ describe('Pagination', () => {
 
       const prevButton = screen.getByRole('link', { name: /previous/i });
       expect(prevButton).toHaveAttribute('aria-disabled', 'true');
-      expect(prevButton).toHaveClass('pointer-events-none', 'opacity-50');
+      expect(prevButton).toHaveClass('pointer-events-none', 'opacity-40');
     });
 
     it('should disable Next button on last page', () => {
@@ -77,7 +77,7 @@ describe('Pagination', () => {
 
       const nextButton = screen.getByRole('link', { name: /next/i });
       expect(nextButton).toHaveAttribute('aria-disabled', 'true');
-      expect(nextButton).toHaveClass('pointer-events-none', 'opacity-50');
+      expect(nextButton).toHaveClass('pointer-events-none', 'opacity-40');
     });
 
     it('should not disable Previous button when not on first page', () => {
@@ -142,6 +142,20 @@ describe('Pagination', () => {
       // Should have ellipsis before page 8
       const ellipsis = screen.getAllByText('…');
       expect(ellipsis.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Design system styling', () => {
+    it('styles current page with brand cyan', () => {
+      const { container } = render(<Pagination currentPage={2} totalPages={5} basePath="/posts" />);
+      const currentLink = container.querySelector('a[aria-current="page"]');
+      expect(currentLink?.className).toContain('bg-brand-cyan');
+    });
+
+    it('styles inactive pages with brand surface colors (not white)', () => {
+      const { container } = render(<Pagination currentPage={2} totalPages={5} basePath="/posts" />);
+      const page1Link = container.querySelector('a[aria-label="Go to page 1"]');
+      expect(page1Link?.className).not.toContain('bg-white');
     });
   });
 

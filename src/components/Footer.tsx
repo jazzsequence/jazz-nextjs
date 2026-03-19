@@ -1,3 +1,5 @@
+import { getBuildInfo } from '@/lib/build-info'
+
 const SOCIAL_LINKS = [
   { label: 'Personal site',  fa: 'fa-solid fa-link',       href: 'https://chrisreynolds.io' },
   { label: 'Newsletter',     fa: 'fa-solid fa-envelope',   href: 'https://us1.campaign-archive.com/home/?u=4085972eca88b58d063f1b9a5&id=85460dd934' },
@@ -15,12 +17,49 @@ const SOCIAL_LINKS = [
   { label: 'Etsy',           fa: 'fa-brands fa-etsy',      href: 'https://possibleoctopus.com' },
 ]
 
-export default function Footer() {
+export default async function Footer() {
   const currentYear = new Date().getFullYear()
+
+  const buildInfo = await getBuildInfo().catch(() => null)
 
   return (
     <footer className="bg-brand-header border-t border-brand-border mt-16">
       <div className="max-w-7xl mx-auto px-6 py-8">
+
+        {/* Fediverse + repo section */}
+        <div className="flex flex-wrap items-start justify-between gap-6 mb-6 pb-6 border-b border-brand-border">
+
+          {/* Fediverse / ActivityPub */}
+          <div>
+            <p className="font-mono text-brand-cyan text-xs uppercase tracking-widest mb-1">
+              Fediverse
+            </p>
+            <a
+              href="https://mstdn.social/@jazzsequence"
+              className="font-mono text-brand-text-sub text-sm hover:text-brand-cyan transition-colors no-underline"
+              target="_blank"
+              rel="me noopener noreferrer"
+            >
+              @jazzsequence@mstdn.social
+            </a>
+          </div>
+
+          {/* Source repo */}
+          <div>
+            <p className="font-mono text-brand-cyan text-xs uppercase tracking-widest mb-1">
+              This site
+            </p>
+            <a
+              href="https://github.com/jazzsequence/jazz-nextjs"
+              className="font-mono text-brand-text-sub text-sm hover:text-brand-cyan transition-colors no-underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              github.com/jazzsequence/jazz-nextjs
+            </a>
+          </div>
+
+        </div>
 
         {/* Social links */}
         <div className="flex justify-end flex-wrap gap-3 mb-4">
@@ -40,13 +79,20 @@ export default function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="flex justify-between items-center pt-4 border-t border-brand-border">
+        <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-brand-border">
           <span className="font-mono font-bold text-brand-cyan text-sm">
             jazzsequence
           </span>
-          <span className="font-heading text-brand-muted text-sm">
-            &copy; {currentYear} Chris Reynolds
-          </span>
+          <div className="flex items-center gap-4">
+            {buildInfo && (
+              <span className="font-mono text-brand-muted text-xs">
+                {new Date(buildInfo.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver', month: 'short', day: 'numeric', year: 'numeric' })} · {buildInfo.commitShort}
+              </span>
+            )}
+            <span className="font-heading text-brand-muted text-sm">
+              &copy; {currentYear} Chris Reynolds
+            </span>
+          </div>
         </div>
 
       </div>

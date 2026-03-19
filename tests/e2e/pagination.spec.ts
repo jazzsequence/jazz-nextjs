@@ -66,7 +66,8 @@ test.describe('Pagination Component', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    const nextButton = page.locator('a:has-text("Next")');
+    // Use aria-label to avoid matching footer links (e.g. github.com/jazz-nextjs)
+    const nextButton = page.locator('a[aria-label="Go to next page"]');
     const exists = await nextButton.count() > 0;
 
     if (exists) {

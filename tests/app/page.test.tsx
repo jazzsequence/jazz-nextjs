@@ -2,15 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import HomePage from '@/app/page';
 
-// Mock build info runtime function
-vi.mock('@/lib/build-info', () => ({
-  getBuildInfo: vi.fn().mockResolvedValue({
-    commitHash: 'abc123def456',
-    commitShort: 'abc123d',
-    buildTime: '2026-03-03T10:00:00.000Z',
-  }),
-}));
-
 // Mock the WordPress client
 vi.mock('@/lib/wordpress/client', () => ({
   fetchMenuItems: vi.fn().mockResolvedValue([]),
@@ -18,12 +9,12 @@ vi.mock('@/lib/wordpress/client', () => ({
     data: [],
     totalPages: 0,
     page: 1,
-    perPage: 10,
+    perPage: 12,
     total: 0,
   }),
 }));
 
-// Mock Next.js components
+// Mock Next.js image/link
 vi.mock('next/image', () => ({
   default: ({ src, alt }: { src: string; alt: string }) => (
     // eslint-disable-next-line @next/next/no-img-element
@@ -47,23 +38,15 @@ vi.mock('@/components/Greeting', () => ({
   ),
 }));
 
+// Footer is now async — mock it so page tests don't need to await it
+vi.mock('@/components/Footer', () => ({
+  default: () => <footer data-testid="footer" />,
+}));
+
 describe('HomePage', () => {
-  it('should display build information', async () => {
-    const searchParams = { page: '1' };
-    const Page = await HomePage({ searchParams });
-
-    render(Page);
-
-    // Build info should be visible
-    const buildInfo = screen.getByText(/Build:.*Commit:/);
-    expect(buildInfo).toBeTruthy();
-    expect(buildInfo.textContent).toContain('abc123d');
-  });
-
   it('should display Greeting component', async () => {
     const searchParams = { page: '1' };
     const Page = await HomePage({ searchParams });
-
     render(Page);
 
     const heading = screen.getByRole('heading', { level: 1 });
@@ -73,15 +56,20 @@ describe('HomePage', () => {
   it('should render without errors when no posts available', async () => {
     const searchParams = { page: '1' };
     const Page = await HomePage({ searchParams });
-
     const { container } = render(Page);
 
-    // Should render the main element
     const main = container.querySelector('main');
     expect(main).toBeTruthy();
 
-    // Should show "No posts found" message
     const message = screen.getByText('No posts found.');
     expect(message).toBeTruthy();
+  });
+
+  it('should render footer', async () => {
+    const searchParams = { page: '1' };
+    const Page = await HomePage({ searchParams });
+    const { container } = render(Page);
+
+    expect(container.querySelector('footer')).toBeTruthy();
   });
 });

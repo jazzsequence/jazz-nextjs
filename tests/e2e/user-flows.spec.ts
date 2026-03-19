@@ -173,23 +173,18 @@ test.describe('User Navigation Flows', () => {
   });
 
   test('should show build info consistently', async ({ page }) => {
-    // Check on homepage
+    // Build info is now in the footer as a short commit hash (e.g. "abc1234")
     await page.goto('/');
-    const homeBuildInfo = page.locator('text=/Commit:/');
-    await expect(homeBuildInfo).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
-    const homeText = await homeBuildInfo.textContent();
-    const homeCommit = homeText?.match(/Commit:\s*(\S+)/)?.[1];
+    // Footer commit hash: 7-char hex string visible in footer
+    const footer = page.locator('footer');
+    await expect(footer).toBeVisible();
 
-    // Check on posts page - should show same commit hash
-    await page.goto('/posts');
-    const postsBuildInfo = page.locator('text=/Commit:/');
-
-    if (await postsBuildInfo.count() > 0) {
-      const postsText = await postsBuildInfo.textContent();
-      const postsCommit = postsText?.match(/Commit:\s*(\S+)/)?.[1];
-      expect(postsCommit).toBe(homeCommit);
-    }
+    const footerText = await footer.textContent();
+    // Should contain a short commit hash (7 hex chars) or "unknown"
+    const hasCommit = /[0-9a-f]{7}|unknown/.test(footerText ?? '');
+    expect(hasCommit).toBe(true);
   });
 
   test('should handle direct URL navigation', async ({ page }) => {

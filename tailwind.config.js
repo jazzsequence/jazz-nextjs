@@ -13,6 +13,7 @@ const config = {
           surface:     '#13132b',
           'surface-high': '#1c1c3a',
           border:      '#2a2a4a',
+          'border-bright': '#3d3d6b',
           text:        '#f0eeff',
           'text-sub':  '#c4c0e0',
           muted:       '#a09abb',

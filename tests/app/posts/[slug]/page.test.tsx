@@ -27,6 +27,11 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }));
 
+// Footer is async — mock to avoid async server component issues in tests
+vi.mock('@/components/Footer', () => ({
+  default: () => <footer data-testid="footer" />,
+}));
+
 describe('PostPage', () => {
   const mockPost: WPPost = {
     id: 1,

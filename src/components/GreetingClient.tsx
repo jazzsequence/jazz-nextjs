@@ -113,7 +113,7 @@ export function GreetingClient({ variants, audiences, serverCountry, greetingPar
           {variant.heading}
         </h1>
         <div
-          className="text-brand-text-sub text-lg leading-relaxed max-w-2xl"
+          className="text-brand-text-sub text-lg leading-relaxed"
           dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
       </div>

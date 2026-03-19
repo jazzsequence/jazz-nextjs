@@ -22,7 +22,7 @@ async function fetchPostsData(page: number): Promise<PostsData> {
   try {
     const result = await fetchPostsWithPagination<WPPost>('posts', {
       page,
-      perPage: 10,
+      perPage: 12,
       embed: true,
       isr: {
         revalidate: 3600,

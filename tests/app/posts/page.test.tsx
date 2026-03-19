@@ -14,13 +14,17 @@ vi.mock('@/lib/wordpress/client', async (importOriginal) => {
   };
 });
 
-// Mock getBuildInfo
+// Mock getBuildInfo (used by async Footer)
 vi.mock('@/lib/build-info', () => ({
   getBuildInfo: vi.fn().mockResolvedValue({
-    commit: 'abc123',
-    branch: 'main',
+    commitShort: 'abc123',
     buildTime: '2024-01-01T00:00:00Z',
   }),
+}));
+
+// Footer is async — mock to avoid async server component issues in tests
+vi.mock('@/components/Footer', () => ({
+  default: () => <footer data-testid="footer" />,
 }));
 
 describe('PostsPage', () => {
@@ -107,7 +111,7 @@ describe('PostsPage', () => {
 
     expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith('posts', {
       page: 1,
-      perPage: 10,
+      perPage: 12,
       embed: true,
       isr: { revalidate: 3600, tags: ['posts'] },
     });
