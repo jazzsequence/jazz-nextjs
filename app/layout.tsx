@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+// Victor Mono — self-hosted via Fontsource; used for site title and code elements
+import "@fontsource/victor-mono/400.css";
+import "@fontsource/victor-mono/400-italic.css";
+import "@fontsource/victor-mono/700.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

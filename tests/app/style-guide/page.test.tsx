@@ -41,4 +41,24 @@ describe('StyleGuidePage', () => {
     render(<StyleGuidePage />)
     expect(screen.getByText(/image overlay/i)).toBeTruthy()
   })
+
+  it('renders Victor Mono as the monospace font in the header title', () => {
+    const { container } = render(<StyleGuidePage />)
+    // The site title link uses Victor Mono font family
+    const siteTitle = container.querySelector('a[href="/"]')
+    expect(siteTitle).toBeTruthy()
+    const style = (siteTitle as HTMLElement)?.style?.fontFamily || ''
+    expect(style.toLowerCase()).toContain('victor mono')
+  })
+
+  it('renders the font choices rationale section', () => {
+    render(<StyleGuidePage />)
+    expect(screen.getByText(/font choices/i)).toBeTruthy()
+  })
+
+  it('renders sans-serif font comparison options', () => {
+    render(<StyleGuidePage />)
+    // Should show multiple sans-serif options for evaluation (text appears in font stacks too)
+    expect(screen.getAllByText(/sans-serif/i).length).toBeGreaterThan(0)
+  })
 })

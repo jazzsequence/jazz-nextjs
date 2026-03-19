@@ -64,6 +64,12 @@ const section = (title: string, children: React.ReactNode) => (
 export default function StyleGuidePage() {
   return (
     <div style={{ background: c.bg, minHeight: '100vh', color: c.text, fontFamily: 'Geist, sans-serif' }}>
+      {/* Load comparison fonts for the typography evaluation section — style guide only, not production */}
+      {/* eslint-disable @next/next/no-page-custom-font */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Syne:wght@400;700&display=swap" rel="stylesheet" />
+      {/* eslint-enable @next/next/no-page-custom-font */}
 
       {/* ── Sticky Header Preview ── */}
       <header style={{
@@ -78,9 +84,9 @@ export default function StyleGuidePage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           height: '3.5rem',
         }}>
-          {/* Site title — monospace / tech font */}
+          {/* Site title — Victor Mono monospace font */}
           <Link href="/" style={{
-            fontFamily: '"Geist Mono", "Fira Code", "JetBrains Mono", monospace',
+            fontFamily: '"Victor Mono", monospace',
             fontWeight: 700,
             fontSize: '1.125rem',
             color: c.cyan,
@@ -142,6 +148,64 @@ export default function StyleGuidePage() {
           </div>
         ))}
 
+        {/* ── FONT CHOICES ── */}
+        {section('Font Choices', (
+          <div>
+            {/* Victor Mono */}
+            <div style={{ marginBottom: '2rem', padding: '1.25rem', background: c.surface, border: `1px solid ${c.border}`, borderRadius: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '1rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: c.cyan, fontSize: '0.75rem', fontFamily: '"Victor Mono", monospace', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Monospace</span>
+                <span style={{ color: c.text, fontSize: '1.125rem', fontWeight: 700, fontFamily: '"Victor Mono", monospace' }}>Victor Mono</span>
+              </div>
+              <p style={{ color: c.muted, fontSize: '0.8125rem', lineHeight: 1.6, marginBottom: '1rem', maxWidth: '60ch' }}>
+                A free, slanted monospace font with elegant cursive italics and ligatures. Chosen for the site title and code elements — its distinctive personality reinforces the &ldquo;tech identity&rdquo; of the brand without being generic. The slight slope of the regular weight gives it energy.
+              </p>
+              <div style={{ fontFamily: '"Victor Mono", monospace', color: c.cyan, fontSize: '1.25rem', fontWeight: 700, letterSpacing: '-0.02em' }}>jazzsequence</div>
+              <div style={{ fontFamily: '"Victor Mono", monospace', color: c.textSub, fontSize: '0.875rem', marginTop: '0.25rem' }}>const greeting = &quot;Good morning, Chris&quot;;</div>
+              <div style={{ fontFamily: '"Victor Mono", monospace', color: c.muted, fontSize: '0.875rem', fontStyle: 'italic', marginTop: '0.25rem' }}>{'// italic — Victor Mono\'s cursive italic is distinctive'}</div>
+            </div>
+
+            {/* Sans-serif comparison */}
+            <p style={{ color: c.muted, fontSize: '0.8125rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Sans-serif — options for evaluation</p>
+            <p style={{ color: c.muted, fontSize: '0.8125rem', lineHeight: 1.6, marginBottom: '1.5rem', maxWidth: '60ch' }}>
+              The sans-serif font is used for all body text, UI labels, and headings. Three candidates below — same sample text, same weight. Which feels right for the site?
+            </p>
+
+            {[
+              {
+                name: 'Geist Sans',
+                stack: '"Geist Sans", system-ui, sans-serif',
+                note: 'Current. Vercel\'s own typeface — extremely clean, minimal personality. Excellent legibility at small sizes. Safe choice but may feel generic alongside Victor Mono.',
+              },
+              {
+                name: 'Space Grotesk',
+                stack: '"Space Grotesk", system-ui, sans-serif',
+                note: 'Geometric with subtle quirks (e.g. offset bowls). Has a techy, slightly retro feel that pairs well with synthwave. More character than Geist without being distracting.',
+              },
+              {
+                name: 'Syne',
+                stack: '"Syne", system-ui, sans-serif',
+                note: 'Bold, distinctive, futuristic — especially at display sizes. Designed for artistic/creative contexts. May be too strong for body text but excellent for headings.',
+              },
+            ].map(({ name, stack, note }) => (
+              <div key={name} style={{ marginBottom: '1.5rem', padding: '1.25rem', background: c.surface, border: `1px solid ${c.border}`, borderRadius: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <span style={{ color: c.text, fontFamily: stack, fontWeight: 700, fontSize: '1rem' }}>{name}</span>
+                  <span style={{ color: c.muted, fontSize: '0.75rem', fontFamily: 'monospace' }}>{stack.split(',')[0]}</span>
+                </div>
+                <p style={{ color: c.muted, fontSize: '0.75rem', lineHeight: 1.5, marginBottom: '0.75rem', maxWidth: '55ch' }}>{note}</p>
+                <div style={{ fontFamily: stack }}>
+                  <div style={{ color: c.text, fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Music, Games, Writing & Tech</div>
+                  <div style={{ color: c.textSub, fontSize: '1rem', lineHeight: 1.75, maxWidth: '55ch' }}>
+                    Jazzsequence.com is a personal site by Chris Reynolds covering electronic music mixes, board games, writing, and technology.
+                  </div>
+                  <div style={{ color: c.muted, fontSize: '0.875rem', marginTop: '0.5rem' }}>Published March 19, 2026 · 4 min read</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+
         {/* ── TYPOGRAPHY ── */}
         {section('Typography', (
           <div>
@@ -178,7 +242,7 @@ export default function StyleGuidePage() {
             <code style={{
               background: c.surfaceHigh, color: c.cyan,
               padding: '0.125rem 0.5rem', borderRadius: '0.25rem',
-              fontSize: '0.875rem', fontFamily: 'monospace',
+              fontSize: '0.875rem', fontFamily: '"Victor Mono", monospace',
             }}>
               inline code example
             </code>
