@@ -74,7 +74,7 @@ export default function StyleGuidePage() {
   }, [])
 
   return (
-    <div style={{ background: c.bg, minHeight: '100vh', color: c.text, fontFamily: 'Geist, sans-serif' }}>
+    <div style={{ background: c.bg, minHeight: '100vh', color: c.text, fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>
 
       {/* ── Sticky Header Preview ── */}
       <header style={{
