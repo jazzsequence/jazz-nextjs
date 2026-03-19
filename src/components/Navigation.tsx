@@ -4,6 +4,13 @@ import Link from 'next/link';
 import { transformMenuUrl } from '@/lib/url-transform';
 import type { WPMenuItem } from '@/lib/wordpress/types';
 
+interface NavigationProps {
+  menuItems?: WPMenuItem[];
+  isLoading?: boolean;
+  error?: string;
+  className?: string;
+}
+
 /** Decode HTML entities (e.g. &#038; → &) in menu item titles from the WordPress API. */
 function decodeHtmlEntities(str: string): string {
   return str
@@ -15,49 +22,31 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#039;/g, "'")
 }
 
-interface NavigationProps {
-  menuItems?: WPMenuItem[];
-  isLoading?: boolean;
-  error?: string;
-  className?: string;
-}
-
-/**
- * Organize menu items into a hierarchical structure
- * @param items - Flat array of menu items
- * @returns Hierarchical array with nested children
- */
 function organizeMenuItems(items: WPMenuItem[]): WPMenuItem[] {
   const itemMap = new Map<number, WPMenuItem & { children?: WPMenuItem[] }>();
   const rootItems: (WPMenuItem & { children?: WPMenuItem[] })[] = [];
 
-  // First pass: Create a map of all items
   items.forEach(item => {
     itemMap.set(item.id, { ...item, children: [] });
   });
 
-  // Second pass: Build hierarchy
   items.forEach(item => {
     const menuItem = itemMap.get(item.id);
     if (!menuItem) return;
 
     if (item.parent === 0) {
-      // Top-level item
       rootItems.push(menuItem);
     } else {
-      // Child item - add to parent's children array
       const parent = itemMap.get(item.parent);
       if (parent) {
         parent.children = parent.children || [];
         parent.children.push(menuItem);
       } else {
-        // Parent not found, treat as root item
         rootItems.push(menuItem);
       }
     }
   });
 
-  // Sort items by menu_order
   const sortByMenuOrder = (a: WPMenuItem, b: WPMenuItem) => a.menu_order - b.menu_order;
   rootItems.sort(sortByMenuOrder);
   rootItems.forEach(item => {
@@ -69,9 +58,6 @@ function organizeMenuItems(items: WPMenuItem[]): WPMenuItem[] {
   return rootItems;
 }
 
-/**
- * Render a menu item and its children recursively
- */
 function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: WPMenuItem[] }; isChild?: boolean }) {
   const hasChildren = item.children && item.children.length > 0;
   const linkTarget = item.target || undefined;
@@ -85,24 +71,19 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
     >
       <Link
         href={transformedUrl}
-        className="block px-4 py-2 text-gray-800 hover:bg-gray-100 hover:text-blue-600 transition-colors rounded"
+        className="block px-3 py-2 text-sm font-medium text-brand-text-sub hover:text-brand-cyan transition-colors rounded font-heading"
         {...(linkTarget && { target: linkTarget })}
         {...(linkRel && { rel: linkRel })}
       >
         {decodeHtmlEntities(item.title.rendered)}
         {hasChildren && !isChild && (
           <svg
-            className="inline-block w-4 h-4 ml-1"
+            className="inline-block w-3.5 h-3.5 ml-1 opacity-60"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         )}
       </Link>
@@ -111,7 +92,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
           className={`${
             isChild
               ? 'mt-1'
-              : 'absolute left-0 top-full bg-white shadow-lg rounded-md min-w-48 py-2 hidden group-hover:block z-50'
+              : 'absolute left-0 top-full bg-brand-surface border border-brand-border shadow-lg rounded-md min-w-48 py-2 hidden group-hover:block z-50'
           }`}
         >
           {item.children!.map(child => (
@@ -123,67 +104,46 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
   );
 }
 
-/**
- * Navigation component that displays WordPress menu items
- *
- * Features:
- * - Hierarchical menu support (parent/child relationships)
- * - Loading and error states
- * - Responsive Tailwind styling
- * - Next.js Link integration
- * - External link support (target="_blank")
- *
- * @param menuItems - Array of WordPress menu items
- * @param isLoading - Loading state
- * @param error - Error message
- * @param className - Additional CSS classes
- */
 export default function Navigation({
   menuItems = [],
   isLoading = false,
   error,
   className = '',
 }: NavigationProps) {
-  // Loading state
-  if (isLoading) {
-    return (
-      <nav className={`bg-white shadow-md ${className}`} role="navigation">
-        <div className="container mx-auto px-4 py-3">
-          <p className="text-gray-600">Loading menu...</p>
-        </div>
-      </nav>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <nav className={`bg-white shadow-md ${className}`} role="navigation">
-        <div className="container mx-auto px-4 py-3">
-          <p className="text-red-600">{error}</p>
-        </div>
-      </nav>
-    );
-  }
-
-  // Organize menu items into hierarchy
   const organizedItems = organizeMenuItems(menuItems);
 
   return (
-    <nav className={`bg-white shadow-md ${className}`} role="navigation">
-      <div className="container mx-auto px-4">
-        {organizedItems.length > 0 ? (
-          <ul className="flex flex-col md:flex-row md:space-x-2 py-3">
-            {organizedItems.map(item => (
-              <MenuItem key={item.id} item={item} />
-            ))}
-          </ul>
-        ) : (
-          <div className="py-3">
-            {/* Empty state - nav still renders but no items */}
-          </div>
-        )}
+    <header className={`sticky top-0 z-50 bg-brand-header border-b border-brand-border backdrop-blur-sm ${className}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-14">
+
+          {/* Site title — Victor Mono */}
+          <Link
+            href="/"
+            className="font-mono font-bold text-brand-cyan text-lg tracking-tight no-underline hover:opacity-80 transition-opacity"
+          >
+            jazzsequence
+          </Link>
+
+          {/* Navigation */}
+          <nav role="navigation" aria-label="Main navigation">
+            {isLoading && (
+              <span className="text-brand-muted text-sm font-heading">Loading menu...</span>
+            )}
+            {error && (
+              <span className="text-red-400 text-sm font-heading">{error}</span>
+            )}
+            {!isLoading && !error && organizedItems.length > 0 && (
+              <ul className="flex items-center gap-1">
+                {organizedItems.map(item => (
+                  <MenuItem key={item.id} item={item} />
+                ))}
+              </ul>
+            )}
+          </nav>
+
+        </div>
       </div>
-    </nav>
+    </header>
   );
 }

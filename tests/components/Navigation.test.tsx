@@ -171,10 +171,12 @@ describe('Navigation', () => {
     it('should render menu items in correct order', () => {
       render(<Navigation menuItems={mockMenuItems} />);
 
+      // links[0] is the site title — menu items follow
       const links = screen.getAllByRole('link');
-      expect(links[0]).toHaveTextContent('Home');
-      expect(links[1]).toHaveTextContent('About');
-      expect(links[2]).toHaveTextContent('Blog');
+      const menuLinks = links.filter(l => l.textContent !== 'jazzsequence');
+      expect(menuLinks[0]).toHaveTextContent('Home');
+      expect(menuLinks[1]).toHaveTextContent('About');
+      expect(menuLinks[2]).toHaveTextContent('Blog');
     });
   });
 
@@ -276,7 +278,8 @@ describe('Navigation', () => {
 
       const nav = screen.getByRole('navigation');
       expect(nav).toBeInTheDocument();
-      expect(screen.queryByRole('link')).not.toBeInTheDocument();
+      // Site title link is always rendered; no menu item links should appear
+      expect(screen.queryByText('Home')).not.toBeInTheDocument();
     });
 
     it('should display default message when no menu items provided', () => {
@@ -288,20 +291,30 @@ describe('Navigation', () => {
   });
 
   describe('styling', () => {
-    it('should apply default Tailwind classes', () => {
-      const { container } = render(<Navigation menuItems={mockMenuItems} />);
-
-      const nav = container.querySelector('nav');
-      expect(nav).toHaveClass('bg-white', 'shadow-md');
+    it('renders the site title "jazzsequence" in the header', () => {
+      render(<Navigation menuItems={mockMenuItems} />);
+      expect(screen.getByText('jazzsequence')).toBeTruthy();
     });
 
-    it('should apply custom className', () => {
+    it('renders the site title as a link to the home page', () => {
+      render(<Navigation menuItems={mockMenuItems} />);
+      const titleLink = screen.getByRole('link', { name: 'jazzsequence' });
+      expect(titleLink).toBeTruthy();
+      expect(titleLink.getAttribute('href')).toBe('/');
+    });
+
+    it('renders inside a header element', () => {
+      const { container } = render(<Navigation menuItems={mockMenuItems} />);
+      expect(container.querySelector('header')).toBeTruthy();
+    });
+
+    it('should apply custom className to the header element', () => {
       const { container } = render(
         <Navigation menuItems={mockMenuItems} className="custom-nav" />
       );
 
-      const nav = container.querySelector('nav');
-      expect(nav).toHaveClass('custom-nav');
+      const header = container.querySelector('header');
+      expect(header).toHaveClass('custom-nav');
     });
 
     it('should apply z-50 to dropdown menus to appear above content', () => {
