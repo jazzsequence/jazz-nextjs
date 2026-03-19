@@ -117,6 +117,13 @@ E2E TEST COVERAGE:
     - Check: Are there E2E test changes in tests/e2e/ for UI changes?
     - Backend-only changes → E2E tests optional
 
+ACCESSIBILITY (WCAG 2.1 AA):
+29. Do any UI changes affect pages covered by tests/e2e/a11y.spec.ts?
+    - The a11y spec is run as part of npm run test:e2e — failures are blocking
+    - New pages added to the design system must be added to a11y.spec.ts
+    - All color choices must meet WCAG 2.1 AA contrast ratios (4.5:1 normal text, 3:1 large text)
+    - Interactive elements must have accessible names (aria-label, htmlFor, etc.)
+
 FILES TO REVIEW:
 - Run npm test -- --run (verify all tests pass)
 - Run npm run lint (verify lint clean)

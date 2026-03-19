@@ -143,7 +143,7 @@ export default function StyleGuidePage() {
             {swatch(c.textSub,    'Text Secondary',  '#c4c0e0', '10.2:1 AAA')}
             {swatch(c.muted,      'Text Muted',      '#a09abb', '7.2:1 AA')}
             {swatch(c.cyan,       'Accent Cyan',     '#00e5cc', '12.2:1 AAA')}
-            {swatch(c.magenta,    'Accent Magenta',  '#ff2d78', '5.5:1 AA')}
+            {swatch(c.magenta,    'Accent Magenta',  '#ff2d78', '3.6:1 (large text / decorative only)')}
             {swatch(c.purple,     'Accent Purple',   '#9d5cff', '5.2:1 AA')}
           </div>
         ))}
@@ -275,7 +275,7 @@ export default function StyleGuidePage() {
                 Outline
               </button>
               <button style={{
-                background: c.magenta, color: '#fff',
+                background: c.magenta, color: '#0d0d1a',
                 border: 'none', borderRadius: '0.375rem',
                 padding: '0.5rem 1.25rem', fontWeight: 700,
                 fontSize: '0.875rem', cursor: 'pointer',
@@ -375,7 +375,7 @@ export default function StyleGuidePage() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                  <span style={{ background: c.surfaceHigh, color: c.purple, fontSize: '0.5625rem', padding: '0.125rem 0.375rem', borderRadius: '9999px' }}>Card Game</span>
+                  <span style={{ background: c.surface, color: c.purple, fontSize: '0.5625rem', padding: '0.125rem 0.375rem', borderRadius: '9999px' }}>Card Game</span>
                 </div>
               </div>
             </div>
@@ -403,10 +403,10 @@ export default function StyleGuidePage() {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', color: c.textSub, fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.375rem' }}>
+                <label htmlFor="sg-select-difficulty" style={{ display: 'block', color: c.textSub, fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.375rem' }}>
                   Select
                 </label>
-                <select style={{
+                <select id="sg-select-difficulty" style={{
                   width: '100%', padding: '0.5rem 0.75rem',
                   background: c.surfaceHigh,
                   border: `1px solid ${c.border}`,
@@ -478,7 +478,7 @@ export default function StyleGuidePage() {
                 <div style={{ position: 'absolute', inset: 0, padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
                   <div style={{ color: c.cyan, fontSize: '0.625rem', fontFamily: 'monospace', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '0.375rem' }}>Featured</div>
                   <h3 style={{ color: c.text, fontSize: '1.125rem', fontWeight: 700, margin: '0 0 0.75rem' }}>Hero Realms</h3>
-                  <button style={{ background: c.magenta, color: '#fff', border: 'none', borderRadius: '0.375rem', padding: '0.375rem 0.875rem', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content' }}>
+                  <button style={{ background: c.magenta, color: '#0d0d1a', border: 'none', borderRadius: '0.375rem', padding: '0.375rem 0.875rem', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer', fontFamily: 'inherit', width: 'fit-content' }}>
                     View details
                   </button>
                 </div>
@@ -515,7 +515,7 @@ export default function StyleGuidePage() {
                 <p style={{ color: c.textSub, marginBottom: '1rem', maxWidth: '40ch' }}>
                   Spring 2012 mix — tracks that hint of the Summer to come.
                 </p>
-                <button style={{ background: c.magenta, color: '#fff', border: 'none', borderRadius: '0.375rem', padding: '0.5rem 1.25rem', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <button style={{ background: c.magenta, color: '#0d0d1a', border: 'none', borderRadius: '0.375rem', padding: '0.5rem 1.25rem', fontWeight: 700, fontSize: '0.875rem', cursor: 'pointer', fontFamily: 'inherit' }}>
                   Listen now
                 </button>
               </div>
