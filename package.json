@@ -26,6 +26,7 @@
     "test:e2e:standalone": "BASE_URL=http://localhost:3000 npm run test:e2e"
   },
   "dependencies": {
+    "@fontsource/space-grotesk": "^5.2.10",
     "@fontsource/victor-mono": "^5.2.8",
     "@pantheon-systems/nextjs-cache-handler": "^0.4.0",
     "date-fns": "^4.1.0",

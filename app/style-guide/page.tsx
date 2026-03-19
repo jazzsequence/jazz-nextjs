@@ -170,44 +170,39 @@ export default function StyleGuidePage() {
               <div style={{ fontFamily: '"Victor Mono", monospace', color: c.muted, fontSize: '0.875rem', fontStyle: 'italic', marginTop: '0.25rem' }}>{'// italic — Victor Mono\'s cursive italic is distinctive'}</div>
             </div>
 
-            {/* Sans-serif comparison */}
-            <p style={{ color: c.muted, fontSize: '0.8125rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Sans-serif — options for evaluation</p>
-            <p style={{ color: c.muted, fontSize: '0.8125rem', lineHeight: 1.6, marginBottom: '1.5rem', maxWidth: '60ch' }}>
-              The sans-serif font is used for all body text, UI labels, and headings. Three candidates below — same sample text, same weight. Which feels right for the site?
-            </p>
+            {/* Confirmed sans-serif choices */}
+            <p style={{ color: c.muted, fontSize: '0.8125rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Sans-serif — confirmed choices</p>
 
-            {[
-              {
-                name: 'Geist Sans',
-                stack: '"Geist Sans", system-ui, sans-serif',
-                note: 'Current. Vercel\'s own typeface — extremely clean, minimal personality. Excellent legibility at small sizes. Safe choice but may feel generic alongside Victor Mono.',
-              },
-              {
-                name: 'Space Grotesk',
-                stack: '"Space Grotesk", system-ui, sans-serif',
-                note: 'Geometric with subtle quirks (e.g. offset bowls). Has a techy, slightly retro feel that pairs well with synthwave. More character than Geist without being distracting.',
-              },
-              {
-                name: 'Syne',
-                stack: '"Syne", system-ui, sans-serif',
-                note: 'Bold, distinctive, futuristic — especially at display sizes. Designed for artistic/creative contexts. May be too strong for body text but excellent for headings.',
-              },
-            ].map(({ name, stack, note }) => (
-              <div key={name} style={{ marginBottom: '1.5rem', padding: '1.25rem', background: c.surface, border: `1px solid ${c.border}`, borderRadius: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <span style={{ color: c.text, fontFamily: stack, fontWeight: 700, fontSize: '1rem' }}>{name}</span>
-                  <span style={{ color: c.muted, fontSize: '0.75rem', fontFamily: 'monospace' }}>{stack.split(',')[0]}</span>
-                </div>
-                <p style={{ color: c.muted, fontSize: '0.75rem', lineHeight: 1.5, marginBottom: '0.75rem', maxWidth: '55ch' }}>{note}</p>
-                <div style={{ fontFamily: stack }}>
-                  <div style={{ color: c.text, fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.25rem' }}>Music, Games, Writing & Tech</div>
-                  <div style={{ color: c.textSub, fontSize: '1rem', lineHeight: 1.75, maxWidth: '55ch' }}>
-                    Jazzsequence.com is a personal site by Chris Reynolds covering electronic music mixes, board games, writing, and technology.
-                  </div>
-                  <div style={{ color: c.muted, fontSize: '0.875rem', marginTop: '0.5rem' }}>Published March 19, 2026 · 4 min read</div>
+            {/* Geist Sans — headings + small text */}
+            <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: c.surface, border: `1px solid ${c.cyan}33`, borderRadius: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: c.cyan, fontSize: '0.625rem', fontFamily: '"Victor Mono", monospace', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Headings + Small Text</span>
+                <span style={{ color: c.text, fontFamily: '"Geist Sans", system-ui, sans-serif', fontWeight: 700, fontSize: '1rem' }}>Geist Sans</span>
+              </div>
+              <p style={{ color: c.muted, fontSize: '0.75rem', lineHeight: 1.5, marginBottom: '0.75rem', maxWidth: '55ch' }}>
+                Extremely clean and legible at all sizes. Used for headings (h1–h4), UI labels, metadata, and small text where clarity takes priority over personality.
+              </p>
+              <div style={{ fontFamily: '"Geist Sans", system-ui, sans-serif' }}>
+                <div style={{ color: c.text, fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Music, Games, Writing & Tech</div>
+                <div style={{ color: c.muted, fontSize: '0.8125rem', marginTop: '0.25rem' }}>Published March 19, 2026 · 4 min read · Tag: music</div>
+              </div>
+            </div>
+
+            {/* Space Grotesk — body text */}
+            <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: c.surface, border: `1px solid ${c.cyan}33`, borderRadius: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <span style={{ color: c.cyan, fontSize: '0.625rem', fontFamily: '"Victor Mono", monospace', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Body Text</span>
+                <span style={{ color: c.text, fontFamily: '"Space Grotesk", system-ui, sans-serif', fontWeight: 700, fontSize: '1rem' }}>Space Grotesk</span>
+              </div>
+              <p style={{ color: c.muted, fontSize: '0.75rem', lineHeight: 1.5, marginBottom: '0.75rem', maxWidth: '55ch' }}>
+                Geometric with subtle character (offset bowls, distinctive terminals). Pairs well with the synthwave aesthetic — more personality than Geist at body sizes. Used for post content, descriptions, and paragraphs.
+              </p>
+              <div style={{ fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>
+                <div style={{ color: c.textSub, fontSize: '1rem', lineHeight: 1.75, maxWidth: '55ch' }}>
+                  Jazzsequence.com is a personal site by Chris Reynolds covering electronic music mixes, board games, writing, and technology. This is what body prose looks like.
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         ))}
 
@@ -215,25 +210,25 @@ export default function StyleGuidePage() {
         {section('Typography', (
           <div>
             <div style={{ marginBottom: '2rem' }}>
-              <h1 style={{ color: c.text, fontSize: '2.5rem', fontWeight: 700, margin: '0 0 0.25rem' }}>
-                Heading 1 — 2.5rem / 700
+              <h1 style={{ color: c.text, fontSize: '2.5rem', fontWeight: 700, margin: '0 0 0.25rem', fontFamily: '"Geist Sans", system-ui, sans-serif' }}>
+                Heading 1 — Geist Sans 2.5rem / 700
               </h1>
-              <h2 style={{ color: c.text, fontSize: '2rem', fontWeight: 700, margin: '0 0 0.25rem' }}>
-                Heading 2 — 2rem / 700
+              <h2 style={{ color: c.text, fontSize: '2rem', fontWeight: 700, margin: '0 0 0.25rem', fontFamily: '"Geist Sans", system-ui, sans-serif' }}>
+                Heading 2 — Geist Sans 2rem / 700
               </h2>
-              <h3 style={{ color: c.text, fontSize: '1.5rem', fontWeight: 600, margin: '0 0 0.25rem' }}>
-                Heading 3 — 1.5rem / 600
+              <h3 style={{ color: c.text, fontSize: '1.5rem', fontWeight: 600, margin: '0 0 0.25rem', fontFamily: '"Geist Sans", system-ui, sans-serif' }}>
+                Heading 3 — Geist Sans 1.5rem / 600
               </h3>
-              <h4 style={{ color: c.textSub, fontSize: '1.125rem', fontWeight: 600, margin: '0 0 0.25rem' }}>
-                Heading 4 — 1.125rem / 600
+              <h4 style={{ color: c.textSub, fontSize: '1.125rem', fontWeight: 600, margin: '0 0 0.25rem', fontFamily: '"Geist Sans", system-ui, sans-serif' }}>
+                Heading 4 — Geist Sans 1.125rem / 600
               </h4>
             </div>
-            <p style={{ color: c.text, fontSize: '1rem', lineHeight: 1.75, marginBottom: '1rem', maxWidth: '60ch' }}>
-              Body text — 1rem / 1.75 line-height. The quick brown fox jumps over the lazy dog.
+            <p style={{ color: c.text, fontSize: '1rem', lineHeight: 1.75, marginBottom: '1rem', maxWidth: '60ch', fontFamily: '"Space Grotesk", system-ui, sans-serif' }}>
+              Body text (Space Grotesk) — 1rem / 1.75 line-height. The quick brown fox jumps over the lazy dog.
               Jazzsequence.com is a personal site covering music, games, writing, and tech.
             </p>
-            <p style={{ color: c.muted, fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '1rem', maxWidth: '60ch' }}>
-              Muted / meta text — 0.875rem. Published January 1, 2026 · 5 min read
+            <p style={{ color: c.muted, fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '1rem', maxWidth: '60ch', fontFamily: '"Geist Sans", system-ui, sans-serif' }}>
+              Muted / meta text (Geist Sans) — 0.875rem. Published January 1, 2026 · 5 min read
             </p>
             <p style={{ marginBottom: '1rem' }}>
               <a href="#" style={{ color: c.cyan, textDecoration: 'underline', textUnderlineOffset: '3px' }}>

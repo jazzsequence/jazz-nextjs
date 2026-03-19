@@ -2,10 +2,14 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-// Victor Mono — self-hosted via Fontsource; used for site title and code elements
+// Victor Mono — monospace for site title and code elements
 import "@fontsource/victor-mono/400.css";
 import "@fontsource/victor-mono/400-italic.css";
 import "@fontsource/victor-mono/700.css";
+// Space Grotesk — body text (personality at display sizes, clear for prose)
+import "@fontsource/space-grotesk/400.css";
+import "@fontsource/space-grotesk/500.css";
+import "@fontsource/space-grotesk/700.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
