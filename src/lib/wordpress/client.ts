@@ -24,6 +24,7 @@ import {
   WPMenusSchema,
   WPMenuItemsSchema,
   GCGamesSchema,
+  WPTagsSchema,
 } from './schemas'
 import type {
   WPPost,
@@ -39,6 +40,7 @@ import type {
   WPMenuItem,
   WPAPIListResponse,
   GCGame,
+  WPTag,
 } from './types'
 
 // ===== Configuration =====
@@ -864,5 +866,40 @@ export async function fetchGames(
     }
     const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
     throw new WPAPIError('Failed to fetch games', statusCode, 'gc/v1/games')
+  }
+}
+
+/**
+ * Fetch a WordPress tag by its slug.
+ * Returns the first matching tag or throws WPNotFoundError if not found.
+ *
+ * @see GET /wp-json/wp/v2/tags?slug=<slug>
+ */
+export async function fetchTagBySlug(
+  slug: string,
+  options: Pick<FetchOptions, 'isr' | 'cache'> = {}
+): Promise<WPTag> {
+  const { isr, cache } = options
+  const url = `${API_BASE_URL}/tags?slug=${encodeURIComponent(slug)}`
+
+  const isrOptions = cache || isr || {}
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = [`tag-${slug}`]
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    const tags = await fetchAndValidate(url, WPTagsSchema, cacheOptions)
+    if (tags.length === 0) {
+      throw new WPNotFoundError('tag', slug)
+    }
+    return tags[0] as WPTag
+  } catch (error) {
+    if (error instanceof WPNotFoundError || error instanceof WPValidationError) {
+      throw error
+    }
+    const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
+    throw new WPAPIError(`Failed to fetch tag: ${slug}`, statusCode, 'tags')
   }
 }
