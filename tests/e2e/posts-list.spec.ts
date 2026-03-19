@@ -33,8 +33,8 @@ test.describe('Posts List Page', () => {
 
     const firstArticle = page.locator('article').first();
 
-    // Should have title
-    const title = firstArticle.locator('h2 a');
+    // Should have title — now inside the image overlay link (a > h2)
+    const title = firstArticle.locator('a[href^="/posts/"] h2');
     await expect(title).toBeVisible();
 
     // Should have date
@@ -50,7 +50,7 @@ test.describe('Posts List Page', () => {
     await page.goto('/posts');
     await page.waitForLoadState('domcontentloaded');
 
-    const firstLink = page.locator('article h2 a').first();
+    const firstLink = page.locator('article a[href^="/posts/"]').first();
     const href = await firstLink.getAttribute('href');
 
     expect(href).toBeTruthy();

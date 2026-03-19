@@ -52,6 +52,13 @@ describe('PostCard', () => {
     expect(link).toHaveAttribute('href', '/posts/test-post');
   });
 
+  it('renders the post title inside the image overlay area (not only in the card body)', () => {
+    const { container } = render(<PostCard post={mockPost} />);
+    // The title link should be inside the image overlay area (first Link in the article)
+    const imageArea = container.querySelector('article > a');
+    expect(imageArea?.textContent).toContain('Test Post Title');
+  });
+
   it('renders with dark brand surface (not white)', () => {
     const { container } = render(<PostCard post={mockPost} />);
     const article = container.querySelector('article');

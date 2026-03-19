@@ -25,7 +25,7 @@ test.describe('User Navigation Flows', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Click first post title
-    const firstPostLink = page.locator('article h2 a').first();
+    const firstPostLink = page.locator('article a[href^="/posts/"]').first();
     const href = await firstPostLink.getAttribute('href');
 
     expect(href).toBeTruthy();
@@ -49,7 +49,7 @@ test.describe('User Navigation Flows', () => {
     await page.waitForLoadState('domcontentloaded');
 
     // Click first post
-    const firstPostLink = page.locator('article h2 a').first();
+    const firstPostLink = page.locator('article a[href^="/posts/"]').first();
     await Promise.all([
       page.waitForURL(/\/posts\//),
       firstPostLink.click(),
@@ -78,7 +78,7 @@ test.describe('User Navigation Flows', () => {
     await expect(nav).toBeVisible();
 
     // Navigate to an individual post
-    const firstPost = page.locator('article h2 a').first();
+    const firstPost = page.locator('article a[href^="/posts/"]').first();
     if (await firstPost.count() > 0) {
       await firstPost.click();
       await page.waitForLoadState('domcontentloaded');
@@ -103,7 +103,7 @@ test.describe('User Navigation Flows', () => {
     await page.goto('/posts');
     await page.waitForLoadState('domcontentloaded');
 
-    const firstPost = page.locator('article h2 a').first();
+    const firstPost = page.locator('article a[href^="/posts/"]').first();
     if (await firstPost.count() > 0) {
       await firstPost.click();
       await page.waitForLoadState('domcontentloaded');

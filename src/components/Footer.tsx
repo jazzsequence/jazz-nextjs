@@ -19,44 +19,46 @@ const SOCIAL_LINKS = [
 
 export default async function Footer() {
   const currentYear = new Date().getFullYear()
-
   const buildInfo = await getBuildInfo().catch(() => null)
 
   return (
     <footer className="bg-brand-header border-t border-brand-border mt-16">
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Fediverse + repo section */}
+        {/* ActivityPub / Fediverse follow block — mirrors jazzsequence.com */}
         <div className="flex flex-wrap items-start justify-between gap-6 mb-6 pb-6 border-b border-brand-border">
 
-          {/* Fediverse / ActivityPub */}
-          <div>
-            <p className="font-mono text-brand-cyan text-xs uppercase tracking-widest mb-1">
-              Fediverse
-            </p>
-            <a
-              href="https://mstdn.social/@jazzsequence"
-              className="font-mono text-brand-text-sub text-sm hover:text-brand-cyan transition-colors no-underline"
-              target="_blank"
-              rel="me noopener noreferrer"
-            >
-              @jazzsequence@mstdn.social
-            </a>
+          {/* ActivityPub profile card */}
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-brand-surface-high border border-brand-border flex items-center justify-center flex-shrink-0">
+              <i className="fa-brands fa-mastodon text-brand-cyan text-sm" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="font-heading font-semibold text-brand-text text-sm leading-tight">jazzsequence</p>
+              <p className="font-mono text-brand-muted text-xs mt-0.5">@jazzsequence@jazzsequence.com</p>
+              <p className="text-brand-muted text-xs mt-1">I make websites and things.</p>
+              <p className="font-mono text-xs mt-2 text-brand-text-sub">
+                Paste{' '}
+                <code className="bg-brand-surface-high px-1 rounded text-brand-cyan">
+                  @jazzsequence@jazzsequence.com
+                </code>
+                {' '}into your favourite open social app to follow.
+              </p>
+            </div>
           </div>
 
-          {/* Source repo */}
-          <div>
-            <p className="font-mono text-brand-cyan text-xs uppercase tracking-widest mb-1">
-              This site
-            </p>
+          {/* GitHub repo link — mirrors jazzsequence.com footer */}
+          <div className="text-sm text-brand-text-sub font-heading">
+            Want to know what makes this site go?{' '}
             <a
               href="https://github.com/jazzsequence/jazz-nextjs"
-              className="font-mono text-brand-text-sub text-sm hover:text-brand-cyan transition-colors no-underline"
               target="_blank"
               rel="noopener noreferrer"
+              className="text-brand-cyan hover:text-brand-magenta transition-colors"
             >
-              github.com/jazzsequence/jazz-nextjs
+              Check out the GitHub repo
             </a>
+            !
           </div>
 
         </div>
@@ -86,7 +88,7 @@ export default async function Footer() {
           <div className="flex items-center gap-4">
             {buildInfo && (
               <span className="font-mono text-brand-muted text-xs">
-                {new Date(buildInfo.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver', month: 'short', day: 'numeric', year: 'numeric' })} · {buildInfo.commitShort}
+                Build: {new Date(buildInfo.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver' })} MT &bull; Commit: {buildInfo.commitShort}
               </span>
             )}
             <span className="font-heading text-brand-muted text-sm">

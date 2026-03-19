@@ -20,8 +20,8 @@ export default function PostCard({ post }: PostCardProps) {
   return (
     <article className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group transition-colors hover:border-brand-border-bright">
 
-      {/* Image area with gradient overlay */}
-      <Link href={`/posts/${post.slug}`} className="block relative h-48 overflow-hidden no-underline">
+      {/* Image area — title and date overlaid at the bottom, matching the style guide */}
+      <Link href={`/posts/${post.slug}`} className="block relative h-56 overflow-hidden no-underline">
         {hasImage ? (
           <Image
             src={featuredMedia.source_url}
@@ -37,11 +37,11 @@ export default function PostCard({ post }: PostCardProps) {
           />
         )}
 
-        {/* Dark gradient fade — always present for text legibility */}
+        {/* Dark gradient fade to surface at bottom for text legibility */}
         <div
           aria-hidden="true"
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(13,13,26,0.7) 70%, #13132b 100%)' }}
+          style={{ background: 'linear-gradient(to bottom, transparent 20%, rgba(13,13,26,0.65) 60%, #13132b 100%)' }}
         />
 
         {/* Retrowave grid overlay */}
@@ -54,38 +54,33 @@ export default function PostCard({ post }: PostCardProps) {
           }}
         />
 
-        {/* Eyebrow date overlaid at bottom of image */}
-        <div className="absolute bottom-3 left-4">
-          <time className="font-mono text-brand-cyan text-xs uppercase tracking-widest">
+        {/* Eyebrow date + title overlaid at bottom of image */}
+        <div className="absolute bottom-0 left-0 right-0 p-4">
+          <time className="font-mono text-brand-cyan text-xs uppercase tracking-widest block mb-1">
             {formattedDate}
           </time>
+          <h2 className="font-heading font-bold text-brand-text text-lg leading-snug">
+            {post.title.rendered}
+          </h2>
         </div>
       </Link>
 
-      {/* Card body */}
-      <div className="p-5">
-        <h2 className="font-heading font-bold text-brand-text text-lg leading-snug mb-3">
+      {/* Card body — excerpt and read more only */}
+      {(sanitizedExcerpt || true) && (
+        <div className="p-4">
+          {sanitizedExcerpt && (
+            <p className="text-brand-text-sub text-sm leading-relaxed mb-3 line-clamp-3">
+              {sanitizedExcerpt}
+            </p>
+          )}
           <Link
             href={`/posts/${post.slug}`}
-            className="hover:text-brand-cyan transition-colors no-underline"
+            className="text-brand-cyan text-sm font-medium hover:text-brand-magenta transition-colors no-underline"
           >
-            {post.title.rendered}
+            Read more →
           </Link>
-        </h2>
-
-        {sanitizedExcerpt && (
-          <p className="text-brand-text-sub text-sm leading-relaxed mb-4 line-clamp-3">
-            {sanitizedExcerpt}
-          </p>
-        )}
-
-        <Link
-          href={`/posts/${post.slug}`}
-          className="text-brand-cyan text-sm font-medium hover:text-brand-magenta transition-colors no-underline"
-        >
-          Read more →
-        </Link>
-      </div>
+        </div>
+      )}
     </article>
   );
 }

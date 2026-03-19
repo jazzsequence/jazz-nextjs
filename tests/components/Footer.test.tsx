@@ -19,7 +19,8 @@ describe('Footer', () => {
   it('renders the site title "jazzsequence"', async () => {
     const FooterEl = await Footer()
     render(FooterEl)
-    expect(screen.getByText('jazzsequence')).toBeTruthy()
+    // "jazzsequence" appears in the bottom bar and the profile card
+    expect(screen.getAllByText('jazzsequence').length).toBeGreaterThanOrEqual(1)
   })
 
   it('renders copyright text with the current year', async () => {
@@ -58,19 +59,26 @@ describe('Footer', () => {
     expect(bskyLink).toBeTruthy()
   })
 
-  it('renders build commit info', async () => {
+  it('renders build info in the format "Build: ... MT • Commit: hash"', async () => {
     const FooterEl = await Footer()
     render(FooterEl)
-    expect(screen.getByText(/abc1234/)).toBeTruthy()
+    expect(screen.getByText(/Build:.*MT.*Commit:.*abc1234/s)).toBeTruthy()
   })
 
-  it('renders the fediverse/Mastodon handle', async () => {
+  it('renders the ActivityPub webfinger address @jazzsequence@jazzsequence.com', async () => {
     const FooterEl = await Footer()
     render(FooterEl)
-    expect(screen.getByText(/@jazzsequence/)).toBeTruthy()
+    // Webfinger appears as the profile label and in the copy instruction code block
+    expect(screen.getAllByText(/@jazzsequence@jazzsequence\.com/).length).toBeGreaterThanOrEqual(1)
   })
 
-  it('links to the jazz-nextjs GitHub repository', async () => {
+  it('renders "Check out the GitHub repo" link text', async () => {
+    const FooterEl = await Footer()
+    render(FooterEl)
+    expect(screen.getByText(/Check out the GitHub repo/)).toBeTruthy()
+  })
+
+  it('links the GitHub repo text to jazz-nextjs repository', async () => {
     const FooterEl = await Footer()
     const { container } = render(FooterEl)
     const repoLink = container.querySelector('a[href*="jazz-nextjs"]')
