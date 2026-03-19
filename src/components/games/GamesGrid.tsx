@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import type { GCGame } from '@/lib/wordpress/types'
 import { GameCard } from './GameCard'
 import { GameModal } from './GameModal'
@@ -133,18 +133,15 @@ export function GamesGrid({ games }: GamesGridProps) {
         <p className="py-16 text-center text-gray-400">No games match the current filters.</p>
       ) : (
         <motion.div layout className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-          <AnimatePresence mode="popLayout">
-            {filtered.map((game) => (
-              <motion.div
-                key={game.id}
-                layout
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-              >
-                <GameCard game={game} onClick={setActiveGame} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          {filtered.map((game) => (
+            <motion.div
+              key={game.id}
+              layout
+              transition={{ duration: 0.25 }}
+            >
+              <GameCard game={game} onClick={setActiveGame} />
+            </motion.div>
+          ))}
         </motion.div>
       )}
 
