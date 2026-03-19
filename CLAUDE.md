@@ -181,7 +181,24 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - **ISR**: 3600s revalidation
 - **Rate Limiting**: 10 req/sec, burst of 20
 
-**Custom Post Types**: `gc_game`, `rb_recipe`, `plague-artist`, `movie`, `ab_address`, `media`
+**Custom Post Types relevant to this site**: `gc_game` (games — implemented), `media` (YouTube/WordPress.tv — future)
+
+**Out of scope** — these belong to multisite subsites, NOT jazzsequence.com:
+- `rb_recipe` (recipes), `plague-artist` (artists), `movie` (movies) — do NOT build pages for these
+
+**Implemented routes**:
+- `/` — homepage with posts
+- `/posts` — post list with pagination
+- `/posts/[slug]` — individual posts
+- `/[slug]`, `/[slug]/[child]` — WordPress pages
+- `/games` — game collection with filtering + modal (ISR)
+- `/tag/[slug]` — tag archives
+
+**Remaining work**:
+- `/category/[slug]` — category archives (same pattern as `/tag/[slug]`)
+- On-demand revalidation webhook — connect WordPress publish hooks to `/api/revalidate`
+- Design system / global styles
+- Accessibility improvements
 
 ---
 

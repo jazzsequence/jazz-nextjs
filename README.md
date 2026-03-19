@@ -16,31 +16,33 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - Token bucket rate limiting (10 req/sec, burst of 20)
   - Automatic ISR cache tag generation for Next.js
   - Custom error classes with detailed context
-- **Multiple Custom Post Types**: Support for 8+ content types (games, recipes, artists, media, movies, addresses)
 - **Type Safety**: Full TypeScript implementation with runtime Zod schema validation
 - **HTML Sanitization**: DOMPurify integration for safe WordPress content rendering
-- **Testing**: 75/75 tests passing with comprehensive coverage
+- **Testing**: 317 tests passing with comprehensive coverage
   - Unit tests with Vitest + happy-dom
-  - E2E tests with Playwright
+  - E2E tests with Playwright against live Pantheon environments
   - Automated Playwright report deployment to GitHub Pages
 - **Deployment**: Optimized for Pantheon's Next.js hosting platform
 
-### Custom Post Types Supported
+### Implemented Routes
 
-- `gc_game` - Board games with player counts, difficulty, and playtime
-- `rb_recipe` - Recipes with ingredients, cook times, and servings
-- `plague-artist` - Artists with social media profiles
-- `media` - YouTube and WordPress.tv video content
-- `movie` - Movies with genres, actors, and collections
-- `ab_address` - Address book entries
-- Plus standard WordPress posts and pages
+| Route | Description |
+|---|---|
+| `/` | Homepage with recent posts |
+| `/posts` | Post archive with pagination |
+| `/posts/[slug]` | Individual post pages |
+| `/[slug]` | WordPress pages (e.g. `/music`, `/about`) |
+| `/[slug]/[child]` | Child pages (e.g. `/music/loafmen`) |
+| `/games` | Board game collection with filtering and modal detail view |
+| `/tag/[slug]` | Tag archive pages |
+| `/category/[slug]` | Category archive pages *(planned)* |
 
 ## Getting Started
 
 ### Prerequisites
 
-- Node.js 20.x or later (managed via `engines` in package.json)
-- npm, yarn, or pnpm
+- Node.js 24.x (managed via `.nvmrc` — run `nvm use`)
+- npm 11.x
 
 ### Installation
 
@@ -70,7 +72,7 @@ The `start:test` script starts the standalone server on port 3000 and runs E2E t
 
 ### Testing
 
-**Current Status**: ✅ All tests passing (75+ unit/integration, 87 E2E)
+**Current Status**: ✅ All tests passing (317 unit/integration)
 
 ```bash
 # Unit and integration tests (Vitest)
@@ -79,31 +81,9 @@ npm test
 # Watch mode
 npm run test:watch
 
-# Test UI
-npm run test:ui
-
-# End-to-end tests (Playwright)
+# End-to-end tests (Playwright — runs against live Pantheon dev site)
 npm run test:e2e
-
-# E2E with UI
-npm run test:e2e:ui
-
-# E2E against standalone build (production mode)
-npm run test:e2e:standalone
 ```
-
-**Test Coverage:**
-- WordPress API client (65 tests)
-  - All post types (posts, pages, games, recipes, artists, movies, media, addresses)
-  - Error handling (404, 429, 500, network failures)
-  - Retry logic with exponential backoff
-  - Rate limiting
-  - ISR caching integration
-  - Edge cases (empty arrays, long content, Unicode, malformed responses)
-- Type validation (10 tests)
-  - Zod schema validation for all post types
-  - Required vs optional fields
-  - Custom post type metadata
 
 **Playwright Reports**: E2E test results are automatically deployed to GitHub Pages at:
 ```
@@ -121,42 +101,25 @@ npm run lint
 The WordPress API client provides a generic interface for all post types:
 
 ```typescript
-import { fetchPosts, fetchPost } from '@/lib/wordpress/client'
+import { fetchPosts, fetchPost, fetchPostsWithPagination, fetchTagBySlug } from '@/lib/wordpress/client'
 
 // Fetch posts with pagination
-const posts = await fetchPosts('posts', { page: 1, perPage: 10 })
+const result = await fetchPostsWithPagination('posts', { page: 1, perPage: 10, embed: true })
 
-// Fetch games with search
-const games = await fetchPosts('gc_game', { search: 'monopoly' })
-
-// Fetch recipes with ISR caching (auto-generates cache tags)
-const recipes = await fetchPosts('rb_recipe', {
-  isr: { revalidate: 3600 }  // Auto-tags: ['rb_recipe']
-})
+// Fetch all games (custom endpoint)
+const games = await fetchGames({ isr: { revalidate: 3600, tags: ['gc_game'] } })
 
 // Fetch single post
 const post = await fetchPost('posts', 'my-post-slug')
 
-// Fetch single game with custom cache tags
-const game = await fetchPost('gc_game', 'monopoly', {
-  cache: { revalidate: 7200, tags: ['games', 'featured'] }
-})
-
-// Disable caching
-const liveData = await fetchPosts('posts', {
-  cache: { cache: 'no-cache' }
-})
+// Look up a tag by slug (returns id, name, count, etc.)
+const tag = await fetchTagBySlug('teh-s3quence')
 ```
 
 **Supported Post Types:**
 - `posts` - WordPress posts
 - `pages` - WordPress pages
-- `gc_game` - Board games
-- `rb_recipe` - Recipes
-- `plague-artist` - Artists
-- `movie` - Movies
-- `media` - Video content
-- `ab_address` - Address book
+- `gc_game` - Board games (also has dedicated `fetchGames()` via custom endpoint)
 
 See [API_CLIENT_DESIGN.md](docs/API_CLIENT_DESIGN.md) for complete documentation.
 
@@ -164,45 +127,48 @@ See [API_CLIENT_DESIGN.md](docs/API_CLIENT_DESIGN.md) for complete documentation
 
 ```
 jazz-nextjs/
-├── app/                     # Next.js App Router pages
-│   ├── page.tsx            # Homepage
-│   ├── [slug]/             # WordPress pages route (dynamic pages)
-│   │   └── page.tsx
-│   ├── posts/              # Blog posts
-│   │   ├── page.tsx        # Posts archive
-│   │   ├── [slug]/         # Individual post pages
-│   │   └── page/[page]/    # Paginated posts
-│   └── layout.tsx          # Root layout
+├── app/                      # Next.js App Router pages
+│   ├── page.tsx             # Homepage
+│   ├── layout.tsx           # Root layout
+│   ├── [slug]/              # WordPress pages (e.g. /music, /about)
+│   │   ├── page.tsx
+│   │   └── [child]/page.tsx # Child pages (e.g. /music/loafmen)
+│   ├── games/page.tsx       # Board game collection
+│   ├── posts/               # Blog posts
+│   │   ├── page.tsx         # Posts archive
+│   │   ├── [slug]/page.tsx  # Individual post
+│   │   └── page/[page]/     # Paginated posts
+│   └── tag/[slug]/page.tsx  # Tag archives
 ├── src/
+│   ├── components/          # React components
+│   │   ├── games/           # GameCard, GameModal, GamesGrid, utils
+│   │   ├── Navigation.tsx
+│   │   ├── Footer.tsx
+│   │   ├── PostCard.tsx
+│   │   ├── PostsList.tsx
+│   │   ├── PostContent.tsx
+│   │   └── Pagination.tsx
 │   └── lib/
 │       └── wordpress/       # WordPress API integration
-│           ├── client.ts    # Generic API client (retry, rate limiting, validation)
+│           ├── client.ts    # API client (retry, rate limiting, ISR, validation)
 │           ├── types.ts     # TypeScript type definitions
 │           ├── schemas.ts   # Zod validation schemas
-│           └── greeting.ts  # Greeting utility with query params
+│           └── greeting.ts  # Greeting utility
+├── tests/                   # All test files (mirrors src/app structure)
+│   ├── app/                 # Page component tests
+│   ├── components/          # Component unit tests
+│   ├── lib/wordpress/       # API client tests
+│   ├── e2e/                 # Playwright E2E tests
+│   └── mocks/               # MSW handlers
 ├── scripts/
-│   ├── test-standalone.js   # Standalone build testing script
 │   └── slack-notify.js      # Slack deployment notifications
-├── tests/
-│   ├── lib/wordpress/       # API client tests (75 tests)
-│   │   ├── client.test.ts   # Client functionality tests
-│   │   └── types.test.ts    # Schema validation tests
-│   ├── e2e/                 # Playwright E2E tests (87 tests)
-│   ├── mocks/               # MSW handlers for API mocking
-│   └── setup.ts             # Test configuration (MSW, rate limiter reset)
 ├── config/
-│   ├── vitest.config.ts     # Vitest configuration
-│   └── playwright.config.ts # Playwright configuration
-├── docs/
-│   ├── API_CLIENT_DESIGN.md # WordPress API client architecture
-│   ├── DEPLOYMENT.md        # Deployment guide
-│   ├── TESTING.md           # Testing methodology (TDD)
-│   ├── CONTENT_UPDATES.md   # ISR and content sync strategies
-│   ├── E2E_HANG_ANALYSIS.md # E2E testing troubleshooting
-│   └── AI_USAGE.md          # AI tooling documentation
-├── .github/workflows/
-│   └── test-pantheon.yml    # CI/CD with Playwright report deployment
-└── CLAUDE.md                # Development workflow and standards
+│   ├── vitest.config.ts
+│   └── playwright.config.ts
+├── docs/                    # Project documentation
+├── .claude/                 # Reviewer workflow enforcement hooks
+├── .githooks/               # Pre-commit hook source (install via .githooks/install.sh)
+└── CLAUDE.md                # Development standards and workflow
 ```
 
 ## Documentation
@@ -222,7 +188,7 @@ jazz-nextjs/
 - **Next.js 16.1.6** - React framework with App Router and Turbopack
 - **React 19.2.4** - UI library
 - **TypeScript 5** - Type safety
-- **Node.js 24.13.0** - Runtime (matches Pantheon)
+- **Node.js 24.13.0** - Runtime (matches Pantheon, managed via `.nvmrc`)
 
 ### WordPress Integration
 - **Generic API Client** - Ultra-DRY `fetchPosts(postType)` API for all content types
@@ -231,22 +197,19 @@ jazz-nextjs/
 - **Rate Limiting** - Token bucket algorithm (10 req/sec sustained, 20 burst)
 - **DOMPurify** - HTML sanitization for WordPress content
 - **html-react-parser** - Safe HTML parsing
-- **@pantheon-systems/nextjs-cache-handler 0.4.0** - Persistent ISR caching
+- **@pantheon-systems/nextjs-cache-handler** - Persistent ISR caching
 
 ### Testing
-- **Vitest 4** with happy-dom - Unit and integration testing
-- **Playwright** - End-to-end testing
+- **Vitest 4** with happy-dom - Unit and integration testing (317 tests)
+- **Playwright** - End-to-end testing against live Pantheon environments
 - **MSW** - API mocking
 - **Testing Library** - React component testing
-- **happy-dom** - Lightweight DOM implementation for tests
 
 ### Build & Dev Tools
 - **Tailwind CSS 3.4** - Styling framework
-- **PostCSS** - CSS processing
-- **Autoprefixer** - CSS vendor prefixing
-- **date-fns** - Date formatting
-- **Sharp 0.34.5** - Image optimization
-- **ESLint 9.39.3** - Code linting with flat config
+- **framer-motion** - Layout and filter animations (games grid)
+- **Sharp** - Image optimization
+- **ESLint 9** - Code linting with flat config
 
 ## Deployment
 
