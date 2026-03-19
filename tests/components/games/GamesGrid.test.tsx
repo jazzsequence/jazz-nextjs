@@ -3,11 +3,13 @@ import { render, screen, fireEvent, within } from '@testing-library/react'
 import { GamesGrid } from '@/components/games/GamesGrid'
 import type { GCGame } from '@/lib/wordpress/types'
 
-// Mock framer-motion so layout animation props don't interfere with DOM assertions.
+// AnimatePresence holds exiting nodes in the DOM until their exit animation completes.
+// Mock it as a passthrough so filter assertions see immediate DOM changes.
 vi.mock('framer-motion', () => ({
   motion: {
     div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
   },
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
 const makeGame = (overrides: Partial<GCGame> & { id: number; slug: string; title: string }): GCGame => ({
