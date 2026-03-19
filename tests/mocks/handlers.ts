@@ -71,4 +71,13 @@ export const handlers = [
       { id: 3, name: 'Next.js', slug: 'nextjs' },
     ])
   }),
+
+  // Passthrough handlers for external CDN resources loaded by components (e.g. style guide Google Fonts)
+  // Returns an empty response so happy-dom doesn't error on teardown
+  http.get('https://fonts.googleapis.com/*', () => {
+    return new HttpResponse('', { status: 200, headers: { 'content-type': 'text/css' } })
+  }),
+  http.get('https://fonts.gstatic.com/*', () => {
+    return new HttpResponse(null, { status: 200, headers: { 'content-type': 'font/woff2' } })
+  }),
 ]

@@ -10,6 +10,7 @@
  * 'use client' required for hover event handlers on interactive preview elements.
  */
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 
 const c = {
@@ -62,14 +63,18 @@ const section = (title: string, children: React.ReactNode) => (
 )
 
 export default function StyleGuidePage() {
+  // Load comparison fonts — skipped in test environments to avoid MSW/happy-dom SSL errors
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'test') return
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Syne:wght@400;700&display=swap'
+    document.head.appendChild(link)
+    return () => { document.head.removeChild(link) }
+  }, [])
+
   return (
     <div style={{ background: c.bg, minHeight: '100vh', color: c.text, fontFamily: 'Geist, sans-serif' }}>
-      {/* Load comparison fonts for the typography evaluation section — style guide only, not production */}
-      {/* eslint-disable @next/next/no-page-custom-font */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Syne:wght@400;700&display=swap" rel="stylesheet" />
-      {/* eslint-enable @next/next/no-page-custom-font */}
 
       {/* ── Sticky Header Preview ── */}
       <header style={{
