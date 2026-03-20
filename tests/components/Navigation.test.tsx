@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import Navigation from '@/components/Navigation';
 import type { WPMenuItem } from '@/lib/wordpress/types';
 
@@ -11,14 +11,16 @@ vi.mock('next/link', () => ({
     className,
     target,
     rel,
+    onClick,
   }: {
     href: string;
     children: React.ReactNode;
     className?: string;
     target?: string;
     rel?: string;
+    onClick?: React.MouseEventHandler<HTMLAnchorElement>;
   }) => (
-    <a href={href} className={className} target={target} rel={rel}>
+    <a href={href} className={className} target={target} rel={rel} onClick={onClick}>
       {children}
     </a>
   ),
@@ -357,6 +359,73 @@ describe('Navigation', () => {
       expect(link).not.toHaveAttribute('rel');
     });
   });
+
+  describe('mobile hamburger menu', () => {
+    it('renders a hamburger button on mobile', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      const button = screen.getByRole('button', { name: /open menu/i })
+      expect(button).toBeInTheDocument()
+    })
+
+    it('hamburger button has aria-expanded=false initially', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      const button = screen.getByRole('button', { name: /open menu/i })
+      expect(button).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('clicking hamburger opens the mobile menu', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      const button = screen.getByRole('button', { name: /open menu/i })
+
+      expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).not.toBeInTheDocument()
+      fireEvent.click(button)
+      expect(screen.getByRole('navigation', { name: 'Mobile navigation' })).toBeInTheDocument()
+    })
+
+    it('hamburger button shows aria-expanded=true when open', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      const button = screen.getByRole('button', { name: /open menu/i })
+      fireEvent.click(button)
+      expect(button).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('hamburger button label changes to close menu when open', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      const button = screen.getByRole('button', { name: /open menu/i })
+      fireEvent.click(button)
+      expect(screen.getByRole('button', { name: /close menu/i })).toBeInTheDocument()
+    })
+
+    it('mobile menu shows all nav items', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+
+      const mobileNav = screen.getByRole('navigation', { name: 'Mobile navigation' })
+      expect(mobileNav).toHaveTextContent('Home')
+      expect(mobileNav).toHaveTextContent('About')
+      expect(mobileNav).toHaveTextContent('Blog')
+    })
+
+    it('clicking a mobile menu link closes the panel', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      fireEvent.click(screen.getByRole('button', { name: /open menu/i }))
+
+      const mobileNav = screen.getByRole('navigation', { name: 'Mobile navigation' })
+      const homeLink = mobileNav.querySelector('a')!
+      fireEvent.click(homeLink)
+
+      expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).not.toBeInTheDocument()
+    })
+
+    it('clicking hamburger again closes the mobile menu', () => {
+      render(<Navigation menuItems={mockMenuItems} />)
+      const button = screen.getByRole('button', { name: /open menu/i })
+      fireEvent.click(button)
+      expect(screen.getByRole('navigation', { name: 'Mobile navigation' })).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /close menu/i }))
+      expect(screen.queryByRole('navigation', { name: 'Mobile navigation' })).not.toBeInTheDocument()
+    })
+  })
 
   describe('URL transformation', () => {
     it('should transform jazzsequence.com URLs to local paths', () => {
