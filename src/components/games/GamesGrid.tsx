@@ -64,8 +64,8 @@ export function GamesGrid({ games }: GamesGridProps) {
           onClick={resetFilters}
           className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
             !hasActiveFilter
-              ? 'bg-gray-900 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-brand-cyan text-brand-bg'
+              : 'bg-brand-surface-high text-brand-text-sub border border-brand-border hover:border-brand-cyan hover:text-brand-cyan'
           }`}
         >
           Show All
@@ -79,8 +79,8 @@ export function GamesGrid({ games }: GamesGridProps) {
             onClick={() => setSelectedAttribute(selectedAttribute === attr ? '' : attr)}
             className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
               selectedAttribute === attr
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-brand-cyan text-brand-bg'
+                : 'bg-brand-surface-high text-brand-text-sub border border-brand-border hover:border-brand-cyan hover:text-brand-cyan'
             }`}
           >
             {attr}
@@ -89,12 +89,12 @@ export function GamesGrid({ games }: GamesGridProps) {
 
         {/* Player count select */}
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-gray-600 font-medium">Players:</span>
+          <span className="text-brand-muted font-heading font-medium">Players:</span>
           <select
             aria-label="Players"
             value={players}
             onChange={(e) => setPlayers(e.target.value as PlayerFilter)}
-            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+            className="rounded-md border border-brand-border bg-brand-surface-high text-brand-text-sub px-2 py-1 text-sm font-heading"
           >
             <option value="">Any</option>
             <option value="2">2+</option>
@@ -106,12 +106,12 @@ export function GamesGrid({ games }: GamesGridProps) {
 
         {/* Difficulty select */}
         <label className="flex items-center gap-2 text-sm">
-          <span className="text-gray-600 font-medium">Difficulty:</span>
+          <span className="text-brand-muted font-heading font-medium">Difficulty:</span>
           <select
             aria-label="Difficulty"
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value as DifficultyFilter)}
-            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+            className="rounded-md border border-brand-border bg-brand-surface-high text-brand-text-sub px-2 py-1 text-sm font-heading"
           >
             <option value="">Any</option>
             <option value="easy">Easy</option>
@@ -123,14 +123,14 @@ export function GamesGrid({ games }: GamesGridProps) {
       </div>
 
       {/* Count */}
-      <p className="mb-4 text-sm text-gray-500">
+      <p className="mb-4 text-sm text-brand-muted font-heading">
         {filtered.length} {filtered.length === 1 ? 'game' : 'games'}
         {hasActiveFilter ? ' matching filters' : ' in collection'}
       </p>
 
       {/* Grid */}
       {filtered.length === 0 ? (
-        <p className="py-16 text-center text-gray-400">No games match the current filters.</p>
+        <p className="py-16 text-center text-brand-muted font-heading">No games match the current filters.</p>
       ) : (
         <motion.div layout className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           <AnimatePresence mode="popLayout">
