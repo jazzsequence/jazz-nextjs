@@ -2,25 +2,56 @@ import { revalidatePath, revalidateTag } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
 /**
- * On-demand revalidation webhook endpoint for WordPress content updates
+ * On-demand revalidation webhook endpoint for WordPress content updates.
  *
- * WordPress can call this endpoint when content is updated to trigger
- * ISR revalidation without waiting for the revalidation interval.
+ * Accepts two payload formats (both require X-Revalidate-Secret header):
  *
- * Usage:
- *   POST /api/revalidate
- *   Headers: X-Revalidate-Secret: <REVALIDATE_SECRET>
- *   Body: { path: "/posts/my-post", tag: "posts" }
+ * 1. Explicit path/tag (generic):
+ *    { "path": "/posts/my-post", "tag": "posts" }
+ *
+ * 2. WordPress-native (auto-computes paths and tags from post type):
+ *    { "post_type": "post", "post_slug": "my-post", "action": "publish" }
+ *
+ * post_type → path/tag mapping:
+ *   post     → /posts/<slug>        tags: posts, post-<slug>
+ *   page     → /<slug>              tags: pages, page-<slug>
+ *   gc_game  → /games               tags: games, game-<slug>
+ *   (other)  → no-op (safe)
  *
  * WordPress webhook URL:
  *   https://<site>.pantheonsite.io/api/revalidate
  *
  * Environment variables:
- *   REVALIDATE_SECRET - Secret token for webhook authentication
+ *   REVALIDATE_SECRET — Secret token for webhook authentication
  */
 
+/** Map a WordPress post_type + slug to the Next.js paths and ISR tags to revalidate. */
+function resolveTargets(
+  post_type: string,
+  post_slug: string
+): { paths: string[]; tags: string[] } {
+  switch (post_type) {
+    case 'post':
+      return {
+        paths: [`/posts/${post_slug}`],
+        tags: ['posts', `post-${post_slug}`],
+      }
+    case 'page':
+      return {
+        paths: [`/${post_slug}`],
+        tags: ['pages', `page-${post_slug}`],
+      }
+    case 'gc_game':
+      return {
+        paths: ['/games'],
+        tags: ['games', `game-${post_slug}`],
+      }
+    default:
+      return { paths: [], tags: [] }
+  }
+}
+
 export async function POST(request: NextRequest) {
-  // Verify secret token
   const secret = request.headers.get('x-revalidate-secret')
 
   if (secret !== process.env.REVALIDATE_SECRET) {
@@ -32,24 +63,41 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { path, tag } = body
+    const { path, tag, tags: tagsArray, post_type, post_slug } = body
 
-    // Revalidate by path or tag
-    if (path) {
-      await revalidatePath(path)
-      console.log(`Revalidated path: ${path}`)
+    // Resolve targets from WordPress-native payload if provided
+    const derived = post_type && post_slug
+      ? resolveTargets(post_type as string, post_slug as string)
+      : { paths: [], tags: [] }
+
+    // Combine explicit + derived paths/tags (deduplicated)
+    // Accepts both tag (single string) and tags (array of strings)
+    const explicitTags = [
+      ...(tag ? [tag as string] : []),
+      ...(Array.isArray(tagsArray) ? (tagsArray as string[]) : []),
+    ]
+    const allPaths = [...new Set([...(path ? [path] : []), ...derived.paths])]
+    const allTags  = [...new Set([...explicitTags, ...derived.tags])]
+
+    for (const p of allPaths) {
+      await revalidatePath(p)
+      console.log(`Revalidated path: ${p}`)
     }
 
-    if (tag) {
-      revalidateTag(tag, "max") // stale-while-revalidate strategy
-      console.log(`Revalidated tag: ${tag}`)
+    for (const t of allTags) {
+      revalidateTag(t, "max")
+      console.log(`Revalidated tag: ${t}`)
     }
 
     return NextResponse.json({
       success: true,
       revalidated: true,
+      // Legacy fields (backward compat)
       path,
       tag,
+      // New fields
+      paths: allPaths,
+      tags: allTags,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {

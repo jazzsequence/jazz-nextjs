@@ -96,4 +96,46 @@ test.describe('Revalidation API', () => {
     // In development: 200 with usage info
     expect([200, 405]).toContain(response.status())
   })
+
+  // ── WordPress-native payload ───────────────────────────────────────────────
+
+  test('should revalidate post by post_type + post_slug', async ({ request }) => {
+    const response = await request.post('/api/revalidate', {
+      headers: { 'X-Revalidate-Secret': revalidateSecret },
+      data: { post_type: 'post', post_slug: 'teh-s3quence-016' },
+    })
+
+    expect(response.status()).toBe(200)
+    const body = await response.json()
+    expect(body.success).toBe(true)
+    expect(body.paths).toContain('/posts/teh-s3quence-016')
+    expect(body.tags).toContain('posts')
+    expect(body.tags).toContain('post-teh-s3quence-016')
+  })
+
+  test('should revalidate page by post_type + post_slug', async ({ request }) => {
+    const response = await request.post('/api/revalidate', {
+      headers: { 'X-Revalidate-Secret': revalidateSecret },
+      data: { post_type: 'page', post_slug: 'about' },
+    })
+
+    expect(response.status()).toBe(200)
+    const body = await response.json()
+    expect(body.paths).toContain('/about')
+    expect(body.tags).toContain('pages')
+    expect(body.tags).toContain('page-about')
+  })
+
+  test('should revalidate games list for gc_game post type', async ({ request }) => {
+    const response = await request.post('/api/revalidate', {
+      headers: { 'X-Revalidate-Secret': revalidateSecret },
+      data: { post_type: 'gc_game', post_slug: 'twilight-imperium' },
+    })
+
+    expect(response.status()).toBe(200)
+    const body = await response.json()
+    expect(body.paths).toContain('/games')
+    expect(body.tags).toContain('games')
+    expect(body.tags).toContain('game-twilight-imperium')
+  })
 })
