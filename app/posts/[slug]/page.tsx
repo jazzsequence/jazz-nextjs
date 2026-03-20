@@ -3,86 +3,61 @@ import type { WPPost } from '@/lib/wordpress/types';
 import PostContent from '@/components/PostContent';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { getBuildInfo } from '@/lib/build-info';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 3600; // ISR: Revalidate every hour
+export const revalidate = 3600;
 
 interface PostPageProps {
-  params: Promise<{
-    slug: string;
-  }>;
+  params: Promise<{ slug: string }>;
 }
 
 export default async function PostPage({ params }: PostPageProps) {
   const { slug } = await params;
 
   try {
-    // Fetch post, menu items, and build info in parallel
-    const [post, menuItems, buildInfo] = await Promise.allSettled([
+    const [post, menuItems] = await Promise.allSettled([
       fetchPost<WPPost>('posts', slug, {
         isr: { revalidate: 3600, tags: ['posts', `post-${slug}`] },
+        embed: true,
       }),
       fetchMenuItems(1698, {
         isr: { revalidate: 3600, tags: ['menu', 'header'] },
       }),
-      getBuildInfo(),
     ]);
 
     if (post.status === 'rejected') {
       const error = post.reason;
-      if (error instanceof WPNotFoundError) {
-        notFound();
-      }
+      if (error instanceof WPNotFoundError) notFound();
       throw error;
     }
 
-    const menuItemsData =
-      menuItems.status === 'fulfilled' ? menuItems.value : undefined;
-    const menuError =
-      menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
-
-    const buildInfoData =
-      buildInfo.status === 'fulfilled'
-        ? buildInfo.value
-        : { commitShort: 'unknown', buildTime: new Date().toISOString() };
+    const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined;
+    const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
     return (
       <>
         <Navigation menuItems={menuItemsData} error={menuError} />
-
-        <main className="container mx-auto px-4 py-8">
-          <div className="text-xs text-gray-500 mb-6 font-mono">
-            Build: {new Date(buildInfoData.buildTime).toLocaleString()} • Commit: {buildInfoData.commitShort}
-          </div>
-
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <PostContent post={post.value} />
         </main>
-
         <Footer />
       </>
     );
   } catch (error) {
-    if (error instanceof WPNotFoundError) {
-      notFound();
-    }
+    if (error instanceof WPNotFoundError) notFound();
 
     const [menuItems] = await Promise.allSettled([
-      fetchMenuItems(1698, {
-        isr: { revalidate: 3600, tags: ['menu', 'header'] },
-      }),
+      fetchMenuItems(1698, { isr: { revalidate: 3600, tags: ['menu', 'header'] } }),
     ]);
 
-    const menuItemsData =
-      menuItems.status === 'fulfilled' ? menuItems.value : undefined;
-    const menuError =
-      menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
+    const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined;
+    const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
     return (
       <>
         <Navigation menuItems={menuItemsData} error={menuError} />
-        <main className="container mx-auto px-4 py-8">
-          <p className="text-red-600">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <p className="text-brand-magenta font-heading">
             Unable to load post. Please try again later.
           </p>
         </main>

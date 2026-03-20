@@ -4,9 +4,8 @@ import PostsList from '@/components/PostsList';
 import Navigation from '@/components/Navigation';
 import Pagination from '@/components/Pagination';
 import Footer from '@/components/Footer';
-import { getBuildInfo } from '@/lib/build-info';
 
-export const revalidate = 3600; // ISR: Revalidate every hour
+export const revalidate = 3600;
 
 interface PostsPageProps {
   searchParams: Promise<{ page?: string }>;
@@ -47,13 +46,11 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
   const params = await searchParams;
   const page = Number(params?.page) || 1;
 
-  // Fetch posts, menu items, and build info in parallel
-  const [postsData, menuItems, buildInfo] = await Promise.allSettled([
+  const [postsData, menuItems] = await Promise.allSettled([
     fetchPostsData(page),
     fetchMenuItems(1698, {
       isr: { revalidate: 3600, tags: ['menu', 'header'] },
     }),
-    getBuildInfo(),
   ]);
 
   const { posts, totalPages, error: postsError } =
@@ -61,35 +58,24 @@ export default async function PostsPage({ searchParams }: PostsPageProps) {
       ? postsData.value
       : { posts: [], totalPages: 0, error: 'Failed to load posts' };
 
-  const menuItemsData =
-    menuItems.status === 'fulfilled' ? menuItems.value : undefined;
-  const menuError =
-    menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
-
-  const buildInfoData =
-    buildInfo.status === 'fulfilled'
-      ? buildInfo.value
-      : { commitShort: 'unknown', buildTime: new Date().toISOString() };
+  const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined;
+  const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
   return (
     <>
       <Navigation menuItems={menuItemsData} error={menuError} />
 
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-8">Posts</h1>
-
-        <div className="text-xs text-gray-500 mb-6 font-mono">
-          Build: {new Date(buildInfoData.buildTime).toLocaleString()} • Commit: {buildInfoData.commitShort}
-        </div>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="font-heading text-4xl font-bold text-brand-text mb-8">Posts</h1>
 
         {postsError && (
-          <div className="p-4 bg-red-50 border border-red-200 rounded-lg mb-6 text-red-800">
+          <div className="p-4 bg-brand-surface border border-brand-border rounded-lg mb-6 text-brand-magenta">
             {postsError}
           </div>
         )}
 
         {!postsError && posts.length === 0 && (
-          <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-gray-600">
+          <div className="p-4 bg-brand-surface border border-brand-border rounded-lg text-brand-muted">
             No posts found.
           </div>
         )}
