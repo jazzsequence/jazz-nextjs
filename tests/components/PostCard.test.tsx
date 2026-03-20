@@ -103,4 +103,15 @@ describe('PostCard', () => {
     const images = screen.queryByRole('img');
     expect(images).not.toBeInTheDocument();
   });
+
+  it('decodes HTML entities in post title (e.g. &#8217; → curly apostrophe)', () => {
+    const postWithEntities = {
+      ...mockPost,
+      title: { rendered: "I&#8217;ll tell you" },
+    }
+    render(<PostCard post={postWithEntities} />)
+    // Should render the decoded curly apostrophe, not the literal entity
+    expect(screen.getByRole('heading', { name: /I\u2019ll tell you/i })).toBeInTheDocument()
+    expect(screen.queryByText(/&#8217;/)).not.toBeInTheDocument()
+  })
 });

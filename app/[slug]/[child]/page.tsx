@@ -2,6 +2,7 @@ import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { fetchPost, fetchMenuItems, WPNotFoundError } from '@/lib/wordpress/client'
 import type { WPPage } from '@/lib/wordpress/types'
+import { decodeHtmlEntities } from '@/lib/utils/html'
 import PostContent from '@/components/PostContent'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
@@ -43,7 +44,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     })
 
     return {
-      title: page.title.rendered,
+      title: decodeHtmlEntities(page.title.rendered),
       description: page.excerpt?.rendered
         ? page.excerpt.rendered.replace(/<[^>]*>/g, '').substring(0, 160)
         : undefined,

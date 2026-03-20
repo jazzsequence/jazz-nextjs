@@ -2,6 +2,7 @@
 
 import type { GCGame } from '@/lib/wordpress/types'
 import { formatPlayers } from './utils'
+import { decodeHtmlEntities } from '@/lib/utils/html'
 
 interface GameCardProps {
   game: GCGame
@@ -23,7 +24,7 @@ export function GameCard({ game, onClick }: GameCardProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={game.featured_image.url}
-              alt={game.featured_image.alt || game.title.rendered}
+              alt={game.featured_image.alt || decodeHtmlEntities(game.title.rendered)}
               className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
             />
             {/* Same retrowave tint as PostCard featured images */}
@@ -53,7 +54,7 @@ export function GameCard({ game, onClick }: GameCardProps) {
       {/* Info */}
       <div className="flex flex-col gap-1 p-3">
         <h3 className="font-heading font-semibold text-sm leading-tight text-brand-text line-clamp-2">
-          {game.title.rendered}
+          {decodeHtmlEntities(game.title.rendered)}
         </h3>
 
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-brand-muted font-heading">

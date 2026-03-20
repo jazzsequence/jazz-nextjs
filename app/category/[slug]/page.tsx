@@ -51,7 +51,7 @@ export default async function CategoryArchivePage({ params, searchParams }: Cate
     fetchPostsWithPagination<WPPost>('posts', {
       categories: [category.id],
       page,
-      perPage: 10,
+      perPage: 12,
       embed: true,
       isr: { revalidate: 3600, tags: [`category-${slug}`, 'posts'] },
     }),

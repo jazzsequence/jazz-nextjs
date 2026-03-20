@@ -51,7 +51,7 @@ export default async function SeriesArchivePage({ params, searchParams }: Series
     fetchPostsWithPagination<WPPost>('posts', {
       series: [series.id],
       page,
-      perPage: 10,
+      perPage: 12,
       embed: true,
       isr: { revalidate: 3600, tags: [`series-${slug}`, 'posts'] },
     }),

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import DOMPurify from 'isomorphic-dompurify';
+import { decodeHtmlEntities } from '@/lib/utils/html';
 import type { WPPost } from '@/lib/wordpress/types';
 
 interface PostCardProps {
@@ -25,7 +26,7 @@ export default function PostCard({ post }: PostCardProps) {
         {hasImage ? (
           <Image
             src={featuredMedia.source_url}
-            alt={featuredMedia.alt_text || post.title.rendered}
+            alt={featuredMedia.alt_text || decodeHtmlEntities(post.title.rendered)}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -73,7 +74,7 @@ export default function PostCard({ post }: PostCardProps) {
             {formattedDate}
           </time>
           <h2 className="font-heading font-bold text-brand-text text-lg leading-snug">
-            {post.title.rendered}
+            {decodeHtmlEntities(post.title.rendered)}
           </h2>
         </div>
       </Link>

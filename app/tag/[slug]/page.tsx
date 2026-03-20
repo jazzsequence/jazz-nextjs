@@ -52,7 +52,7 @@ export default async function TagArchivePage({ params, searchParams }: TagPagePr
     fetchPostsWithPagination<WPPost>('posts', {
       tags: [tag.id],
       page,
-      perPage: 10,
+      perPage: 12,
       embed: true,
       isr: { revalidate: 3600, tags: [`tag-${slug}`, 'posts'] },
     }),

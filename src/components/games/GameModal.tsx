@@ -2,6 +2,7 @@
 
 import type { GCGame } from '@/lib/wordpress/types'
 import { formatPlayers } from './utils'
+import { decodeHtmlEntities } from '@/lib/utils/html'
 
 interface GameModalProps {
   game: GCGame | null
@@ -42,7 +43,7 @@ export function GameModal({ game, onClose }: GameModalProps) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={game.featured_image.url}
-              alt={game.featured_image.alt || game.title.rendered}
+              alt={game.featured_image.alt || decodeHtmlEntities(game.title.rendered)}
               className="h-full w-full object-contain"
             />
           </div>
@@ -50,7 +51,7 @@ export function GameModal({ game, onClose }: GameModalProps) {
 
         <div className="p-6">
           <h2 className="font-mono text-2xl font-bold text-brand-text mb-4">
-            {game.title.rendered}
+            {decodeHtmlEntities(game.title.rendered)}
           </h2>
 
           {/* Metadata grid */}

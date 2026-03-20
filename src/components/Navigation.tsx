@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { transformMenuUrl } from '@/lib/url-transform';
+import { decodeHtmlEntities } from '@/lib/utils/html';
 import type { WPMenuItem } from '@/lib/wordpress/types';
 
 interface NavigationProps {
@@ -10,17 +11,6 @@ interface NavigationProps {
   isLoading?: boolean;
   error?: string;
   className?: string;
-}
-
-/** Decode HTML entities (e.g. &#038; → &) in menu item titles from the WordPress API. */
-function decodeHtmlEntities(str: string): string {
-  return str
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code, 10)))
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#039;/g, "'")
 }
 
 function organizeMenuItems(items: WPMenuItem[]): WPMenuItem[] {

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { format } from 'date-fns';
 import parse from 'html-react-parser';
 import DOMPurify from 'isomorphic-dompurify';
+import { decodeHtmlEntities } from '@/lib/utils/html';
 import type { WPContent, WPTerm } from '@/lib/wordpress/types';
 
 interface PostContentProps {
@@ -41,7 +42,7 @@ export default function PostContent({ post }: PostContentProps) {
     <article>
       <header className="mb-8">
         <h1 className="font-heading text-4xl sm:text-5xl font-bold text-brand-text leading-tight mb-3">
-          {post.title.rendered}
+          {decodeHtmlEntities(post.title.rendered)}
         </h1>
         {isPost && (
           <time
@@ -58,7 +59,7 @@ export default function PostContent({ post }: PostContentProps) {
           {/* Featured image */}
           <Image
             src={featuredMedia.source_url}
-            alt={featuredMedia.alt_text || post.title.rendered}
+            alt={featuredMedia.alt_text || decodeHtmlEntities(post.title.rendered)}
             fill
             className="object-cover"
             priority

@@ -69,7 +69,7 @@ export const MobileMenuOpen: Story = {
   parameters: {
     viewport: { defaultViewport: 'mobile1' },
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement }: { canvasElement: HTMLElement }) => {
     const canvas = within(canvasElement)
     const button = canvas.getByRole('button', { name: /open menu/i })
     await userEvent.click(button)
