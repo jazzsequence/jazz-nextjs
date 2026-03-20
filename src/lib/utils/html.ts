@@ -8,6 +8,19 @@ export function stripWordPressSize(url: string): string {
 }
 
 /**
+ * Normalize WordPress media URLs by removing double slashes in the path.
+ *
+ * WordPress sometimes stores upload paths with a double slash
+ * (e.g. /wp-content/uploads//2017/01/image.jpg). Web servers may or may not
+ * normalize this, and Next.js image optimization returns 404 for those URLs.
+ * This fixes it by collapsing consecutive slashes in the path portion only —
+ * the protocol's // (https://) is preserved via the negative lookbehind on ":".
+ */
+export function normalizeWordPressUrl(url: string): string {
+  return url.replace(/([^:])\/\//g, '$1/')
+}
+
+/**
  * Decode HTML entities in strings from the WordPress REST API.
  *
  * WordPress runs titles through wptexturize(), which converts ASCII punctuation

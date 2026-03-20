@@ -1,5 +1,31 @@
 import { describe, it, expect } from 'vitest'
-import { decodeHtmlEntities, stripWordPressSize } from '@/lib/utils/html'
+import { decodeHtmlEntities, normalizeWordPressUrl, stripWordPressSize } from '@/lib/utils/html'
+
+describe('normalizeWordPressUrl', () => {
+  it('collapses double slash in wp-content path', () => {
+    expect(normalizeWordPressUrl(
+      'https://jazzsequence.com/wp-content/uploads//2017/01/image.jpg'
+    )).toBe('https://jazzsequence.com/wp-content/uploads/2017/01/image.jpg')
+  })
+
+  it('preserves https:// protocol', () => {
+    expect(normalizeWordPressUrl('https://example.com/path')).toBe('https://example.com/path')
+  })
+
+  it('does not affect URLs with no double slash', () => {
+    expect(normalizeWordPressUrl(
+      'https://sfo2.digitaloceanspaces.com/cdn.jazzsequence/wp-content/uploads/2022/10/image.jpg'
+    )).toBe('https://sfo2.digitaloceanspaces.com/cdn.jazzsequence/wp-content/uploads/2022/10/image.jpg')
+  })
+
+  it('handles multiple double slashes', () => {
+    expect(normalizeWordPressUrl('https://example.com//foo//bar.jpg')).toBe('https://example.com/foo/bar.jpg')
+  })
+
+  it('preserves empty string', () => {
+    expect(normalizeWordPressUrl('')).toBe('')
+  })
+})
 
 describe('stripWordPressSize', () => {
   it('strips WxH suffix from WordPress resized images', () => {

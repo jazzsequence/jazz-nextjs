@@ -2,7 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import DOMPurify from 'isomorphic-dompurify';
-import { decodeHtmlEntities } from '@/lib/utils/html';
+import { decodeHtmlEntities, normalizeWordPressUrl } from '@/lib/utils/html';
 import type { WPPost } from '@/lib/wordpress/types';
 
 interface PostCardProps {
@@ -25,7 +25,7 @@ export default function PostCard({ post }: PostCardProps) {
       <Link href={`/posts/${post.slug}`} className="block relative h-56 overflow-hidden no-underline">
         {hasImage ? (
           <Image
-            src={featuredMedia.source_url}
+            src={normalizeWordPressUrl(featuredMedia.source_url)}
             alt={featuredMedia.alt_text || decodeHtmlEntities(post.title.rendered)}
             fill
             className="object-cover transition-transform duration-300 group-hover:scale-105"

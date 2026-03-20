@@ -5,7 +5,7 @@ import parse, { domToReact } from 'html-react-parser';
 import type { HTMLReactParserOptions, Element } from 'html-react-parser';
 import type { DOMNode } from 'html-react-parser';
 import DOMPurify from 'isomorphic-dompurify';
-import { decodeHtmlEntities, stripWordPressSize } from '@/lib/utils/html';
+import { decodeHtmlEntities, normalizeWordPressUrl, stripWordPressSize } from '@/lib/utils/html';
 import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
 import TwitterScriptLoader from './TwitterScriptLoader';
@@ -24,6 +24,8 @@ interface PostContentProps {
  */
 function rewriteInternalLinks(html: string): string {
   return html
+    // Normalize double slashes in wp-content paths (WordPress storage quirk)
+    .replace(/(https?:\/\/[^"'\s]+\/wp-content\/uploads)\/\//g, '$1/')
     // Rewrite post/page links (excluding /wp-content/) to relative paths
     .replace(/https?:\/\/jazzsequence\.com\/(?!wp-content\/)/g, '/')
     // Handle bare domain in href attributes (e.g. href="https://jazzsequence.com")
@@ -172,7 +174,7 @@ export default function PostContent({ post }: PostContentProps) {
         <div className="relative w-full rounded-xl overflow-hidden mb-10" style={{ height: '28rem' }}>
           {/* Featured image */}
           <Image
-            src={featuredMedia.source_url}
+            src={normalizeWordPressUrl(featuredMedia.source_url)}
             alt={featuredMedia.alt_text || decodeHtmlEntities(post.title.rendered)}
             fill
             className="object-cover"
