@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Meta, StoryObj, Decorator } from '@storybook/nextjs-vite'
 import PostCard from './PostCard'
 import type { WPPost } from '@/lib/wordpress/types'
 
@@ -41,6 +41,12 @@ const withImage: WPPost = {
   },
 }
 
+const cardDecorator: Decorator = (Story) => (
+  <div style={{ width: '360px' }}>
+    <Story />
+  </div>
+)
+
 const meta: Meta<typeof PostCard> = {
   title: 'Design System/PostCard',
   component: PostCard,
@@ -48,13 +54,6 @@ const meta: Meta<typeof PostCard> = {
     layout: 'centered',
     backgrounds: { default: 'dark' },
   },
-  decorators: [
-    (Story) => (
-      <div style={{ width: '360px' }}>
-        <Story />
-      </div>
-    ),
-  ],
 }
 export default meta
 
@@ -63,11 +62,13 @@ type Story = StoryObj<typeof PostCard>
 export const WithoutImage: Story = {
   name: 'Without Featured Image',
   args: { post: base },
+  decorators: [cardDecorator],
 }
 
 export const WithImage: Story = {
   name: 'With Featured Image',
   args: { post: withImage },
+  decorators: [cardDecorator],
 }
 
 export const LongTitle: Story = {
@@ -77,12 +78,14 @@ export const LongTitle: Story = {
       title: { rendered: 'Building a Headless WordPress Frontend with Next.js, MCP, and the Pantheon Platform' },
     },
   },
+  decorators: [cardDecorator],
 }
 
 export const NoExcerpt: Story = {
   args: {
     post: { ...base, excerpt: { rendered: '' } },
   },
+  decorators: [cardDecorator],
 }
 
 export const GridLayout: Story = {

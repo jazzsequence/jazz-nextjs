@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import type { Meta, StoryObj, Decorator } from '@storybook/nextjs-vite'
 import { GameCard } from './GameCard'
 import type { GCGame } from '@/lib/wordpress/types'
 
@@ -44,6 +44,12 @@ const withImage: GCGame = {
   },
 }
 
+const cardDecorator: Decorator = (Story) => (
+  <div style={{ width: '160px' }}>
+    <Story />
+  </div>
+)
+
 const meta: Meta<typeof GameCard> = {
   title: 'Design System/GameCard',
   component: GameCard,
@@ -54,13 +60,6 @@ const meta: Meta<typeof GameCard> = {
   args: {
     onClick: (game: GCGame) => console.log('Clicked:', game.title.rendered),
   },
-  decorators: [
-    (Story) => (
-      <div style={{ width: '160px' }}>
-        <Story />
-      </div>
-    ),
-  ],
 }
 export default meta
 
@@ -69,11 +68,13 @@ type Story = StoryObj<typeof GameCard>
 export const WithoutImage: Story = {
   name: 'Without Box Art (placeholder)',
   args: { game: base },
+  decorators: [cardDecorator],
 }
 
 export const WithImage: Story = {
   name: 'With Box Art',
   args: { game: withImage },
+  decorators: [cardDecorator],
 }
 
 export const LongTitle: Story = {
@@ -81,6 +82,7 @@ export const LongTitle: Story = {
   args: {
     game: { ...base, title: { rendered: 'Spirit Island: Nature Incarnate' }, attributes: ['Strategy', 'Cooperative'] },
   },
+  decorators: [cardDecorator],
 }
 
 export const GridLayout: Story = {
