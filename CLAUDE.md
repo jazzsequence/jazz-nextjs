@@ -186,6 +186,8 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 **Out of scope** — these belong to multisite subsites, NOT jazzsequence.com:
 - `rb_recipe` (recipes), `plague-artist` (artists), `movie` (movies) — do NOT build pages for these
 
+**Buildpack restriction**: Do NOT commit `.php` files to this repository. PHP files trigger Pantheon's PHP buildpack, which prevents the Node.js runtime from installing correctly and causes `DEPLOYMENT_FAILURE`. WordPress PHP code belongs in the `jazzsequence.com` repository.
+
 **Implemented routes**:
 - `/` — homepage with posts
 - `/posts` — post list with pagination
@@ -193,6 +195,8 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - `/[slug]`, `/[slug]/[child]` — WordPress pages
 - `/games` — game collection with filtering + modal (ISR)
 - `/tag/[slug]` — tag archives
+- `/category/[slug]` — category archives
+- `/series/[slug]` — series archives (Organize Series plugin)
 
 **Remaining work**:
 - `/media` — YouTube/WordPress.tv CPT (navigation + implementation not yet present)
@@ -304,5 +308,5 @@ See: `@docs/AI_USAGE.md` for full AI tool usage
 
 ---
 
-**Last Updated**: 2026-03-14
+**Last Updated**: 2026-03-20
 **Version**: 1.0.0 (Digest format)

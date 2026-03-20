@@ -199,6 +199,14 @@ When Pantheon receives a push or tag:
 - `DEPLOYMENT_SUCCESS` → Live on Pantheon
 - `BUILD_FAILURE` / `DEPLOYMENT_FAILURE` → Check logs
 
+### Known Buildpack Restrictions
+
+**Do not commit `.php` files to this repository.**
+
+Pantheon's Google Cloud buildpack detects PHP files and runs the PHP runtime buildpack alongside the Node.js buildpack. When this happens, the Node.js runtime layer (`google.nodejs.runtime`) fails to install correctly, and the deployed container cannot find `node` at `/layers/google.nodejs.runtime/node/bin/node`, causing `DEPLOYMENT_FAILURE`.
+
+If WordPress-related PHP code needs to be distributed alongside this repo (e.g., mu-plugins, webhook handlers), keep it in the WordPress repository (`jazzsequence.com`) rather than here. Reference the file path in comments or documentation if needed.
+
 ## Automated Testing on Pantheon
 
 Tests run ON Pantheon environments VIA GitHub Actions workflows. This ensures tests execute against the actual deployed application, not just locally.
