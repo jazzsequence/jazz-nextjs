@@ -197,7 +197,8 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 **Remaining work**:
 - `/category/[slug]` — category archives (same pattern as `/tag/[slug]`)
 - On-demand revalidation webhook — connect WordPress publish hooks to `/api/revalidate`
-- Design system / global styles
+- `/media` — YouTube/WordPress.tv CPT (navigation + implementation not yet present)
+- Articles page — custom Pantheon.io oembed pattern renders differently from standard posts; oembeds don't render headlessly; needs improved layout/display
 - Accessibility improvements
 
 ---

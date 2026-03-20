@@ -27,7 +27,7 @@ export default async function Footer() {
       <div className="max-w-7xl mx-auto px-6 py-8">
 
         {/* ActivityPub follow + repo info */}
-        <div className="flex flex-wrap items-start justify-between gap-6 mb-6 pb-6 border-b border-brand-border">
+        <div className="flex flex-wrap items-center justify-between gap-6 mb-6 pb-6 border-b border-brand-border">
 
           {/* Open Social / ActivityPub follow widget */}
           <OpenSocialFollow />
@@ -58,7 +58,7 @@ export default async function Footer() {
               title={label}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center w-9 h-9 bg-brand-surface-high border border-brand-border rounded text-brand-muted hover:text-brand-cyan hover:border-brand-cyan transition-colors"
+              className="no-underline flex items-center justify-center w-9 h-9 bg-brand-surface-high border border-brand-border rounded text-brand-muted hover:text-brand-cyan hover:border-brand-cyan transition-colors"
             >
               <i className={fa} aria-hidden="true" />
             </a>
