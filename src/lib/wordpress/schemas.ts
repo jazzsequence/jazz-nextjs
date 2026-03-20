@@ -201,7 +201,7 @@ export const WPCategorySchema = z.object({
   meta: z.record(z.any()),
 })
 
-// Tag schema
+// Tag schema — meta is [] (empty array) for terms with no metadata; accept both
 export const WPTagSchema = z.object({
   id: z.number(),
   count: z.number(),
@@ -210,8 +210,8 @@ export const WPTagSchema = z.object({
   name: z.string(),
   slug: z.string(),
   taxonomy: z.literal('post_tag'),
-  meta: z.record(z.any()),
-})
+  meta: z.union([z.record(z.any()), z.array(z.any())]),
+}).passthrough()
 
 // Series schema
 export const WPSeriesSchema = z.object({
