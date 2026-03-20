@@ -73,14 +73,14 @@ export default async function TagArchivePage({ params, searchParams }: TagPagePr
     <>
       <Navigation menuItems={menuItemsData} error={menuError} />
 
-      <main className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-2">{tag.name}</h1>
-        <p className="text-gray-500 mb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="font-heading text-4xl font-bold text-brand-text mb-2">{tag.name}</h1>
+        <p className="text-brand-muted mb-8">
           {tag.count} {tag.count === 1 ? 'post' : 'posts'} tagged with &ldquo;{tag.name}&rdquo;
         </p>
 
         {posts.length === 0 ? (
-          <p className="text-gray-600">No posts found.</p>
+          <p className="text-brand-muted font-heading">No posts found.</p>
         ) : (
           <>
             <PostsList posts={posts} />
