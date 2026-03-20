@@ -97,15 +97,20 @@ test.describe('Navigation Component', () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto('/');
 
-    const nav = page.locator('nav[role="navigation"]');
-    await expect(nav).toBeVisible();
+    // On mobile, the hamburger toggle should be present
+    const hamburger = page.getByRole('button', { name: /open menu/i });
+    await expect(hamburger).toBeVisible();
 
-    // Menu items should stack vertically on mobile
-    const menuList = nav.locator('ul').first();
+    // The desktop nav is hidden on mobile; clicking the hamburger reveals the mobile panel
+    await hamburger.click();
+
+    const mobileNav = page.locator('nav[aria-label="Mobile navigation"]');
+    await expect(mobileNav).toBeVisible();
+
+    // Mobile menu items should be stacked and take up most of the viewport width
+    const menuList = mobileNav.locator('ul').first();
     const box = await menuList.boundingBox();
-
     if (box) {
-      // Menu should take up most of the width on mobile
       expect(box.width).toBeGreaterThan(300);
     }
   });
