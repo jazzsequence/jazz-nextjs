@@ -6,7 +6,7 @@ This document tracks how AI tools are used in this project, specifically Claude 
 
 ### Claude Code
 - **Purpose**: Primary development assistant for code generation, refactoring, and problem-solving
-- **Model**: Claude Sonnet 4.5 (primary), with Opus 4.6 available for complex tasks
+- **Model**: Claude Sonnet 4.6 (primary)
 - **Usage**: Interactive development, code reviews, documentation updates
 - **Co-authoring**: Commits are co-authored with `Claude <claude@anthropic.com>`
 
@@ -162,4 +162,4 @@ GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests again
 **Required GitHub Secret**: `PANTHEON_MACHINE_TOKEN` for Terminus authentication
 
 ## Last Updated
-2026-02-27
+2026-03-20

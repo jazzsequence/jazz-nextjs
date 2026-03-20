@@ -17,10 +17,10 @@ All environments generate unique subdomains:
 https://<environment>-<site_machine_name>.pantheonsite.io
 ```
 
-- **Dev**: `dev-jazz-nextjs.pantheonsite.io`
-- **Test**: `test-jazz-nextjs.pantheonsite.io`
-- **Live**: `live-jazz-nextjs.pantheonsite.io`
-- **PRs**: `pr-42-jazz-nextjs.pantheonsite.io` (PR #42)
+- **Dev**: `dev-jazz-nextjs15.pantheonsite.io`
+- **Test**: `test-jazz-nextjs15.pantheonsite.io`
+- **Live**: `live-jazz-nextjs15.pantheonsite.io`
+- **PRs**: `pr-42-jazz-nextjs15.pantheonsite.io` (PR #42)
 
 ## Next.js Configuration Requirements
 
@@ -125,7 +125,7 @@ Test and Live environments require Git tags with specific naming patterns:
 
 3. **Monitor the deployment**:
    ```bash
-   terminus node:logs:build:list jazz-nextjs.test
+   terminus node:logs:build:list jazz-nextjs15.test
    ```
 
 #### Deploying to Live
@@ -357,4 +357,4 @@ See [Pantheon GitHub Application docs](https://docs.pantheon.io/github-applicati
 - [Pantheon Documentation Repository](https://github.com/pantheon-systems/documentation) (reference implementation)
 
 ## Last Updated
-2026-03-02
+2026-03-20
