@@ -38,9 +38,10 @@ vi.mock('@/lib/build-info', () => ({
 // Mock components
 vi.mock('@/components/PostContent', () => ({
   default: ({ post }: { post: WPPage }) => (
-    <div data-testid="post-content">
+    <article data-testid="post-content">
+      <h1>{post.title.rendered}</h1>
       <div dangerouslySetInnerHTML={{ __html: post.content.rendered }} />
-    </div>
+    </article>
   ),
 }))
 

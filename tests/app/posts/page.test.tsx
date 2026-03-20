@@ -18,7 +18,7 @@ vi.mock('@/lib/wordpress/client', async (importOriginal) => {
 vi.mock('@/lib/build-info', () => ({
   getBuildInfo: vi.fn().mockResolvedValue({
     commitShort: 'abc123',
-    buildTime: '2024-01-01T00:00:00Z',
+    buildTime: '2026-01-01T00:00:00Z',
   }),
 }));
 
