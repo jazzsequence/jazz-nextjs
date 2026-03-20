@@ -83,7 +83,16 @@ FILE ORGANIZATION:
 9. NO files created in root folder (except config files)?
 
 DOCUMENTATION UPDATES:
-10. Were relevant docs updated for code changes?
+10. Were ALL docs in docs/ checked for staleness relative to this change?
+    - docs/CONTENT_UPDATES.md — revalidation strategy, ISR, WordPress plugin
+    - docs/configuration/DEPLOYMENT.md — environment URLs, build process
+    - docs/TESTING.md — test infrastructure, test counts
+    - docs/AI_USAGE.md — model version, tooling
+    - docs/REVIEWER_WORKFLOW.md — enforcement model
+    - docs/workflows/tdd-workflow.md — TDD process
+    - docs/API_CLIENT_DESIGN.md — WordPress API client patterns
+    - If a feature references something documented in docs/, that doc MUST be updated.
+    - "Relevant" means ANY doc that could be misread after this change. When in doubt, update.
 11. Was CLAUDE.md updated for workflow/config changes?
 12. Was AGENTS.md updated for agent-related changes?
 13. Was README.md updated for architecture changes?
