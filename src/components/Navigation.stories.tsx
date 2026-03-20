@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { userEvent, within } from '@storybook/test'
 import Navigation from './Navigation'
 import type { WPMenuItem } from '@/lib/wordpress/types'
 
@@ -53,4 +54,24 @@ export const Error: Story = {
 export const Empty: Story = {
   name: 'Empty (no items)',
   args: { menuItems: [] },
+}
+
+export const Mobile: Story = {
+  name: 'Mobile (hamburger)',
+  args: { menuItems },
+  parameters: {
+    viewport: { defaultViewport: 'mobile1' },
+  },
+}
+
+export const MobileMenuOpen: Story = {
+  args: { menuItems },
+  parameters: {
+    viewport: { defaultViewport: 'mobile1' },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const button = canvas.getByRole('button', { name: /open menu/i })
+    await userEvent.click(button)
+  },
 }

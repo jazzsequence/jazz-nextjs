@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { transformMenuUrl } from '@/lib/url-transform';
 import type { WPMenuItem } from '@/lib/wordpress/types';
@@ -58,6 +59,7 @@ function organizeMenuItems(items: WPMenuItem[]): WPMenuItem[] {
   return rootItems;
 }
 
+/** Desktop menu item with hover-dropdown for children. */
 function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: WPMenuItem[] }; isChild?: boolean }) {
   const hasChildren = item.children && item.children.length > 0;
   const linkTarget = item.target || undefined;
@@ -104,13 +106,58 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
   );
 }
 
+/** Mobile menu item — flat stacked list, children indented below parent. */
+function MobileMenuItem({
+  item,
+  onClose,
+}: {
+  item: WPMenuItem & { children?: WPMenuItem[] };
+  onClose: () => void;
+}) {
+  const hasChildren = item.children && item.children.length > 0;
+  const linkTarget = item.target || undefined;
+  const linkRel = item.target === '_blank' ? 'noopener noreferrer' : undefined;
+  const transformedUrl = transformMenuUrl(item.url);
+
+  return (
+    <>
+      <li>
+        <Link
+          href={transformedUrl}
+          onClick={onClose}
+          className="no-underline block px-4 py-3 text-base font-medium text-brand-text-sub hover:text-brand-cyan hover:bg-brand-surface transition-colors font-heading"
+          {...(linkTarget && { target: linkTarget })}
+          {...(linkRel && { rel: linkRel })}
+        >
+          {decodeHtmlEntities(item.title.rendered)}
+        </Link>
+      </li>
+      {hasChildren && item.children!.map(child => (
+        <li key={child.id}>
+          <Link
+            href={transformMenuUrl(child.url)}
+            onClick={onClose}
+            className="no-underline block pl-8 pr-4 py-2 text-sm font-medium text-brand-muted hover:text-brand-cyan hover:bg-brand-surface transition-colors font-heading"
+            {...(child.target && { target: child.target })}
+            {...(child.target === '_blank' && { rel: 'noopener noreferrer' })}
+          >
+            {decodeHtmlEntities(child.title.rendered)}
+          </Link>
+        </li>
+      ))}
+    </>
+  );
+}
+
 export default function Navigation({
   menuItems = [],
   isLoading = false,
   error,
   className = '',
 }: NavigationProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const organizedItems = organizeMenuItems(menuItems);
+  const closeMenu = useCallback(() => setIsOpen(false), []);
 
   return (
     <header className={`sticky top-0 z-50 bg-brand-header border-b border-brand-border backdrop-blur-sm ${className}`}>
@@ -125,8 +172,8 @@ export default function Navigation({
             jazzsequence
           </Link>
 
-          {/* Navigation */}
-          <nav role="navigation" aria-label="Main navigation">
+          {/* Desktop navigation — hidden on mobile */}
+          <nav role="navigation" aria-label="Main navigation" className="hidden md:block">
             {isLoading && (
               <span className="text-brand-muted text-sm font-heading">Loading menu...</span>
             )}
@@ -142,8 +189,52 @@ export default function Navigation({
             )}
           </nav>
 
+          {/* Hamburger button — mobile only */}
+          <button
+            type="button"
+            className="md:hidden flex items-center justify-center w-10 h-10 text-brand-text-sub hover:text-brand-cyan transition-colors rounded"
+            aria-label={isOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isOpen}
+            aria-controls="mobile-menu"
+            onClick={() => setIsOpen(prev => !prev)}
+          >
+            {isOpen ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+
         </div>
       </div>
+
+      {/* Mobile menu panel */}
+      {isOpen && (
+        <nav
+          id="mobile-menu"
+          role="navigation"
+          aria-label="Mobile navigation"
+          className="md:hidden border-t border-brand-border bg-brand-header"
+        >
+          {isLoading && (
+            <p className="px-4 py-3 text-brand-muted text-sm font-heading">Loading menu...</p>
+          )}
+          {error && (
+            <p className="px-4 py-3 text-red-400 text-sm font-heading">{error}</p>
+          )}
+          {!isLoading && !error && organizedItems.length > 0 && (
+            <ul className="py-2">
+              {organizedItems.map(item => (
+                <MobileMenuItem key={item.id} item={item} onClose={closeMenu} />
+              ))}
+            </ul>
+          )}
+        </nav>
+      )}
     </header>
   );
 }
