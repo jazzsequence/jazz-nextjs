@@ -65,7 +65,7 @@ Prefer these over `gh` CLI for reading remote files and creating PRs/issues.
 // After reviewer approves, main agent creates flag:
 const timestamp = await Bash({ command: "date +%s" });
 await Write({
-  file_path: "/Users/chris.reynolds/git/jazz-nextjs/.git/hooks/reviewer-approved",
+  file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
   content: timestamp.trim()
 });
 ```
@@ -195,7 +195,6 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - `/tag/[slug]` — tag archives
 
 **Remaining work**:
-- On-demand revalidation webhook — Next.js endpoint done; WordPress plugin at `scripts/wordpress-revalidation-plugin.php` needs installing on jazzsequence.com (configure `NEXTJS_SITE_URL` + `NEXTJS_REVALIDATE_SECRET` in wp-config.php)
 - `/media` — YouTube/WordPress.tv CPT (navigation + implementation not yet present)
 - Articles page — custom Pantheon.io oembed pattern renders differently from standard posts; oembeds don't render headlessly; needs improved layout/display
 - Accessibility improvements
