@@ -20,7 +20,7 @@ export default function PostCard({ post }: PostCardProps) {
   return (
     <article className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group transition-colors hover:border-brand-border-bright">
 
-      {/* Image area — title and date overlaid at the bottom, matching the style guide */}
+      {/* Image area — eyebrow + title overlaid at the bottom */}
       <Link href={`/posts/${post.slug}`} className="block relative h-56 overflow-hidden no-underline">
         {hasImage ? (
           <Image
@@ -31,17 +31,30 @@ export default function PostCard({ post }: PostCardProps) {
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
+          /* Retrowave gradient placeholder when no featured image */
           <div
+            aria-hidden="true"
             className="absolute inset-0"
             style={{ background: 'linear-gradient(135deg, #1c1c3a 0%, #0d1a2e 100%)' }}
           />
         )}
 
-        {/* Dark gradient fade to surface at bottom for text legibility */}
+        {/* Retrowave diagonal color tint — the synthwave wash from the design system */}
         <div
           aria-hidden="true"
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(to bottom, transparent 20%, rgba(13,13,26,0.65) 60%, #13132b 100%)' }}
+          style={{
+            background: 'linear-gradient(135deg, rgba(13,13,26,0.55) 0%, rgba(26,13,46,0.5) 40%, rgba(13,26,46,0.5) 100%)',
+          }}
+        />
+
+        {/* Dark fade at bottom for text legibility */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to bottom, transparent 30%, rgba(13,13,26,0.75) 75%, #13132b 100%)',
+          }}
         />
 
         {/* Retrowave grid overlay */}
@@ -54,7 +67,7 @@ export default function PostCard({ post }: PostCardProps) {
           }}
         />
 
-        {/* Eyebrow date + title overlaid at bottom of image */}
+        {/* Date eyebrow + title overlaid at bottom of image */}
         <div className="absolute bottom-0 left-0 right-0 p-4">
           <time className="font-mono text-brand-cyan text-xs uppercase tracking-widest block mb-1">
             {formattedDate}
@@ -65,22 +78,20 @@ export default function PostCard({ post }: PostCardProps) {
         </div>
       </Link>
 
-      {/* Card body — excerpt and read more only */}
-      {(sanitizedExcerpt || true) && (
-        <div className="p-4">
-          {sanitizedExcerpt && (
-            <p className="text-brand-text-sub text-sm leading-relaxed mb-3 line-clamp-3">
-              {sanitizedExcerpt}
-            </p>
-          )}
-          <Link
-            href={`/posts/${post.slug}`}
-            className="text-brand-cyan text-sm font-medium hover:text-brand-magenta transition-colors no-underline"
-          >
-            Read more →
-          </Link>
-        </div>
-      )}
+      {/* Card body — excerpt and read more */}
+      <div className="p-4">
+        {sanitizedExcerpt && (
+          <p className="text-brand-text-sub text-sm leading-relaxed mb-3 line-clamp-3">
+            {sanitizedExcerpt}
+          </p>
+        )}
+        <Link
+          href={`/posts/${post.slug}`}
+          className="font-heading text-brand-cyan text-sm font-medium hover:text-brand-magenta transition-colors no-underline"
+        >
+          Read more →
+        </Link>
+      </div>
     </article>
   );
 }
