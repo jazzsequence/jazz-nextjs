@@ -26,6 +26,7 @@ import {
   GCGamesSchema,
   WPTagsSchema,
   WPCategoriesSchema,
+  WPSeriesListSchema,
 } from './schemas'
 import type {
   WPPost,
@@ -43,6 +44,7 @@ import type {
   GCGame,
   WPTag,
   WPCategory,
+  WPSeries,
 } from './types'
 
 // ===== Configuration =====
@@ -123,6 +125,7 @@ export interface FetchOptions {
   search?: string
   categories?: number[]
   tags?: number[]
+  series?: number[]
   orderBy?: 'date' | 'title' | 'modified'
   order?: 'asc' | 'desc'
   isr?: ISROptions
@@ -400,6 +403,7 @@ function buildQueryParams(options: Omit<FetchOptions, 'isr'> = {}): string {
   if (options.categories)
     params.append('categories', options.categories.join(','))
   if (options.tags) params.append('tags', options.tags.join(','))
+  if (options.series) params.append('series', options.series.join(','))
   if (options.orderBy) params.append('orderby', options.orderBy)
   if (options.order) params.append('order', options.order)
 
@@ -937,5 +941,39 @@ export async function fetchCategoryBySlug(
     }
     const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
     throw new WPAPIError(`Failed to fetch category: ${slug}`, statusCode, 'categories')
+  }
+}
+
+/**
+ * Fetch a single series by its slug (Organize Series plugin).
+ *
+ * @see GET /wp-json/wp/v2/series?slug=<slug>
+ */
+export async function fetchSeriesBySlug(
+  slug: string,
+  options: Pick<FetchOptions, 'isr' | 'cache'> = {}
+): Promise<WPSeries> {
+  const { isr, cache } = options
+  const url = `${API_BASE_URL}/series?slug=${encodeURIComponent(slug)}`
+
+  const isrOptions = cache || isr || {}
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = [`series-${slug}`]
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    const seriesList = await fetchAndValidate(url, WPSeriesListSchema, cacheOptions)
+    if (seriesList.length === 0) {
+      throw new WPNotFoundError('series', slug)
+    }
+    return seriesList[0] as WPSeries
+  } catch (error) {
+    if (error instanceof WPNotFoundError || error instanceof WPValidationError) {
+      throw error
+    }
+    const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
+    throw new WPAPIError(`Failed to fetch series: ${slug}`, statusCode, 'series')
   }
 }

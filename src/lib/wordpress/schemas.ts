@@ -213,7 +213,7 @@ export const WPTagSchema = z.object({
   meta: z.union([z.record(z.any()), z.array(z.any())]),
 }).passthrough()
 
-// Series schema
+// Series schema — meta is [] for terms with no metadata; passthrough for _links etc.
 export const WPSeriesSchema = z.object({
   id: z.number(),
   count: z.number(),
@@ -222,8 +222,8 @@ export const WPSeriesSchema = z.object({
   name: z.string(),
   slug: z.string(),
   taxonomy: z.literal('series'),
-  meta: z.record(z.any()),
-})
+  meta: z.union([z.record(z.any()), z.array(z.any())]),
+}).passthrough()
 
 // API error schema
 export const WPAPIErrorSchema = z.object({
