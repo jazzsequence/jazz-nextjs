@@ -89,10 +89,9 @@ export const GridLayout: Story = {
   decorators: [
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_Story) => (
-      // Matches GamesGrid: grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6
-      // Shown at md breakpoint (4 cols) for a realistic mid-size preview
-      <div style={{ padding: '2rem', background: '#0d0d1a' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(9rem, 1fr))', gap: '1rem', maxWidth: '64rem' }}>
+      // Matches GamesGrid: grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6
+      <div className="min-h-screen bg-brand-bg p-8">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           <GameCard game={base} onClick={() => {}} />
           <GameCard game={withImage} onClick={() => {}} />
           <GameCard game={{ ...base, id: 3, slug: 'dominion', title: { rendered: 'Dominion' }, difficulty: 'moderate' }} onClick={() => {}} />

@@ -91,14 +91,17 @@ export const GridLayout: Story = {
   decorators: [
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_Story) => (
-      <div style={{ padding: '2rem', background: '#0d0d1a' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', maxWidth: '80rem' }}>
-          <PostCard post={base} />
-          <PostCard post={{ ...base, id: 2, title: { rendered: 'A Second Post With Longer Title Text' } }} />
-          <PostCard post={withImage} />
-          <PostCard post={{ ...base, id: 4, excerpt: { rendered: '' } }} />
-          <PostCard post={{ ...base, id: 5, title: { rendered: 'Short' } }} />
-          <PostCard post={withImage} />
+      // Matches PostsList: grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6
+      <div className="min-h-screen bg-brand-bg px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <PostCard post={base} />
+            <PostCard post={{ ...base, id: 2, title: { rendered: 'A Second Post With Longer Title Text' } }} />
+            <PostCard post={withImage} />
+            <PostCard post={{ ...base, id: 4, excerpt: { rendered: '' } }} />
+            <PostCard post={{ ...base, id: 5, title: { rendered: 'Short' } }} />
+            <PostCard post={withImage} />
+          </div>
         </div>
       </div>
     ),
