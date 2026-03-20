@@ -5,8 +5,6 @@ import type { WPPage } from '@/lib/wordpress/types'
 import PostContent from '@/components/PostContent'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
-import { getBuildInfo } from '@/lib/build-info'
-
 export const revalidate = 3600 // ISR: Revalidate every hour
 
 interface PageProps {
@@ -104,11 +102,9 @@ export default async function ChildPage({ params }: PageProps) {
     return (
       <>
         <Navigation menuItems={menuItemsData} error={menuError} />
-        <main className="container mx-auto px-4 py-8">
-          <p className="text-red-600">
-            Unable to load page. Please try again later.
-          </p>
-          <p className="text-gray-600 text-sm mt-2">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <p className="text-brand-magenta font-heading">Unable to load page. Please try again later.</p>
+          <p className="text-brand-muted text-sm mt-2 font-heading">
             Error: {(error as Error)?.message || 'Unknown error'}
           </p>
         </main>
@@ -117,12 +113,10 @@ export default async function ChildPage({ params }: PageProps) {
     )
   }
 
-  // Fetch menu and build info after page succeeds
-  const [menuItems, buildInfo] = await Promise.allSettled([
+  const [menuItems] = await Promise.allSettled([
     fetchMenuItems(1698, {
       isr: { revalidate: 3600, tags: ['menu', 'header'] },
     }),
-    getBuildInfo(),
   ])
 
   const menuItemsData =
@@ -130,24 +124,12 @@ export default async function ChildPage({ params }: PageProps) {
   const menuError =
     menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined
 
-  const buildInfoData =
-    buildInfo.status === 'fulfilled'
-      ? buildInfo.value
-      : { commitShort: 'unknown', buildTime: new Date().toISOString() }
-
   return (
     <>
       <Navigation menuItems={menuItemsData} error={menuError} />
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-xs text-gray-500 mb-6 font-mono">
-          Build: {new Date(buildInfoData.buildTime).toLocaleString()} • Commit: {buildInfoData.commitShort}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <h1 className="text-4xl font-bold mb-6">{pageData.title.rendered}</h1>
-          <PostContent post={pageData} />
-        </div>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <PostContent post={pageData} />
       </main>
 
       <Footer />

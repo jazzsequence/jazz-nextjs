@@ -5,14 +5,9 @@ import type { WPPage } from '@/lib/wordpress/types'
 import PostContent from '@/components/PostContent'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
-import { getBuildInfo } from '@/lib/build-info'
 
-export const revalidate = 3600 // ISR: Revalidate every hour
+export const revalidate = 3600
 
-/**
- * Check if error is a WordPress 404 Not Found error
- * Multiple detection methods for reliability in production builds
- */
 function isNotFoundError(error: unknown): boolean {
   return (
     error instanceof WPNotFoundError ||
@@ -26,18 +21,10 @@ interface PageProps {
   params: Promise<{ slug: string }>
 }
 
-/**
- * Generate static paths for all WordPress pages at build time
- */
 export async function generateStaticParams() {
-  // Return empty array - pages will be generated on-demand with ISR
-  // This prevents build-time failures if WordPress is unreachable
   return []
 }
 
-/**
- * Generate metadata for SEO
- */
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params
 
@@ -53,22 +40,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         : undefined,
     }
   } catch {
-    return {
-      title: 'Page Not Found',
-    }
+    return { title: 'Page Not Found' }
   }
 }
 
-/**
- * WordPress Page Display
- *
- * Handles all WordPress pages (page post type) with ISR caching
- * Examples: /music, /about, /now, etc.
- */
 export default async function Page({ params }: PageProps) {
   const { slug } = await params
 
-  // Fetch page data (simplify - don't use Promise.allSettled to isolate issue)
   let pageData: WPPage
   try {
     pageData = await fetchPost<WPPage>('pages', slug, {
@@ -83,32 +61,21 @@ export default async function Page({ params }: PageProps) {
       isWPNotFoundError: error instanceof WPNotFoundError,
     })
 
-    if (isNotFoundError(error)) {
-      notFound()
-    }
+    if (isNotFoundError(error)) notFound()
 
-    // Try to fetch menu for error UI
     const [menuItems] = await Promise.allSettled([
-      fetchMenuItems(1698, {
-        isr: { revalidate: 3600, tags: ['menu', 'header'] },
-      }),
+      fetchMenuItems(1698, { isr: { revalidate: 3600, tags: ['menu', 'header'] } }),
     ])
 
-    const menuItemsData =
-      menuItems.status === 'fulfilled' ? menuItems.value : undefined
-    const menuError =
-      menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined
+    const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined
+    const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined
 
-    // Render error UI
     return (
       <>
         <Navigation menuItems={menuItemsData} error={menuError} />
-        <main className="container mx-auto px-4 py-8">
-          <p className="text-red-600">
+        <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <p className="text-brand-magenta font-heading">
             Unable to load page. Please try again later.
-          </p>
-          <p className="text-gray-600 text-sm mt-2">
-            Error: {(error as Error)?.message || 'Unknown error'}
           </p>
         </main>
         <Footer />
@@ -116,39 +83,19 @@ export default async function Page({ params }: PageProps) {
     )
   }
 
-  // Fetch menu and build info after page succeeds
-  const [menuItems, buildInfo] = await Promise.allSettled([
-    fetchMenuItems(1698, {
-      isr: { revalidate: 3600, tags: ['menu', 'header'] },
-    }),
-    getBuildInfo(),
+  const [menuItems] = await Promise.allSettled([
+    fetchMenuItems(1698, { isr: { revalidate: 3600, tags: ['menu', 'header'] } }),
   ])
 
-  const menuItemsData =
-    menuItems.status === 'fulfilled' ? menuItems.value : undefined
-  const menuError =
-    menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined
-
-  const buildInfoData =
-    buildInfo.status === 'fulfilled'
-      ? buildInfo.value
-      : { commitShort: 'unknown', buildTime: new Date().toISOString() }
+  const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined
+  const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined
 
   return (
     <>
       <Navigation menuItems={menuItemsData} error={menuError} />
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-xs text-gray-500 mb-6 font-mono">
-          Build: {new Date(buildInfoData.buildTime).toLocaleString()} • Commit: {buildInfoData.commitShort}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-8">
-          <h1 className="text-4xl font-bold mb-6">{pageData.title.rendered}</h1>
-          <PostContent post={pageData} />
-        </div>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <PostContent post={pageData} />
       </main>
-
       <Footer />
     </>
   )
