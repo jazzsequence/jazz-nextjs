@@ -71,7 +71,7 @@ function MenuItem({ item, isChild = false }: { item: WPMenuItem & { children?: W
     >
       <Link
         href={transformedUrl}
-        className="block px-3 py-2 text-sm font-medium text-brand-text-sub hover:text-brand-cyan transition-colors rounded font-heading"
+        className="no-underline block px-3 py-2 text-sm font-medium text-brand-text-sub hover:text-brand-cyan transition-colors rounded font-heading"
         {...(linkTarget && { target: linkTarget })}
         {...(linkRel && { rel: linkRel })}
       >

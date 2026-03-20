@@ -119,7 +119,7 @@ export function GameModal({ game, onClose }: GameModalProps) {
               href={game.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-brand-cyan px-4 py-2 text-sm font-heading font-bold text-brand-bg hover:opacity-85 transition-opacity"
+              className="no-underline inline-flex items-center gap-1.5 rounded-lg bg-brand-cyan px-4 py-2 text-sm font-heading font-bold text-brand-bg hover:text-brand-bg hover:opacity-85 transition-opacity"
             >
               View on Board Game Geek
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

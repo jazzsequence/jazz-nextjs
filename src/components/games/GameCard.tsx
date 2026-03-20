@@ -16,20 +16,37 @@ export function GameCard({ game, onClick }: GameCardProps) {
       className="group flex flex-col overflow-hidden rounded-xl border border-brand-border bg-brand-surface transition hover:border-brand-border-bright focus:outline-none focus:ring-2 focus:ring-brand-cyan text-left"
     >
       {/* Box art */}
-      <div className="relative aspect-[3/4] w-full bg-brand-surface-high overflow-hidden">
+      <div className="relative aspect-[3/4] w-full overflow-hidden">
         {game.featured_image ? (
-          // Using <img> instead of next/image: box art is served from an external CDN
-          // (sfo2.digitaloceanspaces.com) not configured in next.config.js image domains.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={game.featured_image.url}
-            alt={game.featured_image.alt || game.title.rendered}
-            className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
-          />
+          <>
+            {/* Using <img> instead of next/image: box art from external CDN */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={game.featured_image.url}
+              alt={game.featured_image.alt || game.title.rendered}
+              className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-200"
+            />
+            {/* Same retrowave tint as PostCard featured images */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0"
+              style={{
+                background: 'linear-gradient(135deg, rgba(45,11,78,0.5) 0%, rgba(11,45,78,0.45) 50%, rgba(26,13,46,0.45) 100%)',
+              }}
+            />
+          </>
         ) : (
-          <div className="flex h-full items-center justify-center text-brand-border text-4xl">
-            <i className="fa-solid fa-dice" aria-hidden="true" />
-          </div>
+          <>
+            {/* Retrowave gradient placeholder — same as PostCard */}
+            <div
+              aria-hidden="true"
+              className="absolute inset-0"
+              style={{ background: 'linear-gradient(135deg, #2d0b4e 0%, #0b2d4e 50%, #1a0d2e 100%)' }}
+            />
+            <div className="absolute inset-0 flex items-center justify-center text-brand-border text-4xl">
+              <i className="fa-solid fa-dice" aria-hidden="true" />
+            </div>
+          </>
         )}
       </div>
 

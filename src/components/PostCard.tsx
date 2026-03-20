@@ -31,20 +31,20 @@ export default function PostCard({ post }: PostCardProps) {
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
-          /* Retrowave gradient placeholder when no featured image */
+          // Retrowave image placeholder — matches style guide Image Overlay section (#2d0b4e → #0b2d4e → #1a0d2e)
           <div
             aria-hidden="true"
             className="absolute inset-0"
-            style={{ background: 'linear-gradient(135deg, #1c1c3a 0%, #0d1a2e 100%)' }}
+            style={{ background: 'linear-gradient(135deg, #2d0b4e 0%, #0b2d4e 50%, #1a0d2e 100%)' }}
           />
         )}
 
-        {/* Retrowave diagonal color tint — the synthwave wash from the design system */}
+        {/* Retrowave color tint on real images — same gradient, semi-transparent */}
         <div
           aria-hidden="true"
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(135deg, rgba(13,13,26,0.55) 0%, rgba(26,13,46,0.5) 40%, rgba(13,26,46,0.5) 100%)',
+            background: 'linear-gradient(135deg, rgba(45,11,78,0.5) 0%, rgba(11,45,78,0.45) 50%, rgba(26,13,46,0.45) 100%)',
           }}
         />
 
