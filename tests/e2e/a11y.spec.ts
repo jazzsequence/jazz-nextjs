@@ -4,9 +4,8 @@
  * Uses axe-core via @axe-core/playwright to audit pages for WCAG 2.1 AA violations.
  * Critical and serious violations fail the test; moderate/minor are noted but not blocking.
  *
- * NOTE: Only /style-guide is tested here until the design system is applied globally.
- * Add other pages (homepage, posts, games, tag archive) to this file as each page
- * is updated to use the new design system.
+ * Add pages to this file as they are updated to use the design system.
+ * Pages not yet updated will fail — that is expected and surfaces issues to fix.
  *
  * Run: npm run test:e2e -- --grep a11y
  */
@@ -42,6 +41,36 @@ test.describe('Accessibility — WCAG 2.1 AA', () => {
 
   test('style guide has no critical/serious a11y violations', async ({ page }) => {
     const results = await auditPage(page, '/style-guide')
+    expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
+  })
+
+  test('homepage has no critical/serious a11y violations', async ({ page }) => {
+    const results = await auditPage(page, '/?greeting=morning')
+    expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
+  })
+
+  test('posts list has no critical/serious a11y violations', async ({ page }) => {
+    const results = await auditPage(page, '/posts')
+    expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
+  })
+
+  test('games page has no critical/serious a11y violations', async ({ page }) => {
+    const results = await auditPage(page, '/games')
+    expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
+  })
+
+  test('music page has no critical/serious a11y violations', async ({ page }) => {
+    const results = await auditPage(page, '/music')
+    expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
+  })
+
+  test('about page has no critical/serious a11y violations', async ({ page }) => {
+    const results = await auditPage(page, '/about')
+    expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
+  })
+
+  test('tag archive has no critical/serious a11y violations', async ({ page }) => {
+    const results = await auditPage(page, '/tag/teh-s3quence')
     expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
   })
 

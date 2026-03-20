@@ -42,43 +42,29 @@ test.describe('Image Rendering', () => {
   });
 
   test('featured images should load on individual posts', async ({ page }) => {
-    // First get a post slug that has an image
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    const postWithImage = page.locator('article:has(img) h2 a').first();
-    const postCount = await postWithImage.count();
+    // PostCard: title is inside the image link (a > h2); find first post with a card image
+    const postLink = page.locator('article:has(img) a[href^="/posts/"]').first()
+    const href = await postLink.getAttribute('href')
+    expect(href, 'Expected at least one post card with a featured image on the homepage').toBeTruthy()
 
-    if (postCount === 0) {
-      test.skip();
-    }
+    await page.goto(href!)
+    await page.waitForLoadState('domcontentloaded')
 
-    const href = await postWithImage.getAttribute('href');
-    expect(href).toBeTruthy();
-
-    // Navigate to the post
-    await page.goto(href!);
-    await page.waitForLoadState('domcontentloaded');
-
-    // Check for featured image
-    const featuredImage = page.locator('article img').first();
-    const hasImage = await featuredImage.count() > 0;
-
-    if (hasImage) {
-      await expect(featuredImage).toBeVisible();
-
-      // Verify image loaded successfully
-      const isLoaded = await featuredImage.evaluate((img: HTMLImageElement) => {
-        return img.complete && img.naturalWidth > 0;
-      });
-
-      expect(isLoaded).toBe(true);
-
-      // Verify dimensions
-      const box = await featuredImage.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box?.width).toBeGreaterThan(0);
-      expect(box?.height).toBeGreaterThan(0);
+    // On the individual post, verify the featured image loads if present
+    const featuredImage = page.locator('article img').first()
+    if (await featuredImage.count() > 0) {
+      await expect(featuredImage).toBeVisible()
+      const isLoaded = await featuredImage.evaluate((img: HTMLImageElement) =>
+        img.complete && img.naturalWidth > 0
+      )
+      expect(isLoaded).toBe(true)
+      const box = await featuredImage.boundingBox()
+      expect(box).not.toBeNull()
+      expect(box?.width).toBeGreaterThan(0)
+      expect(box?.height).toBeGreaterThan(0)
     }
   });
 
