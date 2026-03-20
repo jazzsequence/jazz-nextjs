@@ -124,16 +124,42 @@ ACCESSIBILITY (WCAG 2.1 AA):
     - All color choices must meet WCAG 2.1 AA contrast ratios (4.5:1 normal text, 3:1 large text)
     - Interactive elements must have accessible names (aria-label, htmlFor, etc.)
 
+DESIGN SYSTEM COMPLIANCE:
+30. Do visual/component changes conform to the design system?
+    - Colors must use brand.* Tailwind tokens or --color-* CSS variables. No arbitrary hex values.
+    - Fonts must use font-mono (Victor Mono), font-heading (Geist Sans), or font-sans (Space Grotesk). No other fonts.
+    - H2 headings = Victor Mono (font-mono). All other headings = Geist (font-heading). Body = Space Grotesk (font-sans).
+    - Gradients must match the canonical values from app/globals.css or the style guide (/style-guide).
+    - New components must have a Storybook story in src/components/**/*.stories.tsx.
+    - Stories are the canonical reference — if a component looks different from its story, the component is wrong.
+
+STORYBOOK:
+31. For any new or modified UI component:
+    - Does a story exist? If not, create one before committing.
+    - Run: npx storybook build (must succeed)
+    - Stories must pass the @storybook/addon-a11y check (a11y: 'error' in preview.ts)
+
+LIGHTHOUSE & PERFORMANCE (use Chrome DevTools MCP for visual changes):
+32. For significant UI changes on key pages, use the Chrome DevTools MCP to run:
+    - mcp__chrome-devtools__lighthouse_audit → accessibility must be ≥ 90, best-practices ≥ 90
+    - mcp__chrome-devtools__performance_start_trace → stop → analyze_insight for Core Web Vitals
+      - LCP (Largest Contentful Paint) target: < 2.5s
+      - CLS (Cumulative Layout Shift) target: < 0.1
+    - mcp__chrome-devtools__take_screenshot to visually verify against /style-guide reference
+    - This is required for changes to: PostCard, PostContent, Navigation, Footer, GreetingClient
+
 FILES TO REVIEW:
 - Run npm test -- --run (verify all tests pass)
 - Run npm run lint (verify lint clean)
 - Run npm run build (verify build succeeds)
 - Run npm run test:e2e (verify E2E tests pass) ← MANDATORY, run LAST
+- Run npx storybook build (verify Storybook builds) ← required for component changes
 - Check git status (modified/new files)
 - Review all file changes
 - Verify documentation updates
 - Check package.json for license compatibility if dependencies changed
 - Check if user-facing changes (app/, src/components/) have E2E tests
+- Check if new components have Storybook stories
 
 **CRITICAL SEQUENCING RULE:**
 Run all 4 commands sequentially. Do NOT use background tasks.

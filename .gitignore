@@ -61,3 +61,7 @@ secrets.json
 # next-agents-md
 .next-docs/
 reviewer-approved
+
+*storybook.log
+storybook-static
+storybook-static/
