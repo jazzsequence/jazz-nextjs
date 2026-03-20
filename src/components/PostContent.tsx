@@ -1,21 +1,112 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import parse from 'html-react-parser';
+import parse, { domToReact } from 'html-react-parser';
+import type { HTMLReactParserOptions, Element } from 'html-react-parser';
+import type { DOMNode } from 'html-react-parser';
 import DOMPurify from 'isomorphic-dompurify';
-import { decodeHtmlEntities } from '@/lib/utils/html';
+import { decodeHtmlEntities, stripWordPressSize } from '@/lib/utils/html';
+import GalleryLightbox from './GalleryLightbox';
+import type { GalleryImage } from './GalleryLightbox';
+import TwitterScriptLoader from './TwitterScriptLoader';
 import type { WPContent, WPTerm } from '@/lib/wordpress/types';
 
 interface PostContentProps {
   post: WPContent;
 }
 
-// Rewrite absolute jazzsequence.com URLs to relative internal routes so
-// WordPress-generated links work within this Next.js app.
+/**
+ * Rewrite absolute jazzsequence.com post/page URLs to relative routes.
+ * Deliberately does NOT rewrite /wp-content/ paths — those are image URLs
+ * that need to remain absolute (served from jazzsequence.com or CDN).
+ * Rewriting them to relative paths breaks images because those paths
+ * don't exist on this Next.js app.
+ */
 function rewriteInternalLinks(html: string): string {
   return html
-    .replace(/https?:\/\/jazzsequence\.com\//g, '/')
+    // Rewrite post/page links (excluding /wp-content/) to relative paths
+    .replace(/https?:\/\/jazzsequence\.com\/(?!wp-content\/)/g, '/')
+    // Handle bare domain in href attributes (e.g. href="https://jazzsequence.com")
     .replace(/https?:\/\/jazzsequence\.com"/g, '/"')
+}
+
+/** Walk the parsed DOM to extract <img> elements from a wp-block-gallery figure. */
+function extractGalleryImages(node: Element): GalleryImage[] {
+  const images: GalleryImage[] = []
+
+  const walk = (nodes: DOMNode[]) => {
+    for (const n of nodes) {
+      if (n.type !== 'tag') continue
+      const el = n as Element
+
+      if (el.name === 'img' && el.attribs?.src) {
+        const src = el.attribs.src
+
+        // Prefer largest entry from srcset for the lightbox full view
+        let full = src
+        const srcset = el.attribs?.srcset
+        if (srcset) {
+          const largest = srcset
+            .split(',')
+            .map(s => { const [u, w] = s.trim().split(/\s+/); return { url: u, w: parseInt(w) || 0 } })
+            .sort((a, b) => b.w - a.w)[0]
+          if (largest?.url) full = largest.url
+        } else {
+          // No srcset — strip the WordPress size suffix to get the original
+          full = stripWordPressSize(src)
+        }
+
+        // Caption: look for .wp-element-caption sibling (nearest parent figure's caption)
+        let caption: string | undefined
+        // Note: caption extraction from nested figcaption would require more complex traversal;
+        // skip for now and leave undefined (caption is optional in GalleryImage)
+
+        images.push({ src, full, alt: el.attribs?.alt || '', caption })
+      }
+
+      if ('children' in el && el.children?.length) {
+        walk(el.children as DOMNode[])
+      }
+    }
+  }
+
+  if (node.children) walk(node.children as DOMNode[])
+  return images
+}
+
+const parseOptions: HTMLReactParserOptions = {
+  replace(domNode) {
+    if (domNode.type !== 'tag') return
+    const el = domNode as Element
+    const cls = el.attribs?.class ?? ''
+
+    // Replace wp-block-gallery figures with interactive lightbox
+    if (el.name === 'figure' && cls.includes('wp-block-gallery')) {
+      const images = extractGalleryImages(el)
+      if (images.length > 0) {
+        return <GalleryLightbox images={images} />
+      }
+    }
+
+    // Twitter/X embeds: blockquote is preserved by DOMPurify; script is stripped.
+    // Load the Twitter widget script client-side to enhance the blockquote.
+    if (
+      el.name === 'figure' &&
+      (cls.includes('wp-block-embed-twitter') || cls.includes('wp-block-embed-x'))
+    ) {
+      return (
+        <>
+          <figure className={cls}>
+            <div className="wp-block-embed__wrapper">
+              {/* domToReact renders the blockquote.twitter-tweet content */}
+              {domToReact(el.children as DOMNode[], parseOptions)}
+            </div>
+          </figure>
+          <TwitterScriptLoader />
+        </>
+      )
+    }
+  },
 }
 
 export default function PostContent({ post }: PostContentProps) {
@@ -35,7 +126,30 @@ export default function PostContent({ post }: PostContentProps) {
   }, {})
 
   const sanitized = post.content.rendered
-    ? rewriteInternalLinks(DOMPurify.sanitize(post.content.rendered))
+    ? rewriteInternalLinks(
+        DOMPurify.sanitize(post.content.rendered, {
+          // Allow iframes for embeds (Spotify, YouTube, etc.)
+          // Content comes from our own WordPress instance — trusted source.
+          ADD_TAGS: [
+            'iframe',
+            // SVG filter elements for wp-duotone
+            'filter',
+            'feColorMatrix',
+            'feBlend',
+            'feFlood',
+            'feComposite',
+            'feComponentTransfer',
+            'feFuncR', 'feFuncG', 'feFuncB', 'feFuncA',
+          ],
+          ADD_ATTR: [
+            // iframe embed attributes
+            'allow', 'allowfullscreen', 'frameborder', 'scrolling', 'loading',
+            // SVG filter attributes
+            'type', 'values', 'in', 'in2', 'result', 'mode',
+            'flood-color', 'flood-opacity', 'operator',
+          ],
+        })
+      )
     : ''
 
   return (
@@ -86,7 +200,7 @@ export default function PostContent({ post }: PostContentProps) {
 
       {/* WordPress block content — styled via .post-body in globals.css */}
       <div className="post-body">
-        {sanitized ? parse(sanitized) : null}
+        {sanitized ? parse(sanitized, parseOptions) : null}
       </div>
 
       {/* Taxonomy metadata — posts only */}
@@ -103,7 +217,7 @@ export default function PostContent({ post }: PostContentProps) {
                   href={`/${taxonomy}/${t.slug}`}
                   className="no-underline font-heading text-sm text-brand-cyan hover:text-brand-magenta transition-colors"
                 >
-                  {t.name}
+                  {decodeHtmlEntities(t.name)}
                 </Link>
               ))}
             </div>
@@ -119,7 +233,7 @@ export default function PostContent({ post }: PostContentProps) {
                   href={`/category/${t.slug}`}
                   className="no-underline font-heading text-sm bg-brand-surface-high border border-brand-border text-brand-text-sub hover:text-brand-cyan hover:border-brand-cyan transition-colors px-2 py-0.5 rounded"
                 >
-                  {t.name}
+                  {decodeHtmlEntities(t.name)}
                 </Link>
               ))}
             </div>
@@ -135,7 +249,7 @@ export default function PostContent({ post }: PostContentProps) {
                   href={`/tag/${t.slug}`}
                   className="no-underline font-heading text-sm bg-brand-surface-high border border-brand-border text-brand-text-sub hover:text-brand-cyan hover:border-brand-cyan transition-colors px-2 py-0.5 rounded"
                 >
-                  {t.name}
+                  {decodeHtmlEntities(t.name)}
                 </Link>
               ))}
             </div>

@@ -1,4 +1,13 @@
 /**
+ * Strip WordPress generated image size suffix from a URL to get the original.
+ * WordPress appends "-WxH" to filenames before the extension for resized copies.
+ * Example: "photo-800x600.jpg" → "photo.jpg"
+ */
+export function stripWordPressSize(url: string): string {
+  return url.replace(/-\d+x\d+(\.[^.?#]+)/, '$1')
+}
+
+/**
  * Decode HTML entities in strings from the WordPress REST API.
  *
  * WordPress runs titles through wptexturize(), which converts ASCII punctuation

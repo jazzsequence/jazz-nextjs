@@ -1,5 +1,47 @@
 import { describe, it, expect } from 'vitest'
-import { decodeHtmlEntities } from '@/lib/utils/html'
+import { decodeHtmlEntities, stripWordPressSize } from '@/lib/utils/html'
+
+describe('stripWordPressSize', () => {
+  it('strips WxH suffix from WordPress resized images', () => {
+    expect(stripWordPressSize('photo-800x600.jpg')).toBe('photo.jpg')
+  })
+
+  it('strips suffix from URLs with full path', () => {
+    expect(stripWordPressSize(
+      'https://jazzsequence.com/wp-content/uploads/2025/12/1-800x800.jpg'
+    )).toBe('https://jazzsequence.com/wp-content/uploads/2025/12/1.jpg')
+  })
+
+  it('does not strip when no WxH suffix is present', () => {
+    expect(stripWordPressSize('photo.jpg')).toBe('photo.jpg')
+  })
+
+  it('does not strip hyphens that are part of the filename', () => {
+    expect(stripWordPressSize('my-photo-name.jpg')).toBe('my-photo-name.jpg')
+  })
+
+  it('strips only the last WxH suffix, not internal hyphens', () => {
+    expect(stripWordPressSize('my-photo-800x600.jpg')).toBe('my-photo.jpg')
+  })
+
+  it('preserves query strings after extension', () => {
+    expect(stripWordPressSize('photo-300x200.jpg?v=2')).toBe('photo.jpg?v=2')
+  })
+
+  it('handles PNG extension', () => {
+    expect(stripWordPressSize('image-1920x1080.png')).toBe('image.png')
+  })
+
+  it('handles WebP extension', () => {
+    expect(stripWordPressSize('image-400x300.webp')).toBe('image.webp')
+  })
+
+  it('handles double slash in WordPress upload path (common quirk)', () => {
+    expect(stripWordPressSize(
+      'https://jazzsequence.com/wp-content/uploads//2025/10/IMG_1371-800x600.png'
+    )).toBe('https://jazzsequence.com/wp-content/uploads//2025/10/IMG_1371.png')
+  })
+})
 
 describe('decodeHtmlEntities', () => {
   it('passes through strings with no entities unchanged', () => {
