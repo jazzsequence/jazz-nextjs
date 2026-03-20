@@ -188,7 +188,7 @@ export const WPAddressSchema = WPBaseContentSchema.extend({
   }).passthrough(), // Allow extra meta fields from plugins
 }).passthrough() // Allow unknown fields from WordPress plugins
 
-// Category schema
+// Category schema — meta is [] for terms with no metadata; passthrough for _links etc.
 export const WPCategorySchema = z.object({
   id: z.number(),
   count: z.number(),
@@ -198,8 +198,8 @@ export const WPCategorySchema = z.object({
   slug: z.string(),
   taxonomy: z.literal('category'),
   parent: z.number(),
-  meta: z.record(z.any()),
-})
+  meta: z.union([z.record(z.any()), z.array(z.any())]),
+}).passthrough()
 
 // Tag schema — meta is [] (empty array) for terms with no metadata; accept both
 export const WPTagSchema = z.object({

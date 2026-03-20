@@ -25,6 +25,7 @@ import {
   WPMenuItemsSchema,
   GCGamesSchema,
   WPTagsSchema,
+  WPCategoriesSchema,
 } from './schemas'
 import type {
   WPPost,
@@ -41,6 +42,7 @@ import type {
   WPAPIListResponse,
   GCGame,
   WPTag,
+  WPCategory,
 } from './types'
 
 // ===== Configuration =====
@@ -901,5 +903,39 @@ export async function fetchTagBySlug(
     }
     const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
     throw new WPAPIError(`Failed to fetch tag: ${slug}`, statusCode, 'tags')
+  }
+}
+
+/**
+ * Fetch a single category by its slug.
+ *
+ * @see GET /wp-json/wp/v2/categories?slug=<slug>
+ */
+export async function fetchCategoryBySlug(
+  slug: string,
+  options: Pick<FetchOptions, 'isr' | 'cache'> = {}
+): Promise<WPCategory> {
+  const { isr, cache } = options
+  const url = `${API_BASE_URL}/categories?slug=${encodeURIComponent(slug)}`
+
+  const isrOptions = cache || isr || {}
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = [`category-${slug}`]
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    const categories = await fetchAndValidate(url, WPCategoriesSchema, cacheOptions)
+    if (categories.length === 0) {
+      throw new WPNotFoundError('category', slug)
+    }
+    return categories[0] as WPCategory
+  } catch (error) {
+    if (error instanceof WPNotFoundError || error instanceof WPValidationError) {
+      throw error
+    }
+    const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
+    throw new WPAPIError(`Failed to fetch category: ${slug}`, statusCode, 'categories')
   }
 }
