@@ -95,22 +95,13 @@ done
 echo -e "${GREEN}✅ No secrets${NC}"
 echo ""
 
-# Check 4: Reviewer agent consulted (manual gate) - skip for user commits
+# Check 4: Reviewer agent consulted (enforced by approval flag check in step 1)
 if [ "$USER_COMMIT" != "1" ]; then
     echo "4️⃣  Reviewer oversight check..."
-    echo -e "${YELLOW}⚠️  MANDATORY: Did you spawn a reviewer agent and get approval?${NC}"
-    echo ""
-    echo "   Required before commit:"
+    echo -e "${YELLOW}⚠️  MANDATORY: Reviewer agent must approve before every commit.${NC}"
     echo "   1. Spawn reviewer agent with Agent tool"
     echo "   2. Get APPROVE decision from agent"
-    echo "   3. Only then commit"
-    echo ""
-    echo "   If you haven't done this, press Ctrl+C to abort."
-    echo "   If you got agent approval, press Enter to continue."
-    echo ""
-
-    # Give user 5 seconds to abort if they forgot
-    read -t 5 -p "   Press Enter to confirm agent review completed..." || true
+    echo "   3. Main agent writes approval flag, then commit within 5 minutes"
     echo ""
 else
     echo "4️⃣  Skipping reviewer oversight (user commit)"

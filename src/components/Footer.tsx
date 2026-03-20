@@ -1,4 +1,5 @@
 import { getBuildInfo } from '@/lib/build-info'
+import OpenSocialFollow from './OpenSocialFollow'
 
 const SOCIAL_LINKS = [
   { label: 'Personal site',  fa: 'fa-solid fa-link',       href: 'https://chrisreynolds.io' },
@@ -25,45 +26,29 @@ export default async function Footer() {
     <footer className="bg-brand-header border-t border-brand-border mt-16">
       <div className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* ActivityPub / Fediverse follow block — mirrors jazzsequence.com */}
+        {/* ActivityPub follow + repo info */}
         <div className="flex flex-wrap items-start justify-between gap-6 mb-6 pb-6 border-b border-brand-border">
 
-          {/* ActivityPub profile card */}
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-full bg-brand-surface-high border border-brand-border flex items-center justify-center flex-shrink-0">
-              <i className="fa-brands fa-mastodon text-brand-cyan text-sm" aria-hidden="true" />
-            </div>
-            <div>
-              <p className="font-heading font-semibold text-brand-text text-sm leading-tight">jazzsequence</p>
-              <p className="font-mono text-brand-muted text-xs mt-0.5">@jazzsequence@jazzsequence.com</p>
-              <p className="text-brand-muted text-xs mt-1">I make websites and things.</p>
-              <p className="font-mono text-xs mt-2 text-brand-text-sub">
-                Paste{' '}
-                <code className="bg-brand-surface-high px-1 rounded text-brand-cyan">
-                  @jazzsequence@jazzsequence.com
-                </code>
-                {' '}into your favourite open social app to follow.
-              </p>
-            </div>
-          </div>
+          {/* Open Social / ActivityPub follow widget */}
+          <OpenSocialFollow />
 
-          {/* GitHub repo link — mirrors jazzsequence.com footer */}
-          <div className="text-sm text-brand-text-sub font-heading">
+          {/* GitHub repo — matching jazzsequence.com wording */}
+          <p className="text-sm text-brand-text-sub font-heading">
             Want to know what makes this site go?{' '}
             <a
               href="https://github.com/jazzsequence/jazz-nextjs"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-brand-cyan hover:text-brand-magenta transition-colors"
+              className="text-brand-cyan hover:text-brand-magenta transition-colors underline underline-offset-2"
             >
               Check out the GitHub repo
             </a>
             !
-          </div>
+          </p>
 
         </div>
 
-        {/* Social links */}
+        {/* Social icon links */}
         <div className="flex justify-end flex-wrap gap-3 mb-4">
           {SOCIAL_LINKS.map(({ label, fa, href }) => (
             <a
