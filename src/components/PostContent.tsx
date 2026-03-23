@@ -90,22 +90,20 @@ const parseOptions: HTMLReactParserOptions = {
       }
     }
 
-    // Twitter/X embeds: blockquote is preserved by DOMPurify; script is stripped.
-    // Load the Twitter widget script client-side to enhance the blockquote.
+    // Twitter/X embeds: rebuild the figure structure so the blockquote renders correctly.
+    // TwitterScriptLoader is handled at the component level via hasTwitterEmbeds — no need
+    // to render it here too.
     if (
       el.name === 'figure' &&
       (cls.includes('wp-block-embed-twitter') || cls.includes('wp-block-embed-x'))
     ) {
       return (
-        <>
-          <figure className={cls}>
-            <div className="wp-block-embed__wrapper">
-              {/* domToReact renders the blockquote.twitter-tweet content */}
-              {domToReact(el.children as DOMNode[], parseOptions)}
-            </div>
-          </figure>
-          <TwitterScriptLoader />
-        </>
+        <figure className={cls}>
+          <div className="wp-block-embed__wrapper">
+            {/* domToReact renders the blockquote.twitter-tweet content */}
+            {domToReact(el.children as DOMNode[], parseOptions)}
+          </div>
+        </figure>
       )
     }
   },

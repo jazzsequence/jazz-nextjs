@@ -1,7 +1,14 @@
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+
 import PostContent from '@/components/PostContent';
 import type { WPPost } from '@/lib/wordpress/types';
+
+// Mock TwitterScriptLoader — PostContent tests verify it is *rendered*,
+// not that it successfully injects a DOM script tag (that's TwitterScriptLoader's concern).
+vi.mock('@/components/TwitterScriptLoader', () => ({
+  default: () => <div data-testid="twitter-script-loader" />,
+}));
 
 describe('PostContent', () => {
   const mockPost: WPPost = {
@@ -89,11 +96,6 @@ describe('PostContent', () => {
 });
 
 describe('PostContent — Twitter embeds', () => {
-  // Clean up any Twitter script tags between tests to avoid pollution
-  afterEach(() => {
-    document.head.querySelectorAll('script[src*="platform.twitter.com"]').forEach(s => s.remove());
-  });
-
   const mockPost = {
     id: 1,
     type: 'post' as const,
@@ -118,7 +120,7 @@ describe('PostContent — Twitter embeds', () => {
     tags: [],
   };
 
-  it('loads Twitter widget script for classic-editor bare blockquote.twitter-tweet', async () => {
+  it('renders TwitterScriptLoader for classic-editor bare blockquote.twitter-tweet', () => {
     const post = {
       ...mockPost,
       content: {
@@ -126,21 +128,19 @@ describe('PostContent — Twitter embeds', () => {
       },
     };
     render(<PostContent post={post} />);
-    await waitFor(() => {
-      expect(document.head.querySelector('script[src*="platform.twitter.com"]')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('twitter-script-loader')).toBeInTheDocument();
   });
 
-  it('does not load Twitter widget script when no twitter-tweet content', () => {
+  it('does not render TwitterScriptLoader when no twitter-tweet content', () => {
     const post = {
       ...mockPost,
       content: { rendered: '<p>Just a regular paragraph.</p>' },
     };
     render(<PostContent post={post} />);
-    expect(document.head.querySelector('script[src*="platform.twitter.com"]')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('twitter-script-loader')).not.toBeInTheDocument();
   });
 
-  it('loads Twitter widget script for Gutenberg wp-block-embed-twitter figure format', async () => {
+  it('renders TwitterScriptLoader for Gutenberg wp-block-embed-twitter figure format', () => {
     const post = {
       ...mockPost,
       content: {
@@ -148,8 +148,6 @@ describe('PostContent — Twitter embeds', () => {
       },
     };
     render(<PostContent post={post} />);
-    await waitFor(() => {
-      expect(document.head.querySelector('script[src*="platform.twitter.com"]')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('twitter-script-loader')).toBeInTheDocument();
   });
 });

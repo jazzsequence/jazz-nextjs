@@ -5,11 +5,15 @@ export const Image = ({
   src,
   alt,
   fill,
+  priority,  // next/image prop — not a valid HTML attribute
+  sizes,     // next/image prop — not a valid HTML attribute
   ...props
 }: {
   src: string;
   alt: string;
   fill?: boolean;
+  priority?: boolean;
+  sizes?: string;
   [key: string]: unknown;
 }) => {
   return (
