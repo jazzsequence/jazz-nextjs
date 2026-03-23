@@ -428,7 +428,7 @@ npm run test:e2e      # E2E tests must pass
 
 **Never commit code without:**
 - ✅ Tests written first
-- ✅ All tests passing (176+ unit tests)
+- ✅ All tests passing (425+ unit tests)
 - ✅ ESLint clean
 - ✅ E2E tests passing (16+ tests)
 

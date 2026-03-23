@@ -164,11 +164,34 @@
       margin-bottom: 0;
     }
 
-    /* ── Images (wp-block-image) ── */
+    /* ── Images ── */
     & img {
       max-width: 100%;
       height: auto;
       border-radius: 0.5rem;
+      /* Center block-level images by default (classic editor and Gutenberg) */
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Classic-editor explicit alignment classes on <img> */
+    & img.aligncenter {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    & img.alignleft {
+      float: left;
+      margin-right: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    & img.alignright {
+      float: right;
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     & figure {
