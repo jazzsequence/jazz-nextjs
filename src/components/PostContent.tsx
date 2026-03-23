@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import parse, { domToReact } from 'html-react-parser';
@@ -6,6 +5,7 @@ import type { HTMLReactParserOptions, Element } from 'html-react-parser';
 import type { DOMNode } from 'html-react-parser';
 import DOMPurify from 'isomorphic-dompurify';
 import { decodeHtmlEntities, normalizeWordPressUrl, stripWordPressSize } from '@/lib/utils/html';
+import FeaturedImage from './FeaturedImage';
 import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
 import TwitterScriptLoader from './TwitterScriptLoader';
@@ -127,6 +127,12 @@ export default function PostContent({ post }: PostContentProps) {
     return acc
   }, {})
 
+  // Classic-editor posts embed tweets as bare blockquote.twitter-tweet without a
+  // figure.wp-block-embed-twitter wrapper. The parseOptions handler only fires for
+  // the Gutenberg block format, so we need a top-level check to load widgets.js
+  // for classic-editor posts too.
+  const hasTwitterEmbeds = post.content.rendered.includes('twitter-tweet')
+
   const sanitized = post.content.rendered
     ? rewriteInternalLinks(
         DOMPurify.sanitize(post.content.rendered, {
@@ -172,14 +178,10 @@ export default function PostContent({ post }: PostContentProps) {
 
       {hasImage && (
         <div className="relative w-full rounded-xl overflow-hidden mb-10" style={{ height: '28rem' }}>
-          {/* Featured image */}
-          <Image
+          {/* Featured image — FeaturedImage handles broken URLs with a gradient fallback */}
+          <FeaturedImage
             src={normalizeWordPressUrl(featuredMedia.source_url)}
             alt={featuredMedia.alt_text || decodeHtmlEntities(post.title.rendered)}
-            fill
-            className="object-cover"
-            priority
-            sizes="(max-width: 1024px) 100vw, 1024px"
           />
           {/* Retrowave gradient overlay */}
           <div
@@ -204,6 +206,8 @@ export default function PostContent({ post }: PostContentProps) {
       <div className="post-body">
         {sanitized ? parse(sanitized, parseOptions) : null}
       </div>
+      {/* Load Twitter widget script for both classic-editor and Gutenberg block embeds */}
+      {hasTwitterEmbeds && <TwitterScriptLoader />}
 
       {/* Taxonomy metadata — posts only */}
       {isPost && (categories.length > 0 || tags.length > 0 || Object.keys(otherGroups).length > 0) && (
