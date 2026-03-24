@@ -106,50 +106,7 @@ Press <enter> to keep the current choice[*], or type selection number:`}</code><
   ),
 }
 
-export const EmbedSpotify: Story = {
-  name: 'Embeds — Spotify (rich/fixed-height)',
-  render: () => (
-    <Wrapper>
-      <p>Spotify embed (is-type-rich, fixed 152px height):</p>
-      <figure className="wp-block-embed is-type-rich is-provider-spotify wp-block-embed-spotify wp-embed-aspect-21-9 wp-has-aspect-ratio">
-        <div className="wp-block-embed__wrapper">
-          <iframe
-            title="Spotify Embed: Love Reign O'er Me"
-            style={{ borderRadius: '12px' }}
-            width="100%"
-            height="152"
-            frameBorder="0"
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            src="https://open.spotify.com/embed/track/4Mqs0h95KAeNiGp7u4udlt"
-          />
-        </div>
-      </figure>
-    </Wrapper>
-  ),
-}
-
-export const EmbedYouTube: Story = {
-  name: 'Embeds — YouTube (16:9 aspect ratio)',
-  render: () => (
-    <Wrapper>
-      <p>YouTube embed (is-type-video, 16:9 aspect ratio):</p>
-      <figure className="wp-block-embed is-type-video is-provider-youtube wp-block-embed-youtube wp-embed-aspect-16-9 wp-has-aspect-ratio">
-        <div className="wp-block-embed__wrapper">
-          <iframe
-            title="YouTube video"
-            width="560"
-            height="315"
-            src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-            frameBorder="0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      </figure>
-    </Wrapper>
-  ),
-}
+// ── Embed stories live in src/stories/Embeds.stories.tsx (Design System/Embeds) ──
 
 export const Columns: Story = {
   name: 'Columns (wp-block-columns)',
