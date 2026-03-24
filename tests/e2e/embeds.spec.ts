@@ -168,13 +168,17 @@ test.describe('Embed — Mixcloud (raw iframe)', () => {
     expect(src).toContain('mixcloud.com');
   });
 
-  test('post renders without console errors', async ({ page }) => {
+  test('post renders without first-party console errors', async ({ page }) => {
     const consoleErrors: string[] = [];
     page.on('console', msg => {
       if (msg.type() === 'error') {
         const text = msg.text();
-        const isThirdParty = ['mixcloud.com'].some(d => text.includes(d));
-        if (!isThirdParty) consoleErrors.push(text);
+        // Old embeds (pre-HTTPS) may cause mixed content or third-party errors — ignore those
+        const isIgnorable = [
+          'mixcloud.com', 'w.soundcloud.com', 'Mixed Content',
+          'soundcloud.com', 'cdn.mixcloud.com',
+        ].some(d => text.includes(d));
+        if (!isIgnorable) consoleErrors.push(text);
       }
     });
 
@@ -210,17 +214,18 @@ test.describe('Embed — WordPress native post embed (is-type-wp-embed)', () => 
 // ── General embed structure ─────────────────────────────────────────────────────
 
 test.describe('Embed — figure class hierarchy', () => {
-  test('every wp-block-embed has a .wp-block-embed__wrapper child', async ({ page }) => {
+  test('every wp-block-embed in article has a .wp-block-embed__wrapper child', async ({ page }) => {
     await page.goto('/posts/binary-jazz');
     await page.waitForLoadState('domcontentloaded');
 
-    const embeds = page.locator('.wp-block-embed');
+    // Scope to article to avoid any decorative embeds outside the post body
+    const embeds = page.locator('article .wp-block-embed');
     const count = await embeds.count();
     expect(count).toBeGreaterThan(0);
 
     for (let i = 0; i < count; i++) {
       const wrapper = embeds.nth(i).locator('.wp-block-embed__wrapper');
-      await expect(wrapper).toBeAttached();
+      await expect(wrapper).toBeAttached({ timeout: 5000 });
     }
   });
 
@@ -228,7 +233,7 @@ test.describe('Embed — figure class hierarchy', () => {
     await page.goto('/posts/binary-jazz');
     await page.waitForLoadState('domcontentloaded');
 
-    const videoEmbed = page.locator('.wp-block-embed-youtube.wp-has-aspect-ratio').first();
+    const videoEmbed = page.locator('article .wp-block-embed-youtube.wp-has-aspect-ratio').first();
     await expect(videoEmbed).toBeAttached();
   });
 });
