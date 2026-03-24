@@ -18,7 +18,7 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - Custom error classes with detailed context
 - **Type Safety**: Full TypeScript implementation with runtime Zod schema validation
 - **HTML Sanitization**: DOMPurify integration for safe WordPress content rendering
-- **Testing**: 317 tests passing with comprehensive coverage
+- **Testing**: 433 tests passing with comprehensive coverage
   - Unit tests with Vitest + happy-dom
   - E2E tests with Playwright against live Pantheon environments
   - Automated Playwright report deployment to GitHub Pages
@@ -35,7 +35,8 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
 | `/[slug]/[child]` | Child pages (e.g. `/music/loafmen`) |
 | `/games` | Board game collection with filtering and modal detail view |
 | `/tag/[slug]` | Tag archive pages |
-| `/category/[slug]` | Category archive pages *(planned)* |
+| `/category/[slug]` | Category archive pages |
+| `/series/[slug]` | Series archive pages (Organize Series plugin) |
 
 ## Getting Started
 
@@ -72,7 +73,7 @@ The `start:test` script starts the standalone server on port 3000 and runs E2E t
 
 ### Testing
 
-**Current Status**: ✅ All tests passing (317 unit/integration)
+**Current Status**: ✅ All tests passing (433 unit/integration)
 
 ```bash
 # Unit and integration tests (Vitest)
@@ -87,7 +88,7 @@ npm run test:e2e
 
 **Playwright Reports**: E2E test results are automatically deployed to GitHub Pages at:
 ```
-https://{username}.github.io/jazz-nextjs/reports/{run_id}
+https://jazzsequence.github.io/jazz-nextjs/reports/{run_id}
 ```
 
 ### Linting
@@ -138,16 +139,25 @@ jazz-nextjs/
 │   │   ├── page.tsx         # Posts archive
 │   │   ├── [slug]/page.tsx  # Individual post
 │   │   └── page/[page]/     # Paginated posts
-│   └── tag/[slug]/page.tsx  # Tag archives
+│   ├── tag/[slug]/page.tsx  # Tag archives
+│   ├── category/[slug]/     # Category archives
+│   └── series/[slug]/       # Series archives (Organize Series)
 ├── src/
 │   ├── components/          # React components
 │   │   ├── games/           # GameCard, GameModal, GamesGrid, utils
-│   │   ├── Navigation.tsx
+│   │   ├── FeaturedImage.tsx    # Post hero image with fallback
 │   │   ├── Footer.tsx
+│   │   ├── GalleryLightbox.tsx  # Gallery grid + lightbox with captions
+│   │   ├── Greeting.tsx         # Personalized greeting (server)
+│   │   ├── GreetingClient.tsx   # Personalized greeting (client)
+│   │   ├── Navigation.tsx
+│   │   ├── OpenSocialFollow.tsx # ActivityPub / Mastodon follow widget
+│   │   ├── Pagination.tsx
+│   │   ├── PostBodyImage.tsx    # Inline post image with broken-URL fallback
 │   │   ├── PostCard.tsx
-│   │   ├── PostsList.tsx
 │   │   ├── PostContent.tsx
-│   │   └── Pagination.tsx
+│   │   ├── PostsList.tsx
+│   │   └── TwitterScriptLoader.tsx  # Lazy-loads Twitter widgets.js
 │   └── lib/
 │       └── wordpress/       # WordPress API integration
 │           ├── client.ts    # API client (retry, rate limiting, ISR, validation)
@@ -173,12 +183,28 @@ jazz-nextjs/
 
 ## Documentation
 
+### Architecture & API
 - **[API_CLIENT_DESIGN.md](docs/API_CLIENT_DESIGN.md)** - WordPress API client architecture and design
-- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Complete deployment guide for Pantheon
+- **[BACKEND_MIGRATION.md](docs/BACKEND_MIGRATION.md)** - Guide for moving the WordPress backend to a separate host
+- **[architecture/SLACK_NOTIFICATIONS.md](docs/architecture/SLACK_NOTIFICATIONS.md)** - Deployment Slack notification architecture
+
+### Configuration & Deployment
+- **[configuration/DEPLOYMENT.md](docs/configuration/DEPLOYMENT.md)** - Complete deployment guide for Pantheon
+- **[configuration/build-and-test.md](docs/configuration/build-and-test.md)** - Build commands and quality checks
+- **[configuration/git-workflow.md](docs/configuration/git-workflow.md)** - Commit practices and git safety
+
+### Workflows
+- **[workflows/mcp-server.md](docs/workflows/mcp-server.md)** - WordPress MCP server usage (critical)
+- **[workflows/tdd-workflow.md](docs/workflows/tdd-workflow.md)** - Test-driven development methodology
+
+### Content & Testing
 - **[CONTENT_UPDATES.md](docs/CONTENT_UPDATES.md)** - Content synchronization strategies and ISR
 - **[TESTING.md](docs/TESTING.md)** - Testing guide and TDD methodology
-- **[E2E_HANG_ANALYSIS.md](docs/E2E_HANG_ANALYSIS.md)** - E2E testing troubleshooting and best practices
+
+### AI & Process
 - **[AI_USAGE.md](docs/AI_USAGE.md)** - How AI tools are used in development
+- **[REVIEWER_WORKFLOW.md](docs/REVIEWER_WORKFLOW.md)** - Pre-commit reviewer agent enforcement
+- **[REVIEWER_SETUP.md](docs/REVIEWER_SETUP.md)** - Reviewer workflow setup guide
 - **[CLAUDE.md](CLAUDE.md)** - Development standards and workflow
 - **[AGENTS.md](AGENTS.md)** - Agent workflows and pre-commit review process
 
@@ -200,7 +226,7 @@ jazz-nextjs/
 - **@pantheon-systems/nextjs-cache-handler** - Persistent ISR caching
 
 ### Testing
-- **Vitest 4** with happy-dom - Unit and integration testing (317 tests)
+- **Vitest 4** with happy-dom - Unit and integration testing (433 tests)
 - **Playwright** - End-to-end testing against live Pantheon environments
 - **MSW** - API mocking
 - **Testing Library** - React component testing
@@ -220,7 +246,7 @@ The application is deployed on Pantheon's Next.js infrastructure. Deployments ar
 - **Test Environment**: Git tags like `pantheon_test_1`
 - **Live Environment**: Git tags like `pantheon_live_1`
 
-See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment documentation.
+See [configuration/DEPLOYMENT.md](docs/configuration/DEPLOYMENT.md) for complete deployment documentation.
 
 ### Quick Deploy
 
@@ -246,10 +272,13 @@ The `next.config.ts` includes:
 Environment variables should be configured in the Pantheon dashboard, never committed to the repository.
 
 Required variables:
-- `WORDPRESS_API_URL` - WordPress REST API endpoint
-- Other API keys and configuration as needed
+- `WORDPRESS_API_URL` - WordPress REST API endpoint (e.g. `https://jazzsequence.com/wp-json/wp/v2`)
+- `GC_API_URL` - Games Collector API endpoint
+- `REVALIDATE_SECRET` - Secret token for on-demand ISR revalidation
+- `SLACK_WEBHOOK_URL` - Slack webhook for deployment notifications (optional)
+- `WORDPRESS_BASE_URL` - WordPress backend base URL (used for future backend migration; defaults to the origin of `WORDPRESS_API_URL`)
 
-Create a `.env.local` file for local development (excluded from git).
+Create a `.env.local` file for local development (excluded from git). See [configuration/DEPLOYMENT.md](docs/configuration/DEPLOYMENT.md) for full details.
 
 ## Contributing
 
