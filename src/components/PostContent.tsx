@@ -6,6 +6,7 @@ import type { DOMNode } from 'html-react-parser';
 import DOMPurify from 'isomorphic-dompurify';
 import { decodeHtmlEntities, normalizeWordPressUrl, stripWordPressSize } from '@/lib/utils/html';
 import FeaturedImage from './FeaturedImage';
+import PostBodyImage from './PostBodyImage';
 import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
 import TwitterScriptLoader from './TwitterScriptLoader';
@@ -81,6 +82,26 @@ const parseOptions: HTMLReactParserOptions = {
     if (domNode.type !== 'tag') return
     const el = domNode as Element
     const cls = el.attribs?.class ?? ''
+
+    // Replace bare <img> elements with PostBodyImage for graceful 404 handling.
+    // Hotlinked or old external images that no longer exist show as broken icons
+    // without this — PostBodyImage hides them via onError instead.
+    // Note: images inside figure.wp-block-gallery are handled by the gallery
+    // interceptor below and never reach this branch.
+    if (el.name === 'img' && el.attribs?.src) {
+      const a = el.attribs
+      return (
+        <PostBodyImage
+          src={a.src}
+          alt={a.alt}
+          className={a.class}
+          width={a.width ? parseInt(a.width, 10) : undefined}
+          height={a.height ? parseInt(a.height, 10) : undefined}
+          title={a.title}
+          srcSet={a.srcset}
+        />
+      )
+    }
 
     // Replace wp-block-gallery figures with interactive lightbox
     if (el.name === 'figure' && cls.includes('wp-block-gallery')) {
