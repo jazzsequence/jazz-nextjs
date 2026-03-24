@@ -16,6 +16,16 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...fixupConfigRules(compat.extends("next/core-web-vitals", "next/typescript")),
   {
+    rules: {
+      // Underscore-prefixed variables are intentionally unused (e.g. destructured
+      // to prevent spreading non-HTML props; named params in overrides).
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        varsIgnorePattern: '^_',
+        argsIgnorePattern: '^_',
+      }],
+    },
+  },
+  {
     ignores: [
       "node_modules/**",
       ".next/**",

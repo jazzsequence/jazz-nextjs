@@ -89,7 +89,6 @@ export const GridLayout: Story = {
   name: 'Grid Layout (as deployed)',
   parameters: { layout: 'fullscreen' },
   decorators: [
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_Story) => (
       // Matches GamesGrid: grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6
       <div className="min-h-screen bg-brand-bg p-8">

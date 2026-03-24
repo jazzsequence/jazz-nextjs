@@ -92,7 +92,6 @@ export const GridLayout: Story = {
   name: '3-Column Grid (as deployed)',
   parameters: { layout: 'fullscreen' },
   decorators: [
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     (_Story) => (
       // Matches PostsList: grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6
       <div className="min-h-screen bg-brand-bg px-4 sm:px-6 lg:px-8 py-8">

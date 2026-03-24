@@ -5,8 +5,8 @@ export const Image = ({
   src,
   alt,
   fill,
-  priority,  // next/image prop — not a valid HTML attribute
-  sizes,     // next/image prop — not a valid HTML attribute
+  priority: _priority,  // next/image prop — destructured to prevent spreading non-HTML attribute to <img>
+  sizes: _sizes,        // next/image prop — destructured to prevent spreading non-HTML attribute to <img>
   ...props
 }: {
   src: string;
