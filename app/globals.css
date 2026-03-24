@@ -329,6 +329,7 @@
     & .wp-block-embed {
       margin-top: 2rem;
       margin-bottom: 2rem;
+      text-align: center;   /* Center all embed content */
     }
 
     & .wp-block-embed__wrapper {
@@ -406,7 +407,7 @@
 
     /* ── Blockquote (wp-block-quote) — generic editorial quote ── */
     & .wp-block-quote,
-    & blockquote:not(.twitter-tweet):not(.wp-block-pullquote blockquote) {
+    & blockquote:not(.twitter-tweet):not(.tiktok-embed):not(.instagram-media):not(.reddit-embed-bq):not(.imgur-embed-pub):not(.wp-block-pullquote blockquote) {
       border-left: 3px solid var(--color-purple);
       padding: 0.75rem 1.5rem;
       margin: 1.5rem 0;
@@ -415,7 +416,7 @@
     }
 
     & .wp-block-quote p,
-    & blockquote:not(.twitter-tweet):not(.wp-block-pullquote blockquote) p {
+    & blockquote:not(.twitter-tweet):not(.tiktok-embed):not(.instagram-media):not(.reddit-embed-bq):not(.imgur-embed-pub):not(.wp-block-pullquote blockquote) p {
       font-size: 1.125rem;
       font-style: italic;
       color: var(--color-text-sub);
@@ -438,15 +439,56 @@
     & blockquote.twitter-tweet {
       border-left: 3px solid var(--color-cyan);
       padding: 0.75rem 1.5rem;
-      margin: 1.5rem 0;
+      /* Constrain to ~Twitter embed width; center within the content column */
+      max-width: 550px;
+      margin: 1.5rem auto;
       background: var(--color-surface);
       border-radius: 0 0.5rem 0.5rem 0;
       font-style: italic;
       color: var(--color-text-sub);
+      text-align: left;   /* Content reads left; the block is centered above */
     }
 
     & blockquote.twitter-tweet a {
       color: var(--color-cyan);
+    }
+
+    /* Twitter widget rendered state — widgets.js replaces the blockquote with this div.
+       The inline style sets top/bottom margin only; we add left/right to center it. */
+    & .twitter-tweet-rendered {
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* TikTok — center the iframe within the wrapper (TikTok is portrait/narrow) */
+    & .wp-block-embed-tiktok .wp-block-embed__wrapper {
+      display: flex;
+      justify-content: center;
+    }
+
+    /* TikTok embeds — blockquote fallback before tiktok.com/embed.js loads */
+    & blockquote.tiktok-embed {
+      max-width: 605px;   /* TikTok's standard embed max-width */
+      margin: 1.5rem auto;
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--color-surface);
+      color: var(--color-text-sub);
+      font-style: normal;
+      text-align: center;
+    }
+
+    /* Instagram embeds — blockquote fallback before instagram.com/embed.js loads */
+    & blockquote.instagram-media {
+      max-width: 540px;   /* Instagram's standard embed max-width */
+      margin: 1.5rem auto;
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 1rem 1.25rem;
+      background: var(--color-surface);
+      color: var(--color-text-sub);
+      font-style: normal;
     }
 
     /* ── Pullquote (wp-block-pullquote) ── */
