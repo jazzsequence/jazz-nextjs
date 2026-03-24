@@ -42,8 +42,32 @@ else
 fi
 echo ""
 
-# Check 2: Run all tests (unit + E2E)
-echo "2️⃣  Running tests..."
+# Check 2: Commit size (AI commits only — not applicable to USER_COMMIT=1)
+if [ "$USER_COMMIT" != "1" ]; then
+    echo "2️⃣  Checking commit size..."
+    STAGED_FILE_COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
+    STAGED_INSERTIONS=$(git diff --cached --stat 2>/dev/null | tail -1 | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+
+    if [ "$STAGED_FILE_COUNT" -gt 5 ]; then
+        echo -e "${RED}❌ BLOCKED: Commit too large — $STAGED_FILE_COUNT files staged (max 5 for AI commits)${NC}"
+        echo "   Split into smaller, atomic commits:"
+        git diff --cached --name-only | sed 's/^/     /'
+        echo "   Use USER_COMMIT=1 if this is intentionally a large batch (user-initiated)."
+        exit 1
+    fi
+
+    if [ "$STAGED_INSERTIONS" -gt 500 ]; then
+        echo -e "${RED}❌ BLOCKED: Commit too large — ~$STAGED_INSERTIONS lines added (max 500 for AI commits)${NC}"
+        echo "   Split into smaller, atomic commits."
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ Commit size OK ($STAGED_FILE_COUNT files, ~$STAGED_INSERTIONS insertions)${NC}"
+    echo ""
+fi
+
+# Check 3: Run all tests (unit + E2E)
+echo "3️⃣  Running tests..."
 echo ""
 
 # Unit tests
@@ -84,8 +108,8 @@ fi
 echo -e "${GREEN}✅ E2E tests passed${NC}"
 echo ""
 
-# Check 3: No secrets
-echo "3️⃣  Checking for secrets..."
+# Check 4: No secrets
+echo "4️⃣  Checking for secrets..."
 for file in $(git diff --cached --name-only); do
     if [[ "$file" == ".env" ]] || [[ "$file" == *".env."* ]] || [[ "$file" == *"credentials"* ]]; then
         echo -e "${RED}❌ BLOCKED: Attempting to commit secrets: $file${NC}"
@@ -95,16 +119,16 @@ done
 echo -e "${GREEN}✅ No secrets${NC}"
 echo ""
 
-# Check 4: Reviewer agent consulted (enforced by approval flag check in step 1)
+# Check 5: Reviewer agent consulted (enforced by approval flag check in step 1)
 if [ "$USER_COMMIT" != "1" ]; then
-    echo "4️⃣  Reviewer oversight check..."
+    echo "5️⃣  Reviewer oversight check..."
     echo -e "${YELLOW}⚠️  MANDATORY: Reviewer agent must approve before every commit.${NC}"
     echo "   1. Spawn reviewer agent with Agent tool"
     echo "   2. Get APPROVE decision from agent"
     echo "   3. Main agent writes approval flag, then commit within 5 minutes"
     echo ""
 else
-    echo "4️⃣  Skipping reviewer oversight (user commit)"
+    echo "5️⃣  Skipping reviewer oversight (user commit)"
     echo ""
 fi
 
