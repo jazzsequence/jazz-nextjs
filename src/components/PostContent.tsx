@@ -16,10 +16,22 @@ interface PostContentProps {
   post: WPContent;
 }
 
+// Derive the WordPress backend hostname from env vars so migrating the backend
+// to a different host (e.g. cms.jazzsequence.com) only requires an env var change.
+const WP_BACKEND_HOSTNAME = (() => {
+  const raw = process.env.WORDPRESS_BASE_URL || process.env.WORDPRESS_API_URL
+  if (raw) {
+    try { return new URL(raw).hostname } catch { /* fall through */ }
+  }
+  return 'jazzsequence.com'
+})()
+// Escape dots for use in a regex (other hostname chars don't need escaping)
+const WP_HOST_RE = WP_BACKEND_HOSTNAME.replace(/\./g, '\\.')
+
 /**
- * Rewrite absolute jazzsequence.com post/page URLs to relative routes.
+ * Rewrite absolute WordPress backend post/page URLs to relative routes.
  * Deliberately does NOT rewrite /wp-content/ paths — those are image URLs
- * that need to remain absolute (served from jazzsequence.com or CDN).
+ * that need to remain absolute (served from the backend host or CDN).
  * Rewriting them to relative paths breaks images because those paths
  * don't exist on this Next.js app.
  */
@@ -28,9 +40,9 @@ function rewriteInternalLinks(html: string): string {
     // Normalize double slashes in wp-content paths (WordPress storage quirk)
     .replace(/(https?:\/\/[^"'\s]+\/wp-content\/uploads)\/\//g, '$1/')
     // Rewrite post/page links (excluding /wp-content/) to relative paths
-    .replace(/https?:\/\/jazzsequence\.com\/(?!wp-content\/)/g, '/')
-    // Handle bare domain in href attributes (e.g. href="https://jazzsequence.com")
-    .replace(/https?:\/\/jazzsequence\.com"/g, '/"')
+    .replace(new RegExp(`https?://${WP_HOST_RE}/(?!wp-content/)`, 'g'), '/')
+    // Handle bare domain in href attributes (e.g. href="https://backend.com")
+    .replace(new RegExp(`https?://${WP_HOST_RE}"`, 'g'), '/"')
 }
 
 /** Extract plain text from a DOM element and its descendants. */

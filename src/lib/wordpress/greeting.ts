@@ -9,6 +9,16 @@ import { decode } from 'html-entities';
 import type { Audience } from '@/lib/audience-matcher';
 
 const API_BASE_URL = process.env.WORDPRESS_API_URL || 'https://jazzsequence.com/wp-json/wp/v2';
+// Derive the WordPress base URL from WORDPRESS_API_URL so a single env var controls both.
+// Falls back to WORDPRESS_BASE_URL, then to the hardcoded origin.
+const WP_BASE_URL = (() => {
+  if (process.env.WORDPRESS_BASE_URL) return process.env.WORDPRESS_BASE_URL.replace(/\/$/, '')
+  try {
+    return new URL(API_BASE_URL).origin
+  } catch {
+    return 'https://jazzsequence.com'
+  }
+})()
 const GREETING_BLOCK_ID = 16738;
 
 const WORDPRESS_USERNAME = process.env.WORDPRESS_USERNAME;
@@ -56,7 +66,7 @@ export async function fetchGreetingData(): Promise<GreetingData> {
       fetch(`${API_BASE_URL}/blocks/${GREETING_BLOCK_ID}`, {
         headers: getAuthHeaders(),
       }),
-      fetch('https://jazzsequence.com/wp-json/accelerate/v1/audiences', {
+      fetch(`${WP_BASE_URL}/wp-json/accelerate/v1/audiences`, {
         headers: getAuthHeaders(),
       }),
     ]);

@@ -1,192 +1,189 @@
 # Backend Migration Guide
 
-How to move the WordPress backend to a different host (e.g. a Pantheon-hosted environment) while keeping this Next.js frontend as the canonical `jazzsequence.com`.
+How to decouple the WordPress backend from `jazzsequence.com` so this Next.js app becomes the sole occupant of that domain. WordPress moves to a separate URL — a Pantheon platform domain, a custom subdomain, or any other host.
 
 ---
 
-## Current Architecture
+## Goal State
 
 ```
-jazzsequence.com           → Next.js frontend (Pantheon)
-jazzsequence.com/wp-json/  → WordPress REST API (same domain, proxied)
-sfo2.digitaloceanspaces.com/cdn.jazzsequence/ → Media CDN (DigitalOcean Spaces)
+jazzsequence.com                          → Next.js frontend (Pantheon) — ONLY this
+<backend-url>/wp-json/                    → WordPress REST API
+<backend-url>/wp-admin/                   → WordPress admin (unchanged)
+sfo2.digitaloceanspaces.com/cdn.jazzsequence/ → Media CDN (unchanged, or move later)
 ```
 
-The frontend fetches content from the WordPress REST API at `jazzsequence.com/wp-json/wp/v2`.
-When the Next.js app becomes the canonical domain, WordPress moves to a subdomain or a separate Pantheon environment — e.g. `api.jazzsequence.com` or `cms.jazzsequence.com`.
+The backend URL can be anything — e.g.:
+- `https://live-jazzsequence-backend.pantheonsite.io` (Pantheon platform domain, simplest)
+- `https://cms.jazzsequence.com` (custom subdomain, cleaner but requires DNS)
+
+---
+
+## WordPress URL Configuration
+
+WordPress has two distinct URL settings. This is what makes headless work:
+
+| Setting | Value | Controls |
+|---|---|---|
+| `WP_SITEURL` | `https://<backend-url>` | wp-admin, wp-json, wp-content paths |
+| `WP_HOME` | `https://jazzsequence.com` | where WordPress thinks the public site lives |
+
+When `WP_HOME` ≠ `WP_SITEURL`, WordPress automatically redirects non-admin / non-REST-API frontend requests from the backend URL to `WP_HOME`. So `<backend-url>/some-post/` → 301 → `jazzsequence.com/some-post/`. The REST API and wp-admin are **not** redirected.
+
+Set these in `wp-config.php` (or Pantheon environment variables):
+
+```php
+define( 'WP_SITEURL', 'https://live-jazzsequence-backend.pantheonsite.io' );
+define( 'WP_HOME',    'https://jazzsequence.com' );
+```
+
+### What this means for content
+
+- **Internal post links** in content: generated from `WP_HOME` (`jazzsequence.com`) — already correct
+- **Media/image URLs**: generated from `WP_SITEURL` (`<backend-url>/wp-content/uploads/...`) — the Next.js app needs to allow this domain for image optimization (see `next.config.ts` below)
+- **CDN images**: WP Offload Media rewrites these to the CDN URL regardless of `WP_SITEURL` — unaffected
 
 ---
 
 ## What's Already Environment-Variable-Controlled
 
-These are **already configurable** via `.env.local` / Pantheon environment variables:
+These are **already configurable** — no code changes needed:
 
 | Variable | Default | Controls |
 |---|---|---|
-| `WORDPRESS_API_URL` | `https://jazzsequence.com/wp-json/wp/v2` | All WordPress REST API calls in `client.ts` and `greeting.ts` |
-| `GC_API_URL` | `https://jazzsequence.com/wp-json/gc/v1` | Games Collector API (`client.ts`) |
+| `WORDPRESS_API_URL` | `https://jazzsequence.com/wp-json/wp/v2` | All WordPress REST API calls |
+| `GC_API_URL` | `https://jazzsequence.com/wp-json/gc/v1` | Games Collector API |
 | `REVALIDATE_SECRET` | — | On-demand ISR revalidation endpoint |
 | `SLACK_WEBHOOK_URL` | — | Deployment Slack notifications |
 
-Setting `WORDPRESS_API_URL=https://cms.jazzsequence.com/wp-json/wp/v2` (or your new host) is the main migration lever and covers the majority of content fetching.
+Set `WORDPRESS_API_URL=https://<backend-url>/wp-json/wp/v2` (and `GC_API_URL` similarly) to point the frontend at the new backend. This is the primary migration lever.
 
 ---
 
-## What's Still Hardcoded (Needs Code Changes)
+## What Needs Code Changes
 
-### 1. Accelerate audience endpoint — `src/lib/wordpress/greeting.ts`
+### 1. `next.config.ts` — image remote patterns
 
-```ts
-fetch('https://jazzsequence.com/wp-json/accelerate/v1/audiences', ...)
-```
-
-**Fix**: Extract to an env var. Add to `.env.local` and Pantheon secrets:
-
-```
-WORDPRESS_BASE_URL=https://jazzsequence.com
-```
-
-Then in `greeting.ts`:
-```ts
-const baseUrl = process.env.WORDPRESS_BASE_URL || 'https://jazzsequence.com'
-fetch(`${baseUrl}/wp-json/accelerate/v1/audiences`, ...)
-```
-
-### 2. Internal link rewriting regex — `src/components/PostContent.tsx`
-
-`rewriteInternalLinks()` contains the domain in a regex literal:
+The backend domain must be in `remotePatterns` for `next/image` to serve images from it:
 
 ```ts
-.replace(/https?:\/\/jazzsequence\.com\/(?!wp-content\/)/g, '/')
-.replace(/https?:\/\/jazzsequence\.com"/g, '/"')
-```
+// next.config.ts — make remotePatterns configurable
+const backendHostname = new URL(
+  process.env.WORDPRESS_BASE_URL || process.env.WORDPRESS_API_URL || 'https://jazzsequence.com'
+).hostname
 
-When WordPress is on a separate domain, the content it returns will contain links to the **old** domain (`cms.jazzsequence.com`), not the frontend domain. The rewrites need to target the backend domain and convert to the frontend domain.
-
-**Fix**: Read `WORDPRESS_BASE_URL` at runtime:
-
-```ts
-function rewriteInternalLinks(html: string, backendOrigin: string): string {
-  const escaped = backendOrigin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  return html
-    .replace(new RegExp(`(https?://${escaped}/wp-content/uploads)/\/`, 'g'), '$1/')
-    .replace(new RegExp(`https?://${escaped}/(?!wp-content/)`, 'g'), '/')
-    .replace(new RegExp(`https?://${escaped}"`, 'g'), '/"')
-}
-```
-
-### 3. Internal link detection — `src/lib/url-transform.ts`
-
-```ts
-if (parsedUrl.hostname === 'jazzsequence.com') { ... }
-```
-
-**Fix**: Same `WORDPRESS_BASE_URL` env var:
-
-```ts
-const backendHostname = new URL(process.env.WORDPRESS_BASE_URL || 'https://jazzsequence.com').hostname
-if (parsedUrl.hostname === backendHostname) { ... }
-```
-
-### 4. Next.js image remote patterns — `next.config.ts`
-
-```ts
 images: {
   remotePatterns: [
-    { hostname: 'sfo2.digitaloceanspaces.com', pathname: '/cdn.jazzsequence/**' },
-    { hostname: 'jazzsequence.com', pathname: '/wp-content/uploads/**' },
+    {
+      protocol: 'https',
+      hostname: 'sfo2.digitaloceanspaces.com',
+      pathname: '/cdn.jazzsequence/**',
+    },
+    {
+      protocol: 'https',
+      hostname: backendHostname,
+      pathname: '/wp-content/uploads/**',
+    },
   ]
 }
 ```
 
-`next.config.ts` runs at build time and doesn't support `process.env` for array entries out of the box, but you can compute the patterns dynamically:
+This is the one place still hardcoded (`next.config.ts` already reads env vars at build time but the hostname is literal). With this change, rebuilding with `WORDPRESS_BASE_URL=https://<backend-url>` will configure the image optimizer correctly.
 
-```ts
-const backendHostname = new URL(process.env.WORDPRESS_BASE_URL || 'https://jazzsequence.com').hostname
-const cdnUrl = process.env.MEDIA_CDN_URL || 'https://sfo2.digitaloceanspaces.com'
-const cdnPath = process.env.MEDIA_CDN_PATH || '/cdn.jazzsequence/**'
+### 2. CORS on the WordPress backend
 
-images: {
-  remotePatterns: [
-    { protocol: 'https', hostname: new URL(cdnUrl).hostname, pathname: cdnPath },
-    { protocol: 'https', hostname: backendHostname, pathname: '/wp-content/uploads/**' },
-  ]
+The backend must allow REST API requests from `jazzsequence.com`. Add to the backend's nginx config or via plugin:
+
+```nginx
+add_header Access-Control-Allow-Origin "https://jazzsequence.com";
+add_header Access-Control-Allow-Methods "GET, POST, OPTIONS";
+add_header Access-Control-Allow-Headers "Authorization, Content-Type";
+```
+
+Or use the `wp-cors` plugin configured to allow the frontend origin.
+
+### 3. MCP server — `.mcp.json`
+
+Update the endpoint:
+
+```json
+{
+  "mcpServers": {
+    "jazzsequence-wordpress": {
+      "url": "https://<backend-url>/wp-json/mcp/mcp-adapter-default-server"
+    }
+  }
 }
 ```
 
-### 5. Social/ActivityPub profile URLs — `src/components/OpenSocialFollow.tsx`, `src/components/Footer.tsx`
+---
 
-These are personal social links and are **intentionally static** — they should remain as-is since they reference `@jazzsequence.com` for ActivityPub federation. If the domain changes entirely (not just the backend), these need manual updates.
+## Code Already Parameterized (Completed)
+
+The following were already hardcoded but have been updated to derive from `WORDPRESS_BASE_URL` / `WORDPRESS_API_URL`:
+
+- `src/lib/wordpress/greeting.ts` — Accelerate audience endpoint
+- `src/lib/url-transform.ts` — Menu URL hostname check
+- `src/components/PostContent.tsx` — `rewriteInternalLinks` regexes
+
+These all fall back to `jazzsequence.com` when env vars are absent.
 
 ---
 
-## New Environment Variables Needed
+## New Environment Variable
 
-Add these to `.env.local` for local dev and Pantheon secrets for production:
+Add to `.env.local` for local dev and Pantheon secrets for production:
 
 ```bash
-# Base URL of the WordPress backend (without trailing slash)
-WORDPRESS_BASE_URL=https://jazzsequence.com
+# Base URL of the WordPress backend (no trailing slash)
+# All other WordPress URLs are derived from this or from WORDPRESS_API_URL
+WORDPRESS_BASE_URL=https://live-jazzsequence-backend.pantheonsite.io
 
-# If media CDN changes, override these
-MEDIA_CDN_URL=https://sfo2.digitaloceanspaces.com
-MEDIA_CDN_PATH=/cdn.jazzsequence/**
+# These are already env-var-driven but must be updated:
+WORDPRESS_API_URL=https://live-jazzsequence-backend.pantheonsite.io/wp-json/wp/v2
+GC_API_URL=https://live-jazzsequence-backend.pantheonsite.io/wp-json/gc/v1
 ```
 
-`WORDPRESS_API_URL` and `GC_API_URL` already exist and are the primary levers.
+`WORDPRESS_BASE_URL` is the single source of truth. `WORDPRESS_API_URL` and `GC_API_URL` can be derived from it but are explicit for clarity.
 
 ---
 
-## WordPress Side: What Needs to Change
+## Social / ActivityPub URLs
 
-When moving WordPress to a new host:
-
-1. **Domain in WordPress settings**: Update `siteurl` and `home` in wp-options to the new backend URL (e.g. `https://cms.jazzsequence.com`). Do NOT set these to the frontend domain — WordPress permalinks must resolve to the API host.
-
-2. **Search-replace in database**: Run a WP-CLI safe search-replace to update internal content URLs from `https://jazzsequence.com` → `https://cms.jazzsequence.com`. Use `wp search-replace` with the `--dry-run` flag first.
-
-3. **WP Offload Media**: Update the CDN configuration if the bucket changes. Verify the plugin rewrites media URLs in the REST API response correctly.
-
-4. **CORS headers**: WordPress must allow requests from the Next.js frontend domain (`jazzsequence.com`). Add to the new host's nginx or PHP configuration, or use the `wp-cors` plugin.
-
-5. **REST API authentication**: If any future authenticated endpoints are added, `cookie` auth won't work cross-domain — you'll need Application Passwords or JWT tokens.
-
-6. **MCP server**: Update `.mcp.json` endpoint URL from `jazzsequence.com/wp-json/mcp/...` to the new backend URL.
+`OpenSocialFollow.tsx` and `Footer.tsx` contain personal social links including `@jazzsequence@jazzsequence.com` for ActivityPub federation. These reference the **frontend** domain (`jazzsequence.com`), not the backend, and are intentionally static — they do not change.
 
 ---
 
-## Migration Checklist
+## Migration Steps
 
-- [ ] Spin up WordPress on new host (Pantheon: add new site, import database and files)
-- [ ] Update `siteurl` and `home` to new backend URL
-- [ ] Run `wp search-replace` for internal content URLs
-- [ ] Verify REST API accessible at new host
-- [ ] Set `WORDPRESS_BASE_URL`, `WORDPRESS_API_URL`, `GC_API_URL` in Next.js env
-- [ ] Fix `greeting.ts` hardcoded URL (see above)
-- [ ] Fix `rewriteInternalLinks` regex (see above)
-- [ ] Fix `url-transform.ts` hostname check (see above)
-- [ ] Update `next.config.ts` image remote patterns (see above)
-- [ ] Configure CORS on new WordPress host
-- [ ] Update `.mcp.json` with new endpoint
-- [ ] Test all page types: homepage, posts, pages, archives, games
-- [ ] Verify images load (CDN, and any wp-content direct URLs)
-- [ ] Test on-demand revalidation endpoint
-- [ ] Update Pantheon redirect rules so `jazzsequence.com/wp-admin` → new host (optional)
-- [ ] DNS: point `jazzsequence.com` at Pantheon Next.js, add `cms.jazzsequence.com` CNAME
+### Pantheon: Move WordPress to a New Site
 
----
+1. Create a new Pantheon site for the backend (e.g. `jazzsequence-backend`)
+2. Clone database and files from the current WordPress install
+3. Set `WP_SITEURL` and `WP_HOME` in `wp-config.php` (or Pantheon environment variables)
+4. Do **not** run a WP-CLI search-replace for the domain — `WP_HOME` being set to `jazzsequence.com` means internal post links are already correct
+5. Verify REST API responds at `https://<backend-url>/wp-json/`
+6. Configure CORS
 
-## Recommended Code Changes to Make Migration Easier
+### Update Next.js Frontend
 
-These changes can be made now (before any migration) to reduce the migration blast radius:
+7. Set `WORDPRESS_BASE_URL`, `WORDPRESS_API_URL`, `GC_API_URL` in Pantheon secrets
+8. Update `next.config.ts` image remote patterns (see above)
+9. Update `.mcp.json` endpoint
+10. Rebuild and deploy the Next.js frontend
+11. Test all page types: homepage, posts, pages, archives, games
+12. Verify images load (CDN and direct wp-content URLs from new backend)
+13. Test on-demand revalidation endpoint
+14. Test MCP server connectivity
 
-1. **Add `WORDPRESS_BASE_URL` env var** to `greeting.ts` — the accelerate endpoint is the only remaining hardcoded URL that doesn't use `WORDPRESS_API_URL`
+### DNS (if using custom subdomain)
 
-2. **Parameterize `rewriteInternalLinks`** to accept the backend origin from an env var rather than having `jazzsequence\.com` in the regex
+15. Add `cms.jazzsequence.com` CNAME → Pantheon backend environment
+16. Add custom domain on the Pantheon backend site
+17. Verify HTTPS cert on subdomain
+18. `jazzsequence.com` DNS already points at Pantheon Next.js — no change needed
 
-3. **Parameterize `url-transform.ts`** hostname check
-
-These three changes don't affect production behavior at all (since the env var falls back to the current value) but make migration a config change rather than a code change.
+If using a Pantheon platform domain (`*.pantheonsite.io`), skip steps 15–17.
 
 ---
 

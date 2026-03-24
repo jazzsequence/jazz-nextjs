@@ -1,13 +1,25 @@
 /**
  * Transform WordPress menu URLs to local routes
  *
- * Converts jazzsequence.com URLs to local paths while preserving external URLs.
+ * Converts WordPress backend URLs to local paths while preserving external URLs.
+ * The backend hostname is derived from WORDPRESS_API_URL / WORDPRESS_BASE_URL so
+ * migrating the WordPress backend to a different host only requires an env var change.
  *
  * Examples:
  * - https://jazzsequence.com/music/ → /music/
  * - https://jazzsequence.com → /
  * - https://github.com/user → https://github.com/user (unchanged)
  */
+
+// Resolve the WordPress backend hostname from env vars (build-time).
+const WP_BACKEND_HOSTNAME = (() => {
+  const raw = process.env.WORDPRESS_BASE_URL || process.env.WORDPRESS_API_URL
+  if (raw) {
+    try { return new URL(raw).hostname } catch { /* fall through */ }
+  }
+  return 'jazzsequence.com'
+})()
+
 export function transformMenuUrl(url: string): string {
   // Handle empty or malformed URLs
   if (!url || typeof url !== 'string') {
@@ -28,14 +40,11 @@ export function transformMenuUrl(url: string): string {
   try {
     const parsedUrl = new URL(url);
 
-    // Check if it's a jazzsequence.com URL
-    if (parsedUrl.hostname === 'jazzsequence.com') {
-      // Transform to local path
+    // Convert WordPress backend URLs to local paths
+    if (parsedUrl.hostname === WP_BACKEND_HOSTNAME) {
       const path = parsedUrl.pathname;
       const search = parsedUrl.search;
       const hash = parsedUrl.hash;
-
-      // Combine path, query, and hash
       return `${path}${search}${hash}`;
     }
 
