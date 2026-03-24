@@ -9,7 +9,7 @@ import FeaturedImage from './FeaturedImage';
 import PostBodyImage from './PostBodyImage';
 import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
-import TwitterScriptLoader from './TwitterScriptLoader';
+import SocialScriptLoader from './SocialScriptLoader';
 import type { WPContent, WPTerm } from '@/lib/wordpress/types';
 
 interface PostContentProps {
@@ -168,8 +168,7 @@ const parseOptions: HTMLReactParserOptions = {
     }
 
     // Twitter/X embeds: rebuild the figure structure so the blockquote renders correctly.
-    // TwitterScriptLoader is handled at the component level via hasTwitterEmbeds — no need
-    // to render it here too.
+    // Script loading is handled by SocialScriptLoader at the component level.
     if (
       el.name === 'figure' &&
       (cls.includes('wp-block-embed-twitter') || cls.includes('wp-block-embed-x'))
@@ -202,11 +201,9 @@ export default function PostContent({ post }: PostContentProps) {
     return acc
   }, {})
 
-  // Classic-editor posts embed tweets as bare blockquote.twitter-tweet without a
-  // figure.wp-block-embed-twitter wrapper. The parseOptions handler only fires for
-  // the Gutenberg block format, so we need a top-level check to load widgets.js
-  // for classic-editor posts too.
-  const hasTwitterEmbeds = post.content.rendered.includes('twitter-tweet')
+  // Raw content passed to SocialScriptLoader to detect which platform scripts
+  // need injecting. Checked before sanitization so no content is missed.
+  const rawContent = post.content.rendered
 
   const sanitized = post.content.rendered
     ? rewriteInternalLinks(
@@ -281,8 +278,8 @@ export default function PostContent({ post }: PostContentProps) {
       <div className="post-body">
         {sanitized ? parse(sanitized, parseOptions) : null}
       </div>
-      {/* Load Twitter widget script for both classic-editor and Gutenberg block embeds */}
-      {hasTwitterEmbeds && <TwitterScriptLoader />}
+      {/* Load scripts for social embeds — detects Twitter/X, TikTok, Instagram in raw content */}
+      <SocialScriptLoader content={rawContent} />
 
       {/* Taxonomy metadata — posts only */}
       {isPost && (categories.length > 0 || tags.length > 0 || Object.keys(otherGroups).length > 0) && (

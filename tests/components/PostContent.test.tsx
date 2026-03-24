@@ -4,10 +4,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import PostContent from '@/components/PostContent';
 import type { WPPost } from '@/lib/wordpress/types';
 
-// Mock TwitterScriptLoader — PostContent tests verify it is *rendered*,
-// not that it successfully injects a DOM script tag (that's TwitterScriptLoader's concern).
-vi.mock('@/components/TwitterScriptLoader', () => ({
-  default: () => <div data-testid="twitter-script-loader" />,
+// Mock SocialScriptLoader — PostContent tests verify it is always rendered and
+// receives the raw content. Detection/script-injection is SocialScriptLoader's concern.
+vi.mock('@/components/SocialScriptLoader', () => ({
+  default: ({ content }: { content: string }) => (
+    <div data-testid="social-script-loader" data-content-snapshot={content.slice(0, 50)} />
+  ),
 }));
 
 describe('PostContent', () => {
@@ -161,8 +163,9 @@ describe('PostContent — gallery caption extraction', () => {
   });
 });
 
-describe('PostContent — Twitter embeds', () => {
-  const mockPost = {
+
+describe('PostContent — SocialScriptLoader replaces TwitterScriptLoader', () => {
+  const basePost = {
     id: 1,
     type: 'post' as const,
     title: { rendered: 'Test Post' },
@@ -186,34 +189,20 @@ describe('PostContent — Twitter embeds', () => {
     tags: [],
   };
 
-  it('renders TwitterScriptLoader for classic-editor bare blockquote.twitter-tweet', () => {
-    const post = {
-      ...mockPost,
-      content: {
-        rendered: '<blockquote class="twitter-tweet" data-dnt="true"><p>Tweet text</p>&mdash; Someone (@someone) <a href="https://twitter.com/someone/status/123">Jan 1, 2024</a></blockquote>',
-      },
-    };
-    render(<PostContent post={post} />);
-    expect(screen.getByTestId('twitter-script-loader')).toBeInTheDocument();
+  it('renders SocialScriptLoader on every post (unconditional)', () => {
+    render(<PostContent post={{ ...basePost, content: { rendered: '<p>Plain post.</p>' } }} />);
+    expect(screen.getByTestId('social-script-loader')).toBeInTheDocument();
   });
 
-  it('does not render TwitterScriptLoader when no twitter-tweet content', () => {
-    const post = {
-      ...mockPost,
-      content: { rendered: '<p>Just a regular paragraph.</p>' },
-    };
-    render(<PostContent post={post} />);
+  it('passes raw post content to SocialScriptLoader so it can detect platform embeds', () => {
+    const content = '<blockquote class="twitter-tweet"><p>Tweet</p></blockquote>';
+    render(<PostContent post={{ ...basePost, content: { rendered: content } }} />);
+    expect(screen.getByTestId('social-script-loader'))
+      .toHaveAttribute('data-content-snapshot', expect.stringContaining('twitter-tweet'));
+  });
+
+  it('does not render the old TwitterScriptLoader', () => {
+    render(<PostContent post={{ ...basePost, content: { rendered: '<blockquote class="twitter-tweet"><p>Tweet</p></blockquote>' } }} />);
     expect(screen.queryByTestId('twitter-script-loader')).not.toBeInTheDocument();
-  });
-
-  it('renders TwitterScriptLoader for Gutenberg wp-block-embed-twitter figure format', () => {
-    const post = {
-      ...mockPost,
-      content: {
-        rendered: '<figure class="wp-block-embed is-type-rich wp-block-embed-twitter"><div class="wp-block-embed__wrapper"><blockquote class="twitter-tweet"><p>Tweet</p></blockquote></div></figure>',
-      },
-    };
-    render(<PostContent post={post} />);
-    expect(screen.getByTestId('twitter-script-loader')).toBeInTheDocument();
   });
 });
