@@ -28,29 +28,30 @@ export const Images: Story = {
   name: 'Images — alignment',
   render: () => (
     <Wrapper>
-      <p>Default (centered):</p>
+      <p>Default (centered, caption constrained to image width):</p>
       <figure className="wp-block-image size-large">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="https://placehold.co/600x400/2d0b4e/00e5cc?text=Default+Image" alt="Default image" />
-        <figcaption>This is an image caption using &lt;figcaption&gt;</figcaption>
+        <img src="https://placehold.co/400x266/2d0b4e/00e5cc?text=Centered+Image" alt="Default image" />
+        <figcaption>Caption should not exceed the image width — it wraps inside the figure</figcaption>
       </figure>
       <p>With .wp-element-caption:</p>
       <figure className="wp-block-image size-large">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="https://placehold.co/600x400/0b2d4e/00e5cc?text=WP+Element+Caption" alt="WP element caption" />
-        <p className="wp-element-caption">Caption using .wp-element-caption</p>
+        <img src="https://placehold.co/300x200/0b2d4e/00e5cc?text=Smaller+Image" alt="Smaller image with caption" />
+        <p className="wp-element-caption">Caption using .wp-element-caption — width matches the 300px image</p>
       </figure>
-      <p>Align left:</p>
+      <p>Align left (with caption):</p>
       <figure className="wp-block-image size-medium alignleft">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="https://placehold.co/300x200/1a0d2e/ff2d78?text=Align+Left" alt="Align left" />
+        <img src="https://placehold.co/250x167/1a0d2e/ff2d78?text=Align+Left" alt="Align left" />
+        <figcaption>Left-floated with caption</figcaption>
       </figure>
       <p>This text wraps around the left-aligned image. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
       <div style={{ clear: 'both' }} />
       <p>Align right:</p>
       <figure className="wp-block-image size-medium alignright">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="https://placehold.co/300x200/1a0d2e/9d5cff?text=Align+Right" alt="Align right" />
+        <img src="https://placehold.co/250x167/1a0d2e/9d5cff?text=Align+Right" alt="Align right" />
       </figure>
       <p>This text wraps around the right-aligned image. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
       <div style={{ clear: 'both' }} />

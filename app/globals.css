@@ -199,9 +199,12 @@
       margin-bottom: 2rem;
     }
 
-    /* Single images: centered by default */
+    /* Single images: shrink figure to image width so figcaption doesn't span
+       the full content column, then center the figure itself */
     & .wp-block-image {
-      text-align: center;
+      width: fit-content;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     /* Float alignment */
@@ -237,9 +240,10 @@
       border-radius: 0;
     }
 
-    /* Gallery images fill their grid cell — don't center */
+    /* Gallery images fill their grid cell — override fit-content */
     & .wp-block-gallery .wp-block-image {
-      text-align: inherit;
+      width: 100%;
+      margin: 0;
     }
 
     /* Captions — WordPress uses .wp-element-caption and/or <figcaption> */
