@@ -33,7 +33,42 @@ function rewriteInternalLinks(html: string): string {
     .replace(/https?:\/\/jazzsequence\.com"/g, '/"')
 }
 
-/** Walk the parsed DOM to extract <img> elements from a wp-block-gallery figure. */
+/** Extract plain text from a DOM element and its descendants. */
+function getTextContent(el: Element): string {
+  const parts: string[] = []
+  const walkText = (nodes: DOMNode[]) => {
+    for (const n of nodes) {
+      if (n.type === 'text') parts.push((n as { data: string }).data || '')
+      if (n.type === 'tag' && 'children' in n) walkText((n as Element).children as DOMNode[])
+    }
+  }
+  if (el.children) walkText(el.children as DOMNode[])
+  return parts.join('').trim()
+}
+
+/** Resolve the full-size URL from an img element's src/srcset. */
+function resolveFullSrc(img: Element): string {
+  const srcset = img.attribs?.srcset
+  if (srcset) {
+    const largest = srcset
+      .split(',')
+      .map(s => { const [u, w] = s.trim().split(/\s+/); return { url: u, w: parseInt(w) || 0 } })
+      .sort((a, b) => b.w - a.w)[0]
+    if (largest?.url) return largest.url
+  }
+  return stripWordPressSize(img.attribs.src)
+}
+
+/**
+ * Walk the parsed DOM to extract images (with optional captions) from a
+ * wp-block-gallery figure.
+ *
+ * Gutenberg galleries nest each image inside a figure.wp-block-image with an
+ * optional figcaption/.wp-element-caption sibling. This function walks those
+ * inner figures to pair each <img> with its caption text.
+ *
+ * Falls back to bare <img> detection for older classic-editor gallery markup.
+ */
 function extractGalleryImages(node: Element): GalleryImage[] {
   const images: GalleryImage[] = []
 
@@ -42,29 +77,38 @@ function extractGalleryImages(node: Element): GalleryImage[] {
       if (n.type !== 'tag') continue
       const el = n as Element
 
-      if (el.name === 'img' && el.attribs?.src) {
-        const src = el.attribs.src
-
-        // Prefer largest entry from srcset for the lightbox full view
-        let full = src
-        const srcset = el.attribs?.srcset
-        if (srcset) {
-          const largest = srcset
-            .split(',')
-            .map(s => { const [u, w] = s.trim().split(/\s+/); return { url: u, w: parseInt(w) || 0 } })
-            .sort((a, b) => b.w - a.w)[0]
-          if (largest?.url) full = largest.url
-        } else {
-          // No srcset — strip the WordPress size suffix to get the original
-          full = stripWordPressSize(src)
-        }
-
-        // Caption: look for .wp-element-caption sibling (nearest parent figure's caption)
+      // Gutenberg format: inner figure.wp-block-image contains one img + optional caption
+      if (el.name === 'figure' && el.attribs?.class?.includes('wp-block-image')) {
+        let imgEl: Element | null = null
         let caption: string | undefined
-        // Note: caption extraction from nested figcaption would require more complex traversal;
-        // skip for now and leave undefined (caption is optional in GalleryImage)
+        for (const child of ((el.children ?? []) as DOMNode[])) {
+          if (child.type !== 'tag') continue
+          const c = child as Element
+          if (c.name === 'img' && c.attribs?.src) imgEl = c
+          if (c.name === 'figcaption' || c.attribs?.class?.includes('wp-element-caption')) {
+            const text = getTextContent(c)
+            if (text) caption = text
+          }
+        }
+        if (imgEl) {
+          images.push({
+            src: imgEl.attribs.src,
+            full: resolveFullSrc(imgEl),
+            alt: imgEl.attribs?.alt || '',
+            caption,
+          })
+        }
+        continue // don't recurse into the inner figure
+      }
 
-        images.push({ src, full, alt: el.attribs?.alt || '', caption })
+      // Fallback: bare <img> (classic-editor gallery markup)
+      if (el.name === 'img' && el.attribs?.src) {
+        images.push({
+          src: el.attribs.src,
+          full: resolveFullSrc(el),
+          alt: el.attribs?.alt || '',
+        })
+        continue
       }
 
       if ('children' in el && el.children?.length) {

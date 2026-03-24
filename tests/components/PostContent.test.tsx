@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 import PostContent from '@/components/PostContent';
 import type { WPPost } from '@/lib/wordpress/types';
@@ -92,6 +92,72 @@ describe('PostContent', () => {
 
     render(<PostContent post={postWithoutContent} />);
     expect(screen.getByRole('heading', { name: 'Full Post Title' })).toBeInTheDocument();
+  });
+});
+
+describe('PostContent — gallery caption extraction', () => {
+  const basePost = {
+    id: 1,
+    type: 'post' as const,
+    title: { rendered: 'Gallery Post' },
+    excerpt: { rendered: '' },
+    date: '2024-01-15T10:30:00',
+    date_gmt: '2024-01-15T10:30:00',
+    modified: '2024-01-15T10:30:00',
+    modified_gmt: '2024-01-15T10:30:00',
+    slug: 'gallery-post',
+    status: 'publish' as const,
+    link: 'https://example.com/gallery-post',
+    author: 1,
+    featured_media: 0,
+    comment_status: 'open' as const,
+    ping_status: 'open' as const,
+    sticky: false,
+    template: '',
+    format: 'standard' as const,
+    meta: {},
+    categories: [],
+    tags: [],
+  };
+
+  it('passes figcaption text as caption to GalleryLightbox', () => {
+    const post = {
+      ...basePost,
+      content: {
+        rendered: `<figure class="wp-block-gallery has-nested-images">
+          <figure class="wp-block-image size-full">
+            <img src="/thumb1.jpg" alt="Miniature one" />
+            <figcaption class="wp-element-caption">A resin-printed dragon</figcaption>
+          </figure>
+          <figure class="wp-block-image size-full">
+            <img src="/thumb2.jpg" alt="Miniature two" />
+          </figure>
+        </figure>`,
+      },
+    };
+    render(<PostContent post={post} />);
+    // Open the first gallery image
+    fireEvent.click(screen.getAllByRole('listitem')[0]);
+    // Caption should appear in the lightbox
+    expect(screen.getByText('A resin-printed dragon')).toBeInTheDocument();
+  });
+
+  it('does not show caption in lightbox when figcaption is absent', () => {
+    const post = {
+      ...basePost,
+      content: {
+        rendered: `<figure class="wp-block-gallery has-nested-images">
+          <figure class="wp-block-image size-full">
+            <img src="/thumb1.jpg" alt="Image one" />
+          </figure>
+        </figure>`,
+      },
+    };
+    render(<PostContent post={post} />);
+    fireEvent.click(screen.getAllByRole('listitem')[0]);
+    // The lightbox should open but no caption paragraph should be present
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.queryByText(/caption/i)).not.toBeInTheDocument();
   });
 });
 
