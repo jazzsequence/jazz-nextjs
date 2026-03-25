@@ -240,18 +240,34 @@ const parseOptions: HTMLReactParserOptions = {
       const headingEl = children.find(c => c.attribs?.class?.includes('wp-embed-heading'))
       if (!headingEl) return // not a Pantheon article card — let it render normally
 
-      const headingAnchor = (headingEl.children as DOMNode[])?.find(
-        c => (c as Element).name === 'a' || (c as Element).name === 'strong'
-      ) as Element | undefined
-      // The link may be wrapped in <strong>
-      const linkEl = headingAnchor?.name === 'a'
-        ? headingAnchor
-        : (headingAnchor?.children as DOMNode[])?.find(
-            c => (c as Element).name === 'a'
-          ) as Element | undefined
+      // Find the primary article link in the heading paragraph.
+      // Most articles: <a href="..."><strong>Title</strong></a>
+      // Some articles: <strong>Title</strong> (<a href="wayback">wayback</a>) (<a href="local">local repost</a>)
+      // Strategy: prefer a direct <a> child; if none, find any <a> in the paragraph
+      // that is NOT a web.archive.org wayback link (those are archival references,
+      // not the primary article URL).
+      const headingLinks = (headingEl.children as DOMNode[])
+        ?.filter(c => (c as Element).name === 'a') as Element[]
+      const strongEl = (headingEl.children as DOMNode[])
+        ?.find(c => (c as Element).name === 'strong') as Element | undefined
+      // A link wrapping the strong (normal Pantheon pattern)
+      const wrappingLink = (headingEl.children as DOMNode[])
+        ?.find(c => {
+          const e = c as Element
+          return e.name === 'a' && e.children?.some(
+            ch => (ch as Element).name === 'strong'
+          )
+        }) as Element | undefined
+      // Primary link: wrapping <a>, then direct <a> (non-wayback), then any <a>
+      const primaryLink = wrappingLink
+        ?? headingLinks.find(a => !(a.attribs?.href ?? '').includes('web.archive.org'))
+        ?? headingLinks[0]
+        ?? (strongEl ? (strongEl.children as DOMNode[])
+            ?.find(c => (c as Element).name === 'a') as Element | undefined : undefined)
 
-      const href = linkEl?.attribs?.href ?? headingAnchor?.attribs?.href ?? ''
-      const title = headingEl ? getTextContent(headingEl) : ''
+      const href = primaryLink?.attribs?.href ?? ''
+      // Title: text of the strong element (if present) or the whole heading
+      const title = strongEl ? getTextContent(strongEl) : headingEl ? getTextContent(headingEl) : ''
 
       // Second paragraph is the excerpt (has-base-color without wp-embed-heading)
       const excerptEl = children.find(
@@ -292,6 +308,37 @@ const parseOptions: HTMLReactParserOptions = {
           faviconUrl={faviconUrl}
         />
       )
+    }
+
+    // Pure-link list items: <li><a href="https://...">Title</a></li>
+    // Used for EventEspresso articles and any other external article links in lists.
+    // Renders as WPEmbedCard (fetches oEmbed, falls back to title+domain card).
+    // Scoped to external URLs only — internal/relative links are left as plain list items.
+    if (el.name === 'li') {
+      const tagChildren = (el.children as DOMNode[]).filter(
+        c => c.type === 'tag'
+      ) as Element[]
+      const textChildren = (el.children as DOMNode[]).filter(
+        c => c.type === 'text' && ((c as unknown as { data: string }).data ?? '').trim()
+      )
+      if (tagChildren.length === 1 && textChildren.length === 0 && tagChildren[0].name === 'a') {
+        const link = tagChildren[0]
+        const href = link.attribs?.href ?? ''
+        if (href.startsWith('https://') || href.startsWith('http://')) {
+          const text = getTextContent(link)
+          let providerName = ''
+          try {
+            const host = new URL(href).hostname.replace(/^www\./, '')
+            const slug = host.split('.')[0]
+            providerName = slug.charAt(0).toUpperCase() + slug.slice(1)
+          } catch { /* keep empty */ }
+          return (
+            <li style={{ listStyle: 'none' }}>
+              <WPEmbedCard url={href} providerName={providerName} fallbackTitle={text} />
+            </li>
+          )
+        }
+      }
     }
   },
 }

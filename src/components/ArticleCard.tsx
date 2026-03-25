@@ -1,9 +1,15 @@
+'use client'
+
+import { useState } from 'react'
+
 /**
  * ArticleCard — article embed card matching the WordPressPost Storybook design.
  *
  * Used for both native WordPress post embeds (is-type-wp-embed) and Pantheon
  * custom Gutenberg groups on the /articles page. Renders consistently across
  * all external article link types.
+ *
+ * 'use client' is required for onError handling on the favicon image.
  */
 
 interface ArticleCardProps {
@@ -35,6 +41,8 @@ export default function ArticleCard({
   sourceName,
   sourceUrl,
 }: ArticleCardProps) {
+  const [faviconErrored, setFaviconErrored] = useState(false)
+
   const cardStyle: React.CSSProperties = {
     display: 'block',
     maxWidth: '600px',
@@ -111,20 +119,24 @@ export default function ArticleCard({
           padding: '0.625rem 1rem 1rem',
         }}
       >
-        {faviconUrl && (
+        {faviconUrl && !faviconErrored && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={faviconUrl}
             alt=""
-            width={16}
-            height={16}
+            // Use inline style for dimensions — .post-body img { height: auto } would
+            // override HTML width/height attributes (CSS beats HTML attributes in specificity).
+            // Inline styles beat CSS, so these are honoured.
             style={{
               flexShrink: 0,
+              width: '24px',
+              height: '24px',
               borderRadius: '50%',
               objectFit: 'cover',
               margin: 0,
               display: 'block',
             }}
+            onError={() => setFaviconErrored(true)}
           />
         )}
         <a
