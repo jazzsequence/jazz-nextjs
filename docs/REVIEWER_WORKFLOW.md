@@ -79,14 +79,21 @@ if (cmd.includes('git commit')) {
 **Location:** `CLAUDE.md` and `AGENTS.md`
 
 **What it does:**
-- Instructs AI to always run tests before committing
-- Instructs AI to spawn reviewer agent
-- Creates approval flag after reviewer approves
+- Instructs main agent to always spawn reviewer before committing
+- Instructs **reviewer agent** to write `reviewer-approved` on APPROVE (using Write tool)
+- Explicitly prohibits main agent from writing `reviewer-approved`
+- Requires both agents to surface all actions to the user in chat
 
 **Why still needed:**
-- Ensures AI spawns reviewer proactively
-- Hooks only validate, they don't trigger actions
-- AI needs to know WHEN to spawn reviewer
+- Hooks only validate; they don't trigger the reviewer or write the flag
+- AI needs to know WHEN to spawn reviewer and WHAT to do with the result
+- Transparency requirement ensures the user can audit the review in real time
+
+**Token ownership:**
+The `reviewer-approved` flag is written by the reviewer agent, not the main agent.
+This is the integrity separation: the entity that evaluated the code is the same
+entity that creates the approval token. The main agent's job is to spawn the
+reviewer, wait for it to write the flag, then commit.
 
 ---
 
@@ -155,8 +162,8 @@ graph TD
     D --> E{Reviewer Decision}
     E -->|REJECT| F[AI fixes issues]
     F --> D
-    E -->|APPROVE| G[AI creates approval flag]
-    G --> H[AI calls Bash tool: git commit]
+    E -->|APPROVE| G[Reviewer writes approval flag]
+    G --> H[Main agent calls Bash: git commit]
     H --> I{PreToolUse Hook}
     I -->|No approval| J[BLOCKED - Exit 1]
     I -->|Expired >5min| J
@@ -284,7 +291,7 @@ git commit -m "test"
 ```
 
 **Critical permissions:**
-- `"Write(*)"` - Allows main agent to create approval flag without prompt
+- `"Write(*)"` - Allows reviewer agent to write approval flag without user prompt. The main agent shares this permission but MUST NOT use it to write `reviewer-approved` directly.
 - Must be exactly `"Write(*)"`, not `"Write(.git/**/*)"` (glob matching issue)
 
 ### `.claude/helpers/hook-handler.cjs`
@@ -445,14 +452,20 @@ This would make the workflow fully automatic, but requires IPC between hook and 
 2. ✅ Linter must pass
 3. ✅ Build must succeed
 4. ✅ **E2E tests must pass** ← Critical for catching runtime errors
-5. ✅ Reviewer agent must approve
+5. ✅ Reviewer agent approves AND writes the `reviewer-approved` flag
+
+**Token ownership — the integrity guarantee:**
+- The **reviewer agent** writes `reviewer-approved` on APPROVE (not the main agent)
+- The main agent MUST NOT write this file
+- The separation ensures the entity that evaluated the code creates the approval token
+- Both agents surface all actions to the user in chat for real-time auditing
 
 **The three-layer enforcement ensures:**
 - ✅ Git commits are blocked immediately if approval is missing
+- ✅ Approval token is written by the reviewer (not self-approved by main agent)
 - ✅ Clear, actionable error messages guide the user
-- ✅ USER_COMMIT=1 bypass is respected
+- ✅ USER_COMMIT=1 bypass is respected for human commits
 - ✅ Defense in depth with two independent validation layers
-- ✅ Cannot be bypassed without modifying permissions
 
 **No more production bugs from routing conflicts, server crashes, or integration failures.**
 

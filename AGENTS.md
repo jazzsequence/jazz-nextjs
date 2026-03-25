@@ -186,15 +186,30 @@ If E2E tests are still running, WAIT. A verdict without E2E results is invalid.
 DELIVERABLE:
 Provide clear APPROVE or REJECT decision with specific findings for ALL categories.
 
-If REJECT: List violations and required fixes. Do NOT create approval flag.
+If REJECT: List violations and required fixes. Do NOT write the approval flag.
 
 If APPROVE:
 1. Confirm all rules followed, commit is safe
-2. Say "✅ APPROVED" in your summary
-3. Main agent will create approval flag using Write tool (auto-approved)
-4. Then stage and commit (approval is valid for 5 minutes)
+2. Get the current Unix timestamp — run this Bash command:
+   date +%s
+3. Write the approval flag using the Write tool — do this explicitly:
+   Write({
+     file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
+     content: "<timestamp from step 2>"
+   })
+4. Tell the user clearly: "✅ APPROVED — I have written the reviewer-approved flag.
+   The main agent may now stage and commit."
 
-CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only checks that you gave approval.`
+CRITICAL: YOU write the approval flag on APPROVE using the Write tool above.
+The main agent MUST NOT write reviewer-approved. Only the reviewer agent may write it.
+The integrity of the two-factor review system depends on this separation.
+
+TRANSPARENCY: At every step, surface what you are doing to the user — which tests
+you ran, what you found, whether you approved or rejected, and that you wrote (or
+did not write) the approval flag. The user monitors the chat to verify the review
+is real; your visibility into the process is what makes this trustworthy.
+
+CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only checks that you wrote approval.`
 }))
 ```
 
@@ -231,38 +246,32 @@ CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only check
 
 **CRITICAL WORKFLOW:**
 1. Make changes (edit files, write code)
-2. Spawn reviewer agent BEFORE staging (agent runs tests/lint once)
-3. Wait for agent APPROVE decision
-4. **Main agent** creates approval flag using Write tool (auto-approved)
-5. NOW stage files with git add
-6. Commit - pre-commit hook checks for approval flag
-7. If approval expired (>5 min), get fresh approval
-
-**Approval Flag Creation (Main Agent):**
-```typescript
-// After reviewer says "✅ APPROVED"
-// Main agent gets current timestamp
-const timestamp = await Bash({ command: "date +%s" });
-
-// Write approval file (auto-approved with Write(*) permission)
-await Write({
-  file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-  content: timestamp.trim()
-});
-```
-
-**Why main agent creates flag (not reviewer):**
-- Subagent `Date.now()` has bugs (returns milliseconds from wrong epoch)
-- Main agent's `date +%s` is reliable Unix timestamp
-- Write tool is auto-approved with `"Write(*)"` permission
-- No manual approval needed for flag creation
+2. Spawn reviewer agent BEFORE staging (reviewer runs tests/lint)
+3. Reviewer evaluates — if APPROVE, reviewer writes the approval flag itself
+4. If reviewer says REJECT, fix violations and spawn reviewer again
+5. NOW stage files with git add (only after reviewer has written the flag)
+6. Commit — pre-commit hook validates the flag exists and is fresh
+7. If approval expired (>5 min), get a fresh reviewer approval
 
 **CRITICAL RULES:**
-- Never stage files before getting agent approval
-- Never commit without APPROVE from reviewer agent
-- If agent says REJECT, fix violations then spawn agent again
+- Never stage files before the reviewer agent has approved
+- Never commit without APPROVE + flag written by the reviewer agent
+- **NEVER write reviewer-approved yourself** — only the reviewer agent may write it
+- If reviewer says REJECT, fix violations then spawn reviewer again
 - Approval expires after 5 minutes (prevents stale approvals)
-- Hook does NOT re-run tests (agent already did that)
+- Hook does NOT re-run tests (reviewer already did that)
+
+**TRANSPARENCY:**
+Both the main agent and the reviewer agent must surface what they are doing to the
+user in chat at every step. The user watches the conversation to verify the review
+process is genuine — your visible actions are the audit trail.
+
+Main agent: state what you are about to commit, why you are spawning the reviewer,
+and that you are waiting for reviewer approval before staging.
+
+Reviewer agent: state which tests you ran, what you checked, your APPROVE/REJECT
+verdict with specific findings, and confirm explicitly that you wrote (or did not
+write) the reviewer-approved flag.
 
 ---
 
