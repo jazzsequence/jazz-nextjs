@@ -102,6 +102,13 @@
     line-height: 1.75;
     color: var(--color-text-sub);
 
+    /* WordPress block editor CSS variable overrides scoped to post content.
+     * These presets are referenced in inline styles on Gutenberg block markup.
+     * --wp--preset--spacing--30: padding/margin spacing preset (WordPress default: 1.5rem)
+     * --wp--preset--color--base: "base" palette color → our text color on dark bg */
+    --wp--preset--spacing--30: 1.25rem;
+    --wp--preset--color--base: var(--color-text);
+
     /* Vertical rhythm — space between all direct children */
     & > * + * {
       margin-top: 1.5rem;
@@ -407,7 +414,7 @@
 
     /* ── Blockquote (wp-block-quote) — generic editorial quote ── */
     & .wp-block-quote,
-    & blockquote:not(.twitter-tweet):not(.tiktok-embed):not(.instagram-media):not(.reddit-embed-bq):not(.imgur-embed-pub):not(.wp-block-pullquote blockquote) {
+    & blockquote:not(.twitter-tweet):not(.tiktok-embed):not(.instagram-media):not(.reddit-embed-bq):not(.imgur-embed-pub):not(.wp-embedded-content):not(.wp-block-pullquote blockquote) {
       border-left: 3px solid var(--color-purple);
       padding: 0.75rem 1.5rem;
       margin: 1.5rem 0;
@@ -416,7 +423,7 @@
     }
 
     & .wp-block-quote p,
-    & blockquote:not(.twitter-tweet):not(.tiktok-embed):not(.instagram-media):not(.reddit-embed-bq):not(.imgur-embed-pub):not(.wp-block-pullquote blockquote) p {
+    & blockquote:not(.twitter-tweet):not(.tiktok-embed):not(.instagram-media):not(.reddit-embed-bq):not(.imgur-embed-pub):not(.wp-embedded-content):not(.wp-block-pullquote blockquote) p {
       font-size: 1.125rem;
       font-style: italic;
       color: var(--color-text-sub);
@@ -517,6 +524,135 @@
 
     & .wp-block-pullquote cite::before {
       content: "— ";
+    }
+
+    /* ── Article embed card design system ──────────────────────────────────
+     *
+     * All external article cards — Pantheon custom Gutenberg groups,
+     * native WordPress post embeds (blockquote.wp-embedded-content), and
+     * styled list items — should match the WordPressPost Storybook pattern:
+     *   background: surface, border, border-radius 0.75rem, heading title.
+     *
+     * WordPress block CSS variables used in inline styles on group blocks:
+     *   var(--wp--preset--spacing--30) → padding/margin preset (WordPress default: 1.5rem)
+     *   var(--wp--preset--color--base) → "base" color (maps to our text color on dark bg)
+     */
+    /* wp-block-group: create a Block Formatting Context (BFC) so alignleft images
+       are contained within each group and don't cascade between adjacent cards.
+       display:flow-root creates the BFC without clipping overflow (safer than
+       overflow:hidden which would clip alignwide/alignfull images in a group). */
+    & .wp-block-group {
+      display: flow-root;
+    }
+
+    /* Pantheon custom article groups — has-background signals a card context.
+       Override WordPress's white background color for the dark theme. */
+    & .wp-block-group.has-background {
+      background: var(--color-surface) !important;
+      border: 1px solid var(--color-border);
+      border-radius: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    /* wp-embed-heading: custom paragraph class used in Pantheon article cards
+       as the article title (replaces <h3> since it lives in a <p> element) */
+    & .wp-embed-heading {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 1.125rem;
+      line-height: 1.3;
+      color: var(--color-text);
+      margin: 0 0 0.375rem;
+    }
+
+    & .wp-embed-heading a {
+      color: var(--color-text);
+      text-decoration: none;
+    }
+
+    & .wp-embed-heading a:hover {
+      color: var(--color-cyan);
+    }
+
+    /* WordPress color/font-size preset classes used in Pantheon group cards */
+    & .has-base-color { color: var(--color-text-sub); }
+    & .has-large-font-size { font-size: 1.5rem !important; }
+    & .has-extra-small-font-size { font-size: 0.75rem !important; }
+
+    /* Native WordPress post embeds — blockquote.wp-embedded-content.
+     * WordPress renders is-type-wp-embed blocks as:
+     *   <blockquote class="wp-embedded-content"><a href="…">Title</a></blockquote>
+     *   <iframe class="wp-embedded-content" style="visibility:hidden" …></iframe>
+     * Style the blockquote as a card; hide the redundant hidden iframe. */
+    & blockquote.wp-embedded-content {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      margin: 0 0 1rem;
+      font-style: normal;
+      text-align: left;
+    }
+
+    & blockquote.wp-embedded-content a {
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 1.125rem;
+      color: var(--color-text);
+      text-decoration: none;
+      line-height: 1.3;
+      display: block;
+    }
+
+    & blockquote.wp-embedded-content a:hover {
+      color: var(--color-cyan);
+    }
+
+    /* Hide the hidden WP embed iframe — it's visibility:hidden by default but
+       still occupies space. The blockquote fallback is the visible element. */
+    & iframe.wp-embedded-content {
+      display: none;
+    }
+
+    /* is-type-wp-embed figures: the outer .wp-block-embed sets text-align:center
+       which would center the blockquote card content; override for embed cards. */
+    & .wp-block-embed.is-type-wp-embed {
+      text-align: left;
+    }
+
+    /* Pure-link list items: <li><a href="…">Title</a></li>
+     * Used in the /articles page EventEspresso section where each list item
+     * is a standalone external article link. Display as article cards to match
+     * the wp-embedded-content and wp-block-group card patterns above.
+     * Uses CSS :has() — supported in Chrome 105+, Firefox 121+, Safari 15.4+.
+     * Fallback: renders as a normal bulleted list on older browsers. */
+    & ul:has(> li:has(> a:only-child)) {
+      padding-left: 0;
+    }
+
+    & li:has(> a:only-child) {
+      list-style: none;
+      margin: 0 0 0.75rem;
+    }
+
+    & li:has(> a:only-child) > a {
+      display: block;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.75rem;
+      padding: 1.25rem;
+      color: var(--color-text);
+      text-decoration: none;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      font-size: 1.125rem;
+      line-height: 1.3;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    & li:has(> a:only-child) > a:hover {
+      color: var(--color-cyan);
+      border-color: var(--color-cyan);
     }
 
     /* ── Separator (wp-block-separator) ── */
