@@ -110,6 +110,7 @@ jobs:
           MAX_ATTEMPTS=60
           SLEEP_TIME=10
           ATTEMPT=0
+          BUILD_HEADER_PRINTED=0
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
@@ -141,8 +142,13 @@ jobs:
             BUILD_STATUS=$(echo "$BUILD" | jq -r '.status')
             BUILD_COMMIT=$(echo "$BUILD" | jq -r '.commit')
 
-            echo "Build ID: $BUILD_ID"
-            echo "Commit: ${BUILD_COMMIT:0:7}"
+            # Print build ID and commit hash once when the build is first found
+            if [ $BUILD_HEADER_PRINTED -eq 0 ]; then
+              echo "Build ID: $BUILD_ID"
+              echo "Commit: ${BUILD_COMMIT:0:7}"
+              BUILD_HEADER_PRINTED=1
+            fi
+
             echo "Status: $BUILD_STATUS"
 
             # BUILD_SUCCESS and DEPLOYMENT_SUCCESS both indicate deployment is complete
