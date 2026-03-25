@@ -10,6 +10,8 @@ import PostBodyImage from './PostBodyImage';
 import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
 import SocialScriptLoader from './SocialScriptLoader';
+import WPEmbedCard from './WPEmbedCard';
+import ArticleCard from './ArticleCard';
 import type { WPContent, WPTerm } from '@/lib/wordpress/types';
 
 interface PostContentProps {
@@ -146,13 +148,19 @@ const parseOptions: HTMLReactParserOptions = {
     // interceptor below and never reach this branch.
     if (el.name === 'img' && el.attribs?.src) {
       const a = el.attribs
+      // Extract pixel dimensions from inline style when no explicit width/height attrs.
+      // Gutenberg resized images (e.g. favicons with style="width:32px;height:32px")
+      // omit HTML attributes, so PostBodyImage receives no size constraints otherwise.
+      const styleStr = a.style ?? ''
+      const styleW = styleStr.match(/width:\s*(\d+)px/)?.[1]
+      const styleH = styleStr.match(/height:\s*(\d+)px/)?.[1]
       return (
         <PostBodyImage
           src={a.src}
           alt={a.alt}
           className={a.class}
-          width={a.width ? parseInt(a.width, 10) : undefined}
-          height={a.height ? parseInt(a.height, 10) : undefined}
+          width={a.width ? parseInt(a.width, 10) : styleW ? parseInt(styleW, 10) : undefined}
+          height={a.height ? parseInt(a.height, 10) : styleH ? parseInt(styleH, 10) : undefined}
           title={a.title}
           srcSet={a.srcset}
         />
@@ -180,6 +188,109 @@ const parseOptions: HTMLReactParserOptions = {
             {domToReact(el.children as DOMNode[], parseOptions)}
           </div>
         </figure>
+      )
+    }
+
+    // Native WordPress post embeds (is-type-wp-embed): WordPress renders these as a
+    // blockquote.wp-embedded-content (title link) + a hidden iframe. In the headless
+    // context the iframe never loads. Fetch oEmbed data via /api/oembed and render
+    // an ArticleCard matching the WordPressPost Storybook design.
+    if (el.name === 'figure' && cls.includes('is-type-wp-embed')) {
+      // Extract the external URL from the blockquote fallback's <a> tag
+      const blockquote = (el.children as DOMNode[]).flatMap(
+        c => (c as Element).children ?? []
+      ).find(c => (c as Element).name === 'blockquote')
+      const anchor = ((blockquote as Element)?.children as DOMNode[])?.find(
+        c => (c as Element).name === 'a'
+      ) as Element | undefined
+      const url = anchor?.attribs?.href
+      const fallbackTitle = anchor ? getTextContent(anchor) : ''
+      // Derive provider name from figure class: wp-block-embed-{provider}
+      const providerMatch = cls.match(/wp-block-embed-([a-z0-9-]+)/)
+      const providerSlug = providerMatch?.[1] ?? ''
+      const providerName = providerSlug
+        .split('-')
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+        .join('')
+
+      if (url) {
+        return (
+          <WPEmbedCard
+            url={url}
+            providerName={providerName}
+            fallbackTitle={fallbackTitle}
+          />
+        )
+      }
+    }
+
+    // Pantheon custom article groups: wp-block-group.has-background containing a
+    // wp-embed-heading paragraph. These were built to look like native WP post embeds
+    // but use Gutenberg blocks (Pantheon.io is on Drupal, can't use native WP embeds).
+    // Extract the structured content and render as ArticleCard for consistency.
+    if (
+      el.name === 'div' &&
+      cls.includes('wp-block-group') &&
+      cls.includes('has-background')
+    ) {
+      const children = (el.children as DOMNode[]).filter(
+        c => c.type === 'tag'
+      ) as Element[]
+
+      const headingEl = children.find(c => c.attribs?.class?.includes('wp-embed-heading'))
+      if (!headingEl) return // not a Pantheon article card — let it render normally
+
+      const headingAnchor = (headingEl.children as DOMNode[])?.find(
+        c => (c as Element).name === 'a' || (c as Element).name === 'strong'
+      ) as Element | undefined
+      // The link may be wrapped in <strong>
+      const linkEl = headingAnchor?.name === 'a'
+        ? headingAnchor
+        : (headingAnchor?.children as DOMNode[])?.find(
+            c => (c as Element).name === 'a'
+          ) as Element | undefined
+
+      const href = linkEl?.attribs?.href ?? headingAnchor?.attribs?.href ?? ''
+      const title = headingEl ? getTextContent(headingEl) : ''
+
+      // Second paragraph is the excerpt (has-base-color without wp-embed-heading)
+      const excerptEl = children.find(
+        c => c.name === 'p' && !c.attribs?.class?.includes('wp-embed-heading') &&
+          c.attribs?.class?.includes('has-base-color') &&
+          !c.attribs?.class?.includes('has-extra-small-font-size')
+      )
+      const excerpt = excerptEl ? getTextContent(excerptEl) : undefined
+
+      // Source paragraph (has-extra-small-font-size) → provider domain
+      const sourceEl = children.find(
+        c => c.name === 'p' && c.attribs?.class?.includes('has-extra-small-font-size')
+      )
+      const sourceAnchor = sourceEl
+        ? ((sourceEl.children as DOMNode[])?.find(c => (c as Element).name === 'a') as Element)
+        : undefined
+      const sourceUrl = sourceAnchor?.attribs?.href ?? ''
+      const sourceName = sourceEl ? getTextContent(sourceEl) : ''
+
+      // Favicon image (wp-block-image.alignleft.is-resized)
+      const faviconFig = children.find(
+        c => c.name === 'figure' && c.attribs?.class?.includes('wp-block-image')
+      )
+      const faviconImg = faviconFig
+        ? ((faviconFig.children as DOMNode[])?.find(c => (c as Element).name === 'img') as Element)
+        : undefined
+      const faviconUrl = faviconImg?.attribs?.src
+
+      if (!href || !title) return // incomplete data — fall through to default
+
+      return (
+        <ArticleCard
+          href={href}
+          title={title}
+          excerpt={excerpt}
+          sourceName={sourceName || sourceUrl}
+          sourceUrl={sourceUrl || href}
+          faviconUrl={faviconUrl}
+        />
       )
     }
   },

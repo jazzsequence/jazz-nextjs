@@ -184,22 +184,32 @@ test.describe('Embed — Mixcloud (raw iframe)', () => {
 // ── WordPress native post embed ─────────────────────────────────────────────────
 
 test.describe('Embed — WordPress native post embed (is-type-wp-embed)', () => {
-  test('disclosing-ai-use has wp-block-embed is-type-wp-embed figure', async ({ page }) => {
+  // is-type-wp-embed figures are intercepted by PostContent and replaced with
+  // WPEmbedCard → ArticleCard. We verify the ArticleCard rendered correctly.
+  test('disclosing-ai-use renders wp-embed as an ArticleCard', async ({ page }) => {
     await page.goto('/posts/disclosing-ai-use');
     await page.waitForLoadState('domcontentloaded');
 
-    const figure = page.locator('figure.wp-block-embed.is-type-wp-embed').first();
-    await expect(figure).toBeAttached();
-    // The wp-embed wrapper div should be present
-    await expect(figure.locator('.wp-block-embed__wrapper')).toBeAttached();
+    // WPEmbedCard shows a loading skeleton first, then the card
+    // Wait for the card's article element (not the loading skeleton)
+    await page.waitForSelector('article', { timeout: 10000 });
+    const card = page.locator('article').first();
+    await expect(card).toBeAttached();
+    // Card should contain a link to the external article
+    const link = card.locator('a[href*="communitycode.dev"], a[href*="community"]').first();
+    await expect(link).toBeAttached();
   });
 
-  test('wp-tavern podcast post has is-type-wp-embed figure', async ({ page }) => {
+  test('wp-tavern podcast post renders wp-embed as an ArticleCard', async ({ page }) => {
     await page.goto('/posts/i-was-on-the-wp-tavern-podcast');
     await page.waitForLoadState('domcontentloaded');
 
-    const figure = page.locator('figure.wp-block-embed.is-type-wp-embed').first();
-    await expect(figure).toBeAttached();
+    await page.waitForSelector('article', { timeout: 10000 });
+    const card = page.locator('article').first();
+    await expect(card).toBeAttached();
+    // Card should link to the WP Tavern post
+    const link = card.locator('a[href*="wptavern.com"]').first();
+    await expect(link).toBeAttached();
   });
 });
 
