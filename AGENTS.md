@@ -114,7 +114,12 @@ DEPENDENCIES & LICENSING:
 23. Verify package.json changes don't introduce restrictive licenses
 
 GIT PRACTICES:
-24. COMMIT SIZE — HARD BLOCK if violated:
+24. COMMIT SUBJECT LINE — first `-m` value must be ≤72 characters (GitHub truncates beyond this).
+    Additional `-m` body lines have no length restriction.
+    Count characters before writing: "feat(component): description of change" = check length.
+    If the subject is too long, shorten the description or use a broader scope label.
+
+25. COMMIT SIZE — HARD BLOCK if violated:
     - Count files staged: git diff --cached --name-only | wc -l
     - Count insertions: from git diff --cached --stat
     - REJECT if more than 5 files staged
@@ -122,27 +127,27 @@ GIT PRACTICES:
     - A single logical change should be a single small commit.
     - New component + its test file = 2 files, acceptable.
     - Component + tests + stories + CSS + e2e = 5+ files, MUST be split.
-25. Incremental commits (not one massive commit)?
-26. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
-27. Commit messages clear and descriptive?
-28. NEVER amend commits (always create new commits instead)?
+26. Incremental commits (not one massive commit)?
+27. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
+28. Commit messages clear and descriptive?
+29. NEVER amend commits (always create new commits instead)?
 
 E2E TEST COVERAGE:
-29. For user-facing changes (app/, components/), are E2E tests included?
+30. For user-facing changes (app/, components/), are E2E tests included?
     - New pages/components → E2E tests required
     - Modified pages/components → Update E2E tests
     - Check: Are there E2E test changes in tests/e2e/ for UI changes?
     - Backend-only changes → E2E tests optional
 
 ACCESSIBILITY (WCAG 2.1 AA):
-30. Do any UI changes affect pages covered by tests/e2e/a11y.spec.ts?
+31. Do any UI changes affect pages covered by tests/e2e/a11y.spec.ts?
     - The a11y spec is run as part of npm run test:e2e — failures are blocking
     - New pages added to the design system must be added to a11y.spec.ts
     - All color choices must meet WCAG 2.1 AA contrast ratios (4.5:1 normal text, 3:1 large text)
     - Interactive elements must have accessible names (aria-label, htmlFor, etc.)
 
 DESIGN SYSTEM COMPLIANCE:
-31. Do visual/component changes conform to the design system?
+32. Do visual/component changes conform to the design system?
     - Colors must use brand.* Tailwind tokens or --color-* CSS variables. No arbitrary hex values.
     - Fonts must use font-mono (Victor Mono), font-heading (Geist Sans), or font-sans (Space Grotesk). No other fonts.
     - H2 headings = Victor Mono (font-mono). All other headings = Geist (font-heading). Body = Space Grotesk (font-sans).
@@ -151,13 +156,13 @@ DESIGN SYSTEM COMPLIANCE:
     - Stories are the canonical reference — if a component looks different from its story, the component is wrong.
 
 STORYBOOK:
-32. For any new or modified UI component:
+33. For any new or modified UI component:
     - Does a story exist? If not, create one before committing.
     - Run: npx storybook build (must succeed)
     - Stories must pass the @storybook/addon-a11y check (a11y: 'error' in preview.ts)
 
 LIGHTHOUSE & PERFORMANCE (use Chrome DevTools MCP for visual changes):
-33. For significant UI changes on key pages, use the Chrome DevTools MCP to run:
+34. For significant UI changes on key pages, use the Chrome DevTools MCP to run:
     - mcp__chrome-devtools__lighthouse_audit → accessibility must be ≥ 90, best-practices ≥ 90
     - mcp__chrome-devtools__performance_start_trace → stop → analyze_insight for Core Web Vitals
       - LCP (Largest Contentful Paint) target: < 2.5s
