@@ -56,10 +56,52 @@ describe('GET /api/oembed', () => {
     expect(data).toEqual(oEmbedResponse)
   })
 
-  it('returns 502 when the external oEmbed endpoint returns an error', async () => {
+  it('falls back to OG metadata when oEmbed endpoint returns 404', async () => {
+    const pantheonUrl = 'https://pantheon.io/blog/why-wordpress-multisite'
+    server.use(
+      http.get('https://pantheon.io/wp-json/oembed/1.0/embed', () =>
+        HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      ),
+      http.get('https://pantheon.io/blog/why-wordpress-multisite', () =>
+        HttpResponse.html(`<!DOCTYPE html><html>
+          <head>
+            <meta property="og:title" content="Why WordPress Multisite" />
+            <meta property="og:description" content="Demystifying the WordPress core feature." />
+            <meta property="og:image" content="https://pantheon.io/img/multisite-thumb.jpg" />
+            <meta property="og:site_name" content="Pantheon" />
+          </head><body></body></html>`)
+      )
+    )
+    const req = makeRequest(pantheonUrl)
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.title).toBe('Why WordPress Multisite')
+    expect(data.description).toBe('Demystifying the WordPress core feature.')
+    expect(data.thumbnail_url).toBe('https://pantheon.io/img/multisite-thumb.jpg')
+    expect(data.provider_name).toBe('Pantheon')
+    expect(data.provider_url).toBe('https://pantheon.io')
+  })
+
+  it('returns 502 when oEmbed fails and OG meta fetch also fails', async () => {
     server.use(
       http.get('https://webdevstudios.com/wp-json/oembed/1.0/embed', () =>
         HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      ),
+      http.get(articleUrl, () => HttpResponse.error())
+    )
+    const req = makeRequest(articleUrl)
+    const res = await GET(req)
+    expect(res.status).toBe(502)
+  })
+
+  it('returns 502 when the external oEmbed endpoint returns an error and no OG meta exists', async () => {
+    server.use(
+      http.get('https://webdevstudios.com/wp-json/oembed/1.0/embed', () =>
+        HttpResponse.json({ error: 'Not found' }, { status: 404 })
+      ),
+      http.get(articleUrl, () =>
+        HttpResponse.html('<!DOCTYPE html><html><head></head><body></body></html>')
       )
     )
     const req = makeRequest(articleUrl)
@@ -71,7 +113,8 @@ describe('GET /api/oembed', () => {
     server.use(
       http.get('https://webdevstudios.com/wp-json/oembed/1.0/embed', () =>
         HttpResponse.error()
-      )
+      ),
+      http.get(articleUrl, () => HttpResponse.error())
     )
     const req = makeRequest(articleUrl)
     const res = await GET(req)
