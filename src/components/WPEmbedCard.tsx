@@ -71,8 +71,13 @@ export default function WPEmbedCard({ url, providerName, fallbackTitle }: WPEmbe
   const sourceLabel = data?.provider_name ?? providerName
   const sourceUrl = data?.provider_url ?? (() => { try { return new URL(url).origin } catch { return url } })()
   const imageUrl = data?.thumbnail_url
-  // Attempt to derive the provider favicon from their domain
-  const faviconUrl = `${sourceUrl}/favicon.ico`
+  // Derive favicon via DuckDuckGo's favicon service — more reliable than /favicon.ico
+  // which frequently 404s. DDG serves cached favicons for virtually all public domains.
+  let faviconUrl: string | undefined
+  try {
+    const hostname = new URL(sourceUrl).hostname
+    faviconUrl = `https://icons.duckduckgo.com/ip3/${hostname}.ico`
+  } catch { /* leave undefined — favicon is optional decoration */ }
 
   return (
     <ArticleCard

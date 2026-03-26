@@ -11,6 +11,8 @@ import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
 import SocialScriptLoader from './SocialScriptLoader';
 import WPEmbedCard from './WPEmbedCard';
+import ArticleCard from './ArticleCard';
+import ArticleCardWithImage from './ArticleCardWithImage';
 import type { WPContent, WPTerm } from '@/lib/wordpress/types';
 
 interface PostContentProps {
@@ -281,14 +283,36 @@ const parseOptions: HTMLReactParserOptions = {
 
       if (!href || !title) return // incomplete data — fall through to default
 
-      // Use WPEmbedCard so OG/oEmbed metadata (especially og:image) is fetched.
-      // The DOM-extracted title is used as the fallbackTitle if the fetch fails.
-      // The fetched og:image becomes the hero image in the ArticleCard.
+      // Derive provider for the source attribution footer
+      let sourceUrl = ''
+      try { sourceUrl = new URL(href).origin } catch { /* internal link */ }
+      const faviconUrl = sourceUrl
+        ? `https://icons.duckduckgo.com/ip3/${new URL(sourceUrl).hostname}.ico`
+        : undefined
+
+      // Internal links (already rewritten to /posts/slug) → ArticleCard directly.
+      // External links → ArticleCardWithImage: preserves DOM-extracted title/excerpt
+      // but fetches og:image asynchronously so Pantheon articles get featured images
+      // without OG data overwriting the article-specific title (avoids duplicates when
+      // two groups share the same destination URL).
+      if (!href.startsWith('http')) {
+        return (
+          <ArticleCard
+            href={href}
+            title={title}
+            sourceName={sourceName || 'jazzsequence.com'}
+            sourceUrl="/"
+          />
+        )
+      }
+
       return (
-        <WPEmbedCard
-          url={href}
-          providerName={sourceName || 'Pantheon'}
-          fallbackTitle={title}
+        <ArticleCardWithImage
+          href={href}
+          title={title}
+          sourceName={sourceName || 'Pantheon'}
+          sourceUrl={sourceUrl || href}
+          faviconUrl={faviconUrl}
         />
       )
     }
