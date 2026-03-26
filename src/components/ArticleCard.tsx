@@ -12,7 +12,7 @@ import { useState } from 'react'
  * 'use client' is required for onError handling on the favicon image.
  */
 
-interface ArticleCardProps {
+export interface ArticleCardProps {
   /** URL of the embedded article */
   href: string
   /** Article title */
