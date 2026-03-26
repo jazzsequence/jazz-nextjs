@@ -33,8 +33,9 @@ test.describe('Individual Post Page', () => {
   test('should display post content', async ({ page }) => {
     await page.goto(`/posts/${testSlug}`);
 
-    // Content should be in article element
-    const article = page.locator('article');
+    // Content should be in article element — use first() since embedded article
+    // cards (ArticleCard) also render <article> tags inside the post body.
+    const article = page.locator('article').first();
     await expect(article).toBeVisible();
 
     // Should have some text content
@@ -67,7 +68,7 @@ test.describe('Individual Post Page', () => {
     await page.goto(`/posts/${testSlug}`);
 
     // Content should be rendered (not showing raw HTML)
-    const article = page.locator('article');
+    const article = page.locator('article').first();
 
     // Should not contain escaped HTML entities in normal text
     const visibleText = await article.textContent();
@@ -129,7 +130,7 @@ test.describe('Individual Post Page', () => {
   test('should have readable content width', async ({ page }) => {
     await page.goto(`/posts/${testSlug}`);
 
-    const article = page.locator('article');
+    const article = page.locator('article').first();
     const box = await article.boundingBox();
 
     // Content should not be too wide (for readability)
