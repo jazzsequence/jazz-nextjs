@@ -34,7 +34,8 @@ describe('GET /api/oembed', () => {
     server.use(
       http.get('https://webdevstudios.com/wp-json/oembed/1.0/embed', ({ request }) => {
         calledUrl = request.url
-        return HttpResponse.json(oEmbedResponse)
+        // Return with thumbnail_url so the route returns early without fetching the page
+        return HttpResponse.json({ ...oEmbedResponse, thumbnail_url: 'https://webdevstudios.com/thumb.jpg' })
       })
     )
     const req = makeRequest(articleUrl)
@@ -43,17 +44,38 @@ describe('GET /api/oembed', () => {
     expect(calledUrl).toContain(encodeURIComponent(articleUrl))
   })
 
-  it('returns oEmbed JSON on success', async () => {
+  it('returns oEmbed JSON immediately when it includes thumbnail_url', async () => {
+    const withThumb = { ...oEmbedResponse, thumbnail_url: 'https://webdevstudios.com/thumb.jpg' }
     server.use(
       http.get('https://webdevstudios.com/wp-json/oembed/1.0/embed', () =>
-        HttpResponse.json(oEmbedResponse)
+        HttpResponse.json(withThumb)
       )
     )
     const req = makeRequest(articleUrl)
     const res = await GET(req)
     expect(res.status).toBe(200)
     const data = await res.json()
-    expect(data).toEqual(oEmbedResponse)
+    expect(data).toEqual(withThumb)
+  })
+
+  it('augments oEmbed data with OG image when oEmbed has no thumbnail_url', async () => {
+    server.use(
+      http.get('https://webdevstudios.com/wp-json/oembed/1.0/embed', () =>
+        HttpResponse.json(oEmbedResponse) // no thumbnail_url
+      ),
+      http.get(articleUrl, () =>
+        HttpResponse.html(`<!DOCTYPE html><html><head>
+          <meta property="og:image" content="https://webdevstudios.com/og-image.jpg" />
+        </head><body></body></html>`)
+      )
+    )
+    const req = makeRequest(articleUrl)
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    // Should have oEmbed title/description AND the OG image
+    expect(data.title).toBe(oEmbedResponse.title)
+    expect(data.thumbnail_url).toBe('https://webdevstudios.com/og-image.jpg')
   })
 
   it('falls back to OG metadata when oEmbed endpoint returns 404', async () => {

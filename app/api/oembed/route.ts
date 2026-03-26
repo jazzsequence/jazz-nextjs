@@ -52,11 +52,16 @@ export async function GET(request: Request) {
   const oEmbedEndpoint =
     `${origin}/wp-json/oembed/1.0/embed?url=${encodeURIComponent(url)}&format=json`
 
+  let oEmbedData: Record<string, unknown> | null = null
   try {
     const res = await fetch(oEmbedEndpoint, { headers: ua, ...cacheOpts })
     if (res.ok) {
-      const data = await res.json()
-      return NextResponse.json(data)
+      oEmbedData = await res.json() as Record<string, unknown>
+      // If the oEmbed response includes a thumbnail, we're done
+      if (oEmbedData?.thumbnail_url) {
+        return NextResponse.json(oEmbedData)
+      }
+      // oEmbed succeeded but no thumbnail — fall through to augment with OG image
     }
     // oEmbed not available — fall through to OG meta
   } catch {
@@ -71,23 +76,28 @@ export async function GET(request: Request) {
     }
 
     const html = await pageRes.text()
-    const title = getOgMeta(html, 'og:title')
-    const description = getOgMeta(html, 'og:description')
-    const thumbnail_url = getOgMeta(html, 'og:image')
-    const provider_name = getOgMeta(html, 'og:site_name')
+    const ogTitle = getOgMeta(html, 'og:title')
+    const ogDescription = getOgMeta(html, 'og:description')
+    const ogImage = getOgMeta(html, 'og:image')
+    const ogSiteName = getOgMeta(html, 'og:site_name')
 
-    if (!title) {
-      // No usable meta found
+    // If we have oEmbed data (but no thumbnail), merge it with the OG image
+    if (oEmbedData) {
+      return NextResponse.json({ ...oEmbedData, thumbnail_url: ogImage })
+    }
+
+    if (!ogTitle) {
+      // No usable meta found at all
       return NextResponse.json({ error: 'No oEmbed or OG metadata available' }, { status: 502 })
     }
 
     return NextResponse.json({
       version: '1.0',
       type: 'link',
-      title,
-      description,
-      thumbnail_url,
-      provider_name,
+      title: ogTitle,
+      description: ogDescription,
+      thumbnail_url: ogImage,
+      provider_name: ogSiteName,
       provider_url: origin,
     })
   } catch {
