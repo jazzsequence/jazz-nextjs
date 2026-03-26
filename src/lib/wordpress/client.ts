@@ -103,6 +103,13 @@ export class WPNotFoundError extends WPAPIError {
   }
 }
 
+export class WPForbiddenError extends WPAPIError {
+  constructor(type: string, slug: string) {
+    super(`${type} is private or restricted: ${slug}`, 403)
+    this.name = 'WPForbiddenError'
+  }
+}
+
 export class WPRateLimitError extends WPAPIError {
   constructor() {
     super('Rate limit exceeded', 429)
@@ -620,8 +627,15 @@ async function fetchPostTypeItem<T>(
     if (error instanceof WPNotFoundError) {
       throw error
     }
+    if (error instanceof WPForbiddenError) {
+      throw error
+    }
     if (error instanceof WPValidationError) {
       throw error
+    }
+    // 401/403 from WordPress = private or restricted content
+    if (error instanceof WPAPIError && (error.statusCode === 401 || error.statusCode === 403)) {
+      throw new WPForbiddenError(config.displayName, slug)
     }
 
     // Use lowercase singular for error messages

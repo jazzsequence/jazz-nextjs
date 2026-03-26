@@ -49,21 +49,22 @@ describe('ArticleCardWithImage', () => {
     expect(container.querySelector('[data-testid="article-hero"]')).not.toBeInTheDocument()
   })
 
-  it('skips the fetch for internal (relative) hrefs', () => {
-    let fetchCalled = false
+  it('fetches OG image for internal /posts/[slug] hrefs via /api/oembed', async () => {
     server.use(
-      http.get('/api/oembed', () => {
-        fetchCalled = true
-        return HttpResponse.json({ thumbnail_url: 'https://cdn.example.com/img.jpg' })
-      })
+      http.get('/api/oembed', () =>
+        HttpResponse.json({ thumbnail_url: 'https://example.com/wp59-thumb.jpg' })
+      )
     )
-    render(
+    const { container } = render(
       <ArticleCardWithImage
         {...baseProps}
         href="/posts/wordpress-5-9-full-site-editing-is-here"
       />
     )
-    expect(fetchCalled).toBe(false)
+    await waitFor(() => {
+      const hero = container.querySelector('[data-testid="article-hero"]')
+      expect(hero).toBeInTheDocument()
+    })
   })
 
   it('uses imageUrl prop directly without fetching', async () => {

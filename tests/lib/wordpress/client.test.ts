@@ -4,6 +4,7 @@ import { server } from '../../mocks/server'
 import {
   fetchPost,
   fetchPosts,
+  WPForbiddenError,
 } from '../../../src/lib/wordpress/client'
 import type {
   WPPost,
@@ -396,6 +397,40 @@ describe('WordPress API Client', () => {
       const artists = await fetchPosts('plague-artist')
       expect(artists).toHaveLength(1)
       expect(artists[0].type).toBe('plague-artist')
+    })
+  })
+
+  describe('WPForbiddenError — private/restricted content', () => {
+    it('WPForbiddenError is a distinct error class with statusCode 403', () => {
+      const err = new WPForbiddenError('Post', 'private-post')
+      expect(err).toBeInstanceOf(WPForbiddenError)
+      expect(err.name).toBe('WPForbiddenError')
+      expect(err.statusCode).toBe(403)
+      expect(err.message).toContain('private-post')
+    })
+
+    it('fetchPost throws WPForbiddenError on 401 response', async () => {
+      server.use(
+        http.get(`${API_URL}/posts`, () =>
+          HttpResponse.json(
+            { code: 'rest_forbidden', message: 'Sorry, you are not allowed to do that.' },
+            { status: 401 }
+          )
+        )
+      )
+      await expect(fetchPost('posts', 'private-post')).rejects.toBeInstanceOf(WPForbiddenError)
+    })
+
+    it('fetchPost throws WPForbiddenError on 403 response', async () => {
+      server.use(
+        http.get(`${API_URL}/posts`, () =>
+          HttpResponse.json(
+            { code: 'rest_forbidden', message: 'Sorry, you are not allowed to do that.' },
+            { status: 403 }
+          )
+        )
+      )
+      await expect(fetchPost('posts', 'private-post')).rejects.toBeInstanceOf(WPForbiddenError)
     })
   })
 
