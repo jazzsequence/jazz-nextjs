@@ -287,7 +287,7 @@ const parseOptions: HTMLReactParserOptions = {
       return (
         <WPEmbedCard
           url={href}
-          providerName={sourceName || sourceUrl || 'Pantheon'}
+          providerName={sourceName || 'Pantheon'}
           fallbackTitle={title}
         />
       )
