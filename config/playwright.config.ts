@@ -12,7 +12,7 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Use multiple workers for parallel test execution */
-  workers: process.env.CI ? 1 : 4,  // Single worker in CI for stability, 4 locally for speed
+  workers: 4,  // 4 workers in both CI and local; tests are isolated by page routes
   /* Global timeout to prevent infinite hangs */
   timeout: 30_000,  // 30 seconds per test
   /* Timeout for expect() assertions */

@@ -105,9 +105,14 @@ test.describe('Greeting Component', () => {
 
     test('should be keyboard navigable', async ({ page }) => {
       await page.goto('/?greeting=afternoon');
+      await page.waitForLoadState('domcontentloaded');
 
-      // Tab through page - greeting should be reachable
+      // Click the body to ensure focus is inside the page (not the browser chrome)
+      // before attempting keyboard navigation — fixes a flakiness where Tab focus
+      // would land in the browser UI and :focus would find nothing in the page.
+      await page.locator('body').click();
       await page.keyboard.press('Tab');
+
       // Use .first() to avoid strict-mode violation from Next.js dev portal injecting a focusable element
       const activeElement = page.locator(':focus').first();
 
