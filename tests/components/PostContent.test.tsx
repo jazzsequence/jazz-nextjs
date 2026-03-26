@@ -12,6 +12,15 @@ vi.mock('@/components/SocialScriptLoader', () => ({
   ),
 }));
 
+// Mock WPEmbedCard — avoids oEmbed fetch; captures the url and fallbackTitle props.
+vi.mock('@/components/WPEmbedCard', () => ({
+  default: ({ url, fallbackTitle }: { url: string; fallbackTitle: string }) => (
+    <article data-testid="wp-embed-card">
+      <a href={url}>{fallbackTitle}</a>
+    </article>
+  ),
+}));
+
 // Mock ArticleCardWithImage — avoids useEffect fetch in unit tests; we test
 // that the correct props (including excerpt) are forwarded.
 vi.mock('@/components/ArticleCardWithImage', () => ({
@@ -260,6 +269,21 @@ describe('PostContent — Pantheon custom group interceptor', () => {
       pantheonGroup('https://pantheon.io/blog/test', 'My Article', 'Excerpt')
     }}} />)
     expect(screen.getByTestId('article-source')).toHaveTextContent('Pantheon')
+  })
+
+  it('renders external link paragraphs as WPEmbedCard', () => {
+    render(<PostContent post={{ ...basePost, content: { rendered:
+      '<p class="wp-block-paragraph"><a href="https://eventespresso.com/2013/04/test/">Event Espresso: Test Article</a></p>'
+    }}} />)
+    expect(screen.getByTestId('wp-embed-card')).toBeInTheDocument()
+    expect(screen.getByText('Event Espresso: Test Article')).toBeInTheDocument()
+  })
+
+  it('does not convert paragraphs with mixed content to WPEmbedCard', () => {
+    render(<PostContent post={{ ...basePost, content: { rendered:
+      '<p class="wp-block-paragraph">Some text with <a href="https://example.com">a link</a> inside.</p>'
+    }}} />)
+    expect(screen.queryByTestId('wp-embed-card')).not.toBeInTheDocument()
   })
 
   it('uses jazzsequence.com as source for internal /posts/ links', () => {

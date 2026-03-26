@@ -327,6 +327,32 @@ const parseOptions: HTMLReactParserOptions = {
       )
     }
 
+    // Pure-link paragraphs: <p class="wp-block-paragraph"><a href="https://...">Title</a></p>
+    // Used for EventEspresso and similar articles now on their own line in a paragraph.
+    // Same pattern as the <li> interceptor below — sole external link → WPEmbedCard.
+    if (el.name === 'p') {
+      const tagChildren = (el.children as DOMNode[]).filter(
+        c => c.type === 'tag'
+      ) as Element[]
+      const textChildren = (el.children as DOMNode[]).filter(
+        c => c.type === 'text' && ((c as unknown as { data: string }).data ?? '').trim()
+      )
+      if (tagChildren.length === 1 && textChildren.length === 0 && tagChildren[0].name === 'a') {
+        const link = tagChildren[0]
+        const href = link.attribs?.href ?? ''
+        if (href.startsWith('https://') || href.startsWith('http://')) {
+          const text = getTextContent(link)
+          let providerName = ''
+          try {
+            const host = new URL(href).hostname.replace(/^www\./, '')
+            const slug = host.split('.')[0]
+            providerName = slug.charAt(0).toUpperCase() + slug.slice(1)
+          } catch { /* keep empty */ }
+          return <WPEmbedCard url={href} providerName={providerName} fallbackTitle={text} />
+        }
+      }
+    }
+
     // Pure-link list items: <li><a href="https://...">Title</a></li>
     // Used for EventEspresso articles and any other external article links in lists.
     // Renders as WPEmbedCard (fetches oEmbed, falls back to title+domain card).
