@@ -12,6 +12,20 @@ vi.mock('@/components/SocialScriptLoader', () => ({
   ),
 }));
 
+// Mock ArticleCardWithImage — avoids useEffect fetch in unit tests; we test
+// that the correct props (including excerpt) are forwarded.
+vi.mock('@/components/ArticleCardWithImage', () => ({
+  default: ({ href, title, excerpt, sourceName }: {
+    href: string; title: string; excerpt?: string; sourceName?: string
+  }) => (
+    <article data-testid="article-card-with-image">
+      <a href={href}>{title}</a>
+      {excerpt && <p data-testid="article-excerpt">{excerpt}</p>}
+      {sourceName && <span data-testid="article-source">{sourceName}</span>}
+    </article>
+  ),
+}));
+
 describe('PostContent', () => {
   const mockPost: WPPost = {
     id: 1,
@@ -205,4 +219,61 @@ describe('PostContent — SocialScriptLoader replaces TwitterScriptLoader', () =
     render(<PostContent post={{ ...basePost, content: { rendered: '<blockquote class="twitter-tweet"><p>Tweet</p></blockquote>' } }} />);
     expect(screen.queryByTestId('twitter-script-loader')).not.toBeInTheDocument();
   });
+});
+
+describe('PostContent — Pantheon custom group interceptor', () => {
+  const basePost = {
+    id: 1, type: 'post' as const,
+    title: { rendered: 'Test' }, excerpt: { rendered: '' },
+    date: '2024-01-01T00:00:00', date_gmt: '2024-01-01T00:00:00',
+    modified: '2024-01-01T00:00:00', modified_gmt: '2024-01-01T00:00:00',
+    slug: 'test', status: 'publish' as const,
+    link: 'https://example.com/test', author: 1, featured_media: 0,
+    comment_status: 'open' as const, ping_status: 'open' as const,
+    sticky: false, template: '', format: 'standard' as const,
+    meta: {}, categories: [], tags: [],
+  }
+
+  const pantheonGroup = (href: string, title: string, description: string) =>
+    `<div class="wp-block-group has-white-background-color has-background">` +
+    `<p class="wp-embed-heading"><a href="${href}"><strong>${title}</strong></a></p>` +
+    `<p class="has-base-color has-text-color" style="font-size:14px">${description}</p>` +
+    `<p class="has-base-color has-text-color has-extra-small-font-size"><a href="https://pantheon.io">Pantheon</a></p>` +
+    `</div>`
+
+  it('renders the article title', () => {
+    render(<PostContent post={{ ...basePost, content: { rendered:
+      pantheonGroup('https://pantheon.io/blog/test', 'My Article Title', 'Article description here')
+    }}} />)
+    expect(screen.getByText('My Article Title')).toBeInTheDocument()
+  })
+
+  it('passes excerpt to ArticleCardWithImage for external links', () => {
+    render(<PostContent post={{ ...basePost, content: { rendered:
+      pantheonGroup('https://pantheon.io/blog/test', 'My Article', 'The article excerpt text')
+    }}} />)
+    expect(screen.getByTestId('article-excerpt')).toHaveTextContent('The article excerpt text')
+  })
+
+  it('shows the source name from the group DOM', () => {
+    render(<PostContent post={{ ...basePost, content: { rendered:
+      pantheonGroup('https://pantheon.io/blog/test', 'My Article', 'Excerpt')
+    }}} />)
+    expect(screen.getByTestId('article-source')).toHaveTextContent('Pantheon')
+  })
+
+  it('uses jazzsequence.com as source for internal /posts/ links', () => {
+    // Simulate a local repost link that has already been rewritten to /posts/slug
+    const internalGroup =
+      `<div class="wp-block-group has-white-background-color has-background">` +
+      `<p class="wp-embed-heading"><strong>WordPress 5.9: Full Site Editing Is Here</strong> ` +
+      `(<a href="/posts/wordpress-5-9-full-site-editing-is-here/">local repost</a>)</p>` +
+      `<p class="has-base-color has-text-color" style="font-size:14px">Full site editing coverage.</p>` +
+      `<p class="has-base-color has-text-color has-extra-small-font-size"><a href="https://pantheon.io">Pantheon</a></p>` +
+      `</div>`
+    render(<PostContent post={{ ...basePost, content: { rendered: internalGroup }}} />)
+    expect(screen.getByText('WordPress 5.9: Full Site Editing Is Here')).toBeInTheDocument()
+    // Internal links override source to 'jazzsequence.com' — it's a local repost, not a Pantheon article
+    expect(screen.queryByRole('link', { name: 'jazzsequence.com' })).toBeInTheDocument()
+  })
 });

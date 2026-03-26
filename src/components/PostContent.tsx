@@ -275,6 +275,15 @@ const parseOptions: HTMLReactParserOptions = {
       // Title: text of the strong element (if present) or the whole heading
       const title = strongEl ? getTextContent(strongEl) : headingEl ? getTextContent(headingEl) : ''
 
+      // Excerpt: second paragraph (has-base-color, not the heading or source)
+      const excerptEl = children.find(
+        c => c.name === 'p' &&
+          !c.attribs?.class?.includes('wp-embed-heading') &&
+          c.attribs?.class?.includes('has-base-color') &&
+          !c.attribs?.class?.includes('has-extra-small-font-size')
+      )
+      const excerpt = excerptEl ? getTextContent(excerptEl) : undefined
+
       // Source paragraph (has-extra-small-font-size) → provider domain
       const sourceEl = children.find(
         c => c.name === 'p' && c.attribs?.class?.includes('has-extra-small-font-size')
@@ -291,16 +300,15 @@ const parseOptions: HTMLReactParserOptions = {
         : undefined
 
       // Internal links (already rewritten to /posts/slug) → ArticleCard directly.
-      // External links → ArticleCardWithImage: preserves DOM-extracted title/excerpt
-      // but fetches og:image asynchronously so Pantheon articles get featured images
-      // without OG data overwriting the article-specific title (avoids duplicates when
-      // two groups share the same destination URL).
+      // Override sourceName to 'jazzsequence.com' — internal links are local reposts,
+      // not Pantheon articles, regardless of what the DOM source paragraph says.
       if (!href.startsWith('http')) {
         return (
           <ArticleCard
             href={href}
             title={title}
-            sourceName={sourceName || 'jazzsequence.com'}
+            excerpt={excerpt}
+            sourceName="jazzsequence.com"
             sourceUrl="/"
           />
         )
@@ -310,6 +318,7 @@ const parseOptions: HTMLReactParserOptions = {
         <ArticleCardWithImage
           href={href}
           title={title}
+          excerpt={excerpt}
           sourceName={sourceName || 'Pantheon'}
           sourceUrl={sourceUrl || href}
           faviconUrl={faviconUrl}
