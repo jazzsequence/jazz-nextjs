@@ -143,3 +143,37 @@ describe('GET /api/oembed', () => {
     expect(res.status).toBe(502)
   })
 })
+
+describe('GET /api/oembed — internal /posts/[slug] URLs', () => {
+  const WORDPRESS_API_URL = process.env.WORDPRESS_API_URL ?? 'https://jazzsequence.com/wp-json/wp/v2'
+
+  it('fetches featured image from WordPress REST API for /posts/[slug] URLs', async () => {
+    server.use(
+      http.get(`${WORDPRESS_API_URL}/posts`, () =>
+        HttpResponse.json([{
+          title: { rendered: 'WordPress 5.9: Full Site Editing Is Here' },
+          excerpt: { rendered: '<p>Full site editing coverage.</p>' },
+          _embedded: {
+            'wp:featuredmedia': [{ source_url: 'https://example.com/wp59-thumb.jpg' }],
+          },
+        }])
+      )
+    )
+    const req = new Request('http://localhost:3000/api/oembed?url=/posts/wordpress-5-9-full-site-editing-is-here')
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.thumbnail_url).toBe('https://example.com/wp59-thumb.jpg')
+    expect(data.title).toBe('WordPress 5.9: Full Site Editing Is Here')
+    expect(data.provider_name).toBe('jazzsequence.com')
+  })
+
+  it('returns 502 when WordPress API returns no matching post', async () => {
+    server.use(
+      http.get(`${WORDPRESS_API_URL}/posts`, () => HttpResponse.json([]))
+    )
+    const req = new Request('http://localhost:3000/api/oembed?url=/posts/nonexistent-post')
+    const res = await GET(req)
+    expect(res.status).toBe(502)
+  })
+})

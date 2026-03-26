@@ -38,6 +38,35 @@ export async function GET(request: Request) {
     )
   }
 
+  // ── Internal /posts/[slug] URLs: fetch featured image from WordPress REST API ─
+  // The Pantheon group interceptor rewrites jazzsequence.com date-based URLs to
+  // /posts/[slug]. Fetch the WordPress post by slug to get its featured image.
+  if (url.startsWith('/posts/')) {
+    const slug = url.replace(/^\/posts\//, '').replace(/\/$/, '')
+    const wpApiBase = process.env.WORDPRESS_API_URL ?? 'https://jazzsequence.com/wp-json/wp/v2'
+    try {
+      const res = await fetch(
+        `${wpApiBase}/posts?slug=${encodeURIComponent(slug)}&_embed=true`,
+        { next: { revalidate: 3600 } }
+      )
+      if (res.ok) {
+        const posts = await res.json() as Array<{
+          title?: { rendered?: string }
+          excerpt?: { rendered?: string }
+          _embedded?: { 'wp:featuredmedia'?: Array<{ source_url?: string }> }
+        }>
+        const post = posts[0]
+        if (post) {
+          const thumbnail_url = post._embedded?.['wp:featuredmedia']?.[0]?.source_url
+          const title = post.title?.rendered
+          const description = post.excerpt?.rendered?.replace(/<[^>]+>/g, '').trim()
+          return NextResponse.json({ version: '1.0', type: 'link', title, description, thumbnail_url, provider_name: 'jazzsequence.com', provider_url: '/' })
+        }
+      }
+    } catch { /* fall through to 502 */ }
+    return NextResponse.json({ error: 'Internal post not found' }, { status: 502 })
+  }
+
   let origin: string
   try {
     origin = new URL(url).origin
