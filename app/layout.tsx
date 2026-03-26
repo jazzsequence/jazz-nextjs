@@ -10,8 +10,8 @@ import "@fontsource/victor-mono/700.css";
 import "@fontsource/space-grotesk/400.css";
 import "@fontsource/space-grotesk/500.css";
 import "@fontsource/space-grotesk/700.css";
-// FontAwesome Free — icons via npm instead of hosted kit (no pageview limits)
-import "@fortawesome/fontawesome-free/css/all.min.css";
+// FontAwesome Free via jsDelivr CDN — no pageview limits, no npm auth required.
+// (The @fortawesome npm packages use npm.fontawesome.com which requires auth even for free tier.)
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,6 +35,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/* FontAwesome 6 Free — served from jsDelivr, no auth or pageview limits */}
+        <link
+          rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css"
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
