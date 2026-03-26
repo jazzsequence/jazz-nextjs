@@ -195,6 +195,13 @@ Run all 4 commands sequentially. Do NOT use background tasks.
 Do NOT give a verdict until you have seen the output of ALL 4 commands.
 If E2E tests are still running, WAIT. A verdict without E2E results is invalid.
 
+**CRITICAL — E2E VALIDATION:**
+After running npm run test:e2e, look for the Playwright summary line:
+  "X passed" with NO failures = pass
+  "X failed" or "X flaky" in the summary = REJECT immediately
+Do NOT trust "✅ E2E tests passed" hook output — that was historically unreliable.
+Read the actual Playwright output for pass/fail counts.
+
 DELIVERABLE:
 Provide clear APPROVE or REJECT decision with specific findings for ALL categories.
 
