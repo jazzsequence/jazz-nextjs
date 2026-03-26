@@ -34,6 +34,13 @@ npm run start:test    # Test standalone build
 
 **All 5 commands MUST pass before committing** + Reviewer agent approval
 
+**E2E test output**: Always redirect E2E output to a file for efficient debugging:
+```bash
+npm run test:e2e -- --reporter=line 2>/tmp/e2e-output.txt; echo "exit:$?"
+grep -E "failed|Error|FAIL" /tmp/e2e-output.txt | head -20
+```
+Never re-run E2E tests just to find a specific error — write to file first, grep after.
+
 See: `@docs/configuration/build-and-test.md`
 
 ### MCP Servers (CRITICAL)

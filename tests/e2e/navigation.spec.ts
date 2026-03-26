@@ -72,9 +72,11 @@ test.describe('Navigation Component', () => {
     const href = await firstLink.getAttribute('href');
 
     if (href && !href.startsWith('http')) {
-      // Click the link
-      await firstLink.click();
-      await page.waitForLoadState('domcontentloaded');
+      // Use waitForURL to properly handle Next.js client-side navigation
+      await Promise.all([
+        page.waitForURL(`**${href}**`),
+        firstLink.click(),
+      ]);
 
       // Should navigate to the link
       expect(page.url()).toContain(href);
