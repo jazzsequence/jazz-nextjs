@@ -741,7 +741,7 @@ describe('WordPress API Client', () => {
     })
 
     describe('WPMedia Schema', () => {
-      it('should validate media with media_url and media_source', async () => {
+      it('should validate media with media_url top-level field', async () => {
         const validMedia: WPMedia = {
           id: 1,
           date: '2026-02-26T00:00:00',
@@ -751,29 +751,22 @@ describe('WordPress API Client', () => {
           slug: 'test-media',
           status: 'publish',
           type: 'media',
-          link: `${API_URL}/media/test-media`,
+          link: `${API_URL}/media-items/test-media`,
           title: { rendered: 'Test Media' },
-          content: { rendered: '<p>Media description</p>' },
           excerpt: { rendered: '' },
-          author: 1,
           featured_media: 0,
-          comment_status: 'closed',
-          ping_status: 'closed',
           template: '',
-          meta: {
-            media_url: 'https://youtube.com/watch?v=test',
-            media_source: 'youtube',
-          },
+          media_url: 'https://youtube.com/watch?v=test',
         }
 
         server.use(
-          http.get(`${API_URL}/media`, () => {
+          http.get(`${API_URL}/media-items`, () => {
             return HttpResponse.json([validMedia])
           })
         )
 
         const media = await fetchPosts('media')
-        expect(media[0].meta.media_source).toBe('youtube')
+        expect((media[0] as WPMedia).media_url).toBe('https://youtube.com/watch?v=test')
       })
     })
 
@@ -1240,24 +1233,17 @@ describe('WordPress API Client', () => {
           slug: 'test-media',
           status: 'publish',
           type: 'media',
-          link: `${API_URL}/media/test-media`,
+          link: `${API_URL}/media-items/test-media`,
           title: { rendered: 'Test Media' },
-          content: { rendered: '<p>Media description</p>' },
           excerpt: { rendered: '' },
-          author: 1,
           featured_media: 0,
-          comment_status: 'closed',
-          ping_status: 'closed',
           template: '',
-          meta: {
-            media_url: 'https://youtube.com/watch?v=test',
-            media_source: 'youtube',
-          },
+          media_url: 'https://youtube.com/watch?v=test',
         },
       ]
 
       server.use(
-        http.get(`${API_URL}/media`, () => {
+        http.get(`${API_URL}/media-items`, () => {
           return HttpResponse.json(mockMedia)
         })
       )
@@ -1265,7 +1251,7 @@ describe('WordPress API Client', () => {
       const media = await fetchPosts('media')
       expect(media).toHaveLength(1)
       expect(media[0].type).toBe('media')
-      expect(media[0].meta.media_source).toBe('youtube')
+      expect((media[0] as WPMedia).media_url).toBe('https://youtube.com/watch?v=test')
     })
 
     it('should fetch single media item by slug', async () => {
@@ -1278,23 +1264,16 @@ describe('WordPress API Client', () => {
         slug: 'my-video',
         status: 'publish',
         type: 'media',
-        link: `${API_URL}/media/my-video`,
+        link: `${API_URL}/media-items/my-video`,
         title: { rendered: 'My Video' },
-        content: { rendered: '<p>Video description</p>' },
         excerpt: { rendered: '' },
-        author: 1,
         featured_media: 0,
-        comment_status: 'closed',
-        ping_status: 'closed',
         template: '',
-        meta: {
-          media_url: 'https://wordpress.tv/video',
-          media_source: 'wordpresstv',
-        },
+        media_url: 'https://wordpress.tv/video',
       }
 
       server.use(
-        http.get(`${API_URL}/media`, ({ request }) => {
+        http.get(`${API_URL}/media-items`, ({ request }) => {
           const url = new URL(request.url)
           expect(url.searchParams.get('slug')).toBe('my-video')
           return HttpResponse.json([mockMediaItem])
@@ -1303,12 +1282,12 @@ describe('WordPress API Client', () => {
 
       const media = await fetchPost('media', 'my-video')
       expect(media.slug).toBe('my-video')
-      expect(media.meta.media_source).toBe('wordpresstv')
+      expect((media as WPMedia).media_url).toBe('https://wordpress.tv/video')
     })
 
     it('should support pagination for media', async () => {
       server.use(
-        http.get(`${API_URL}/media`, ({ request }) => {
+        http.get(`${API_URL}/media-items`, ({ request }) => {
           const url = new URL(request.url)
           expect(url.searchParams.get('page')).toBe('3')
           expect(url.searchParams.get('per_page')).toBe('15')
@@ -1321,7 +1300,7 @@ describe('WordPress API Client', () => {
 
     it('should support embed parameter for media', async () => {
       server.use(
-        http.get(`${API_URL}/media`, ({ request }) => {
+        http.get(`${API_URL}/media-items`, ({ request }) => {
           const url = new URL(request.url)
           expect(url.searchParams.get('_embed')).toBe('true')
           return HttpResponse.json([])
@@ -1333,7 +1312,7 @@ describe('WordPress API Client', () => {
 
     it('should support search parameter for media', async () => {
       server.use(
-        http.get(`${API_URL}/media`, ({ request }) => {
+        http.get(`${API_URL}/media-items`, ({ request }) => {
           const url = new URL(request.url)
           expect(url.searchParams.get('search')).toBe('wordpress')
           return HttpResponse.json([])

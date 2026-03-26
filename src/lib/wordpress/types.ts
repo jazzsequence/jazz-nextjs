@@ -132,12 +132,16 @@ export interface WPIngredient {
 }
 
 // Media (jazzsequence media)
-export interface WPMedia extends WPBaseContent {
+// The media CPT omits content, author, comment_status, ping_status from its REST
+// response (intentionally — not needed). media_url is a top-level field registered
+// via register_rest_field to work around Altis DXP meta filtering.
+export interface WPMedia extends Omit<WPBaseContent, 'content' | 'author' | 'comment_status' | 'ping_status'> {
   type: 'media'
-  meta: {
-    media_url?: string // YouTube or WordPress.tv URL
-    media_source?: 'youtube' | 'wordpresstv'
-  }
+  content?: WPRendered
+  author?: number
+  comment_status?: 'open' | 'closed'
+  ping_status?: 'open' | 'closed'
+  media_url?: string
 }
 
 // Artists (plague-artist)
@@ -301,7 +305,6 @@ export type WPContent =
   | WPPage
   | WPGame
   | WPRecipe
-  | WPMedia
   | WPArtist
   | WPMovie
   | WPAddress

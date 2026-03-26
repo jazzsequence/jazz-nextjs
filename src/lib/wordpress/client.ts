@@ -492,10 +492,10 @@ const RECIPE_CONFIG: PostTypeConfig<WPRecipe> = {
 }
 
 const MEDIA_CONFIG: PostTypeConfig<WPMedia> = {
-  endpoint: 'media',
+  endpoint: 'media-items',
   displayName: 'Media',
-  schema: WPMediaSchema,
-  arraySchema: WPMediaItemsSchema,
+  schema: WPMediaSchema as z.ZodType<WPMedia>,
+  arraySchema: WPMediaItemsSchema as z.ZodType<WPMedia[]>,
 }
 
 const ARTIST_CONFIG: PostTypeConfig<WPArtist> = {
@@ -578,7 +578,7 @@ async function fetchPostTypeList<T>(
       : config.endpoint === 'rb_recipe' ? 'recipes'
       : config.endpoint === 'plague-artist' ? 'artists'
       : config.endpoint === 'movie' ? 'movies'
-      : config.endpoint === 'media' ? 'media'
+      : config.endpoint === 'media-items' ? 'media'
       : config.endpoint === 'ab_address' ? 'addresses'
       : config.endpoint
 
@@ -645,7 +645,7 @@ async function fetchPostTypeItem<T>(
       : config.endpoint === 'rb_recipe' ? 'recipe'
       : config.endpoint === 'plague-artist' ? 'artist'
       : config.endpoint === 'movie' ? 'movie'
-      : config.endpoint === 'media' ? 'media item'
+      : config.endpoint === 'media-items' ? 'media item'
       : config.endpoint === 'ab_address' ? 'address'
       : config.endpoint
 
@@ -814,8 +814,12 @@ export async function fetchMenus(
 }
 
 /**
- * Fetch menu items for a specific menu
- * @param menuId - Menu ID to fetch items for
+ * Fetch menu items for a specific menu.
+ * Uses the classic WordPress menu REST API, managed via MCP since FSE themes
+ * remove the Appearance > Menus admin UI. Menu ID 1698 is the dedicated
+ * Next.js header menu maintained independently of the FSE block navigation.
+ *
+ * @param menuId - Classic menu ID (e.g. 1698 for the Next.js header menu)
  * @param options - ISR options for caching
  */
 export async function fetchMenuItems(

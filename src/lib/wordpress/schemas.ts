@@ -137,12 +137,19 @@ export const WPRecipeSchema = WPBaseContentSchema.extend({
 }).passthrough() // Allow unknown fields from WordPress plugins
 
 // Media schema
+// The media CPT omits content, author, comment_status, ping_status, and meta
+// from its REST response. media_url is registered as a top-level field via
+// register_rest_field (not inside meta) to work around Altis DXP meta filtering.
 export const WPMediaSchema = WPBaseContentSchema.extend({
   type: z.literal('media'),
-  meta: z.object({
-    media_url: z.string().optional(),
-    media_source: z.enum(['youtube', 'wordpresstv']).optional(),
-  }).passthrough(), // Allow extra meta fields from plugins
+  content: WPRenderedSchema.optional(),
+  author: z.number().optional(),
+  comment_status: z.enum(['open', 'closed']).optional(),
+  ping_status: z.enum(['open', 'closed']).optional(),
+  meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).transform(val =>
+    Array.isArray(val) ? {} as Record<string, unknown> : val
+  ).optional() as unknown as z.ZodType<Record<string, unknown> | undefined>,
+  media_url: z.string().optional(),
 }).passthrough() // Allow unknown fields from WordPress plugins
 
 // Artist schema
