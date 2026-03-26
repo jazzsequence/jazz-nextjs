@@ -112,6 +112,13 @@ DEPENDENCIES & LICENSING:
 21. Check license compatibility for new dependencies
 22. No GPL/AGPL licenses (unless explicitly approved)
 23. Verify package.json changes don't introduce restrictive licenses
+24a. REGISTRY CHECK — HARD BLOCK if violated:
+    If package.json or package-lock.json changed, check ALL resolved URLs in package-lock.json:
+      grep "resolved" package-lock.json | grep -v "registry.npmjs.org"
+    Any non-public registry (e.g. npm.fontawesome.com, npm.pkg.github.com, private.registry.io)
+    will cause E401 on Pantheon and other CI environments that have no pre-configured credentials.
+    REJECT if any new dependency resolves from a non-public registry unless a corresponding
+    environment secret/token is confirmed to exist in CI.
 
 GIT PRACTICES:
 24. COMMIT SUBJECT LINE — first `-m` value must be ≤72 characters (GitHub truncates beyond this).
