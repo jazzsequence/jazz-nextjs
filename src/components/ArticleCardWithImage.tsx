@@ -18,8 +18,11 @@ export default function ArticleCardWithImage(props: ArticleCardProps) {
   const [imageUrl, setImageUrl] = useState<string | undefined>(props.imageUrl)
 
   useEffect(() => {
-    // Skip fetch if image already provided or href is not an absolute external URL
-    if (props.imageUrl || !props.href.startsWith('http')) return
+    // Skip fetch if image already provided
+    if (props.imageUrl) return
+    // Fetch for absolute external URLs AND for internal /posts/[slug] URLs.
+    // The /api/oembed route handles both: external via oEmbed/OG, internal via WP REST API.
+    if (!props.href.startsWith('http') && !props.href.startsWith('/posts/')) return
 
     fetch(`/api/oembed?url=${encodeURIComponent(props.href)}`)
       .then(res => (res.ok ? res.json() : null))

@@ -11,7 +11,6 @@ import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
 import SocialScriptLoader from './SocialScriptLoader';
 import WPEmbedCard from './WPEmbedCard';
-import ArticleCard from './ArticleCard';
 import ArticleCardWithImage from './ArticleCardWithImage';
 import type { WPContent, WPTerm } from '@/lib/wordpress/types';
 
@@ -302,9 +301,11 @@ const parseOptions: HTMLReactParserOptions = {
       // Internal links (already rewritten to /posts/slug) → ArticleCard directly.
       // Override sourceName to 'jazzsequence.com' — internal links are local reposts,
       // not Pantheon articles, regardless of what the DOM source paragraph says.
+      // Use ArticleCardWithImage even for internal /posts/ links so the WordPress
+      // featured image is fetched via /api/oembed → WordPress REST API.
       if (!href.startsWith('http')) {
         return (
-          <ArticleCard
+          <ArticleCardWithImage
             href={href}
             title={title}
             excerpt={excerpt}

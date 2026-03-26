@@ -273,7 +273,8 @@ describe('PostContent — Pantheon custom group interceptor', () => {
       `</div>`
     render(<PostContent post={{ ...basePost, content: { rendered: internalGroup }}} />)
     expect(screen.getByText('WordPress 5.9: Full Site Editing Is Here')).toBeInTheDocument()
-    // Internal links override source to 'jazzsequence.com' — it's a local repost, not a Pantheon article
-    expect(screen.queryByRole('link', { name: 'jazzsequence.com' })).toBeInTheDocument()
+    // Internal links override source to 'jazzsequence.com' — it's a local repost, not Pantheon
+    // (ArticleCardWithImage mock renders sourceName as a span with data-testid="article-source")
+    expect(screen.getByTestId('article-source')).toHaveTextContent('jazzsequence.com')
   })
 });
