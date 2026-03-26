@@ -1,20 +1,20 @@
+import { notFound } from 'next/navigation'
 import { fetchPostsWithPagination, fetchMenuItems } from '@/lib/wordpress/client'
 import type { WPMedia } from '@/lib/wordpress/types'
 import { resolveMediaEmbed } from '@/lib/utils/media'
+import { decodeHtmlEntities } from '@/lib/utils/html'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Pagination from '@/components/Pagination'
 import Link from 'next/link'
-import { decodeHtmlEntities } from '@/lib/utils/html'
 
 export const revalidate = 3600
 
-export const metadata = {
-  title: 'Media | jazzsequence',
-  description: 'Videos, talks, and podcast appearances by Chris Reynolds.',
-}
-
 const PER_PAGE = 12
+
+interface PageProps {
+  params: Promise<{ page: string }>
+}
 
 function MediaCard({ item }: { item: WPMedia }) {
   const thumbnail = item._embedded?.['wp:featuredmedia']?.[0]?.source_url
@@ -83,12 +83,17 @@ function MediaCard({ item }: { item: WPMedia }) {
   )
 }
 
-export default async function MediaPage() {
+export default async function PaginatedMediaPage({ params }: PageProps) {
+  const { page: pageParam } = await params
+  const page = parseInt(pageParam, 10)
+
+  if (isNaN(page) || page < 2) notFound()
+
   const [mediaResult, menuItems] = await Promise.allSettled([
     fetchPostsWithPagination<WPMedia>('media', {
       embed: true,
       perPage: PER_PAGE,
-      page: 1,
+      page,
       isr: { revalidate: 3600, tags: ['media'] },
     }),
     fetchMenuItems(1698, { isr: { revalidate: 3600, tags: ['menu', 'header'] } }),
@@ -97,6 +102,9 @@ export default async function MediaPage() {
   const { data: items, totalPages } = mediaResult.status === 'fulfilled'
     ? mediaResult.value
     : { data: [], totalPages: 0 }
+
+  if (page > totalPages && totalPages > 0) notFound()
+
   const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined
   const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined
 
@@ -116,7 +124,7 @@ export default async function MediaPage() {
                 <MediaCard key={item.id} item={item} />
               ))}
             </div>
-            <Pagination currentPage={1} totalPages={totalPages} basePath="/media" />
+            <Pagination currentPage={page} totalPages={totalPages} basePath="/media" />
           </>
         ) : (
           <p className="text-brand-muted">No media items found.</p>
