@@ -11,7 +11,6 @@ import GalleryLightbox from './GalleryLightbox';
 import type { GalleryImage } from './GalleryLightbox';
 import SocialScriptLoader from './SocialScriptLoader';
 import WPEmbedCard from './WPEmbedCard';
-import ArticleCard from './ArticleCard';
 import type { WPContent, WPTerm } from '@/lib/wordpress/types';
 
 interface PostContentProps {
@@ -45,6 +44,11 @@ function rewriteInternalLinks(html: string): string {
     .replace(new RegExp(`https?://${WP_HOST_RE}/(?!wp-content/)`, 'g'), '/')
     // Handle bare domain in href attributes (e.g. href="https://backend.com")
     .replace(new RegExp(`https?://${WP_HOST_RE}"`, 'g'), '/"')
+    // Rewrite WordPress date-based post URLs to Next.js /posts/[slug] routes.
+    // WordPress: /2022/01/some-post/ → Next.js: /posts/some-post/
+    // Matches quoted href values only, leaving absolute CDN/media URLs untouched.
+    .replace(/"\/\d{4}\/\d{2}\/([^/"?#\s]+)\/?"/g, '"/posts/$1"')
+    .replace(/'\/\d{4}\/\d{2}\/([^/"?#\s]+)\/?'/g, "'/posts/$1'")
 }
 
 /** Extract plain text from a DOM element and its descendants. */
@@ -269,43 +273,22 @@ const parseOptions: HTMLReactParserOptions = {
       // Title: text of the strong element (if present) or the whole heading
       const title = strongEl ? getTextContent(strongEl) : headingEl ? getTextContent(headingEl) : ''
 
-      // Second paragraph is the excerpt (has-base-color without wp-embed-heading)
-      const excerptEl = children.find(
-        c => c.name === 'p' && !c.attribs?.class?.includes('wp-embed-heading') &&
-          c.attribs?.class?.includes('has-base-color') &&
-          !c.attribs?.class?.includes('has-extra-small-font-size')
-      )
-      const excerpt = excerptEl ? getTextContent(excerptEl) : undefined
-
       // Source paragraph (has-extra-small-font-size) → provider domain
       const sourceEl = children.find(
         c => c.name === 'p' && c.attribs?.class?.includes('has-extra-small-font-size')
       )
-      const sourceAnchor = sourceEl
-        ? ((sourceEl.children as DOMNode[])?.find(c => (c as Element).name === 'a') as Element)
-        : undefined
-      const sourceUrl = sourceAnchor?.attribs?.href ?? ''
       const sourceName = sourceEl ? getTextContent(sourceEl) : ''
-
-      // Favicon image (wp-block-image.alignleft.is-resized)
-      const faviconFig = children.find(
-        c => c.name === 'figure' && c.attribs?.class?.includes('wp-block-image')
-      )
-      const faviconImg = faviconFig
-        ? ((faviconFig.children as DOMNode[])?.find(c => (c as Element).name === 'img') as Element)
-        : undefined
-      const faviconUrl = faviconImg?.attribs?.src
 
       if (!href || !title) return // incomplete data — fall through to default
 
+      // Use WPEmbedCard so OG/oEmbed metadata (especially og:image) is fetched.
+      // The DOM-extracted title is used as the fallbackTitle if the fetch fails.
+      // The fetched og:image becomes the hero image in the ArticleCard.
       return (
-        <ArticleCard
-          href={href}
-          title={title}
-          excerpt={excerpt}
-          sourceName={sourceName || sourceUrl}
-          sourceUrl={sourceUrl || href}
-          faviconUrl={faviconUrl}
+        <WPEmbedCard
+          url={href}
+          providerName={sourceName || sourceUrl || 'Pantheon'}
+          fallbackTitle={title}
         />
       )
     }
