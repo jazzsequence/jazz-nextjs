@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
+
 // Victor Mono — monospace for site title and code elements
 import "@fontsource/victor-mono/400.css";
 import "@fontsource/victor-mono/400-italic.css";
@@ -10,6 +10,8 @@ import "@fontsource/victor-mono/700.css";
 import "@fontsource/space-grotesk/400.css";
 import "@fontsource/space-grotesk/500.css";
 import "@fontsource/space-grotesk/700.css";
+// FontAwesome Free — icons via npm instead of hosted kit (no pageview limits)
+import "@fortawesome/fontawesome-free/css/all.min.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,11 +39,6 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         {children}
-        <Script
-          src="https://kit.fontawesome.com/5b604ec0cf.js"
-          crossOrigin="anonymous"
-          strategy="lazyOnload"
-        />
       </body>
     </html>
   );

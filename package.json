@@ -30,6 +30,7 @@
   "dependencies": {
     "@fontsource/space-grotesk": "^5.2.10",
     "@fontsource/victor-mono": "^5.2.8",
+    "@fortawesome/fontawesome-free": "^7.2.0",
     "@pantheon-systems/nextjs-cache-handler": "^0.4.0",
     "@storybook/test": "^8.6.15",
     "@testing-library/dom": "^10.4.1",
