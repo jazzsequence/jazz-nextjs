@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
-import { notFound } from 'next/navigation'
-import { fetchPost, fetchMenuItems, WPNotFoundError } from '@/lib/wordpress/client'
+import { notFound, forbidden } from 'next/navigation'
+import { fetchPost, fetchMenuItems, WPNotFoundError, WPForbiddenError } from '@/lib/wordpress/client'
 import type { WPPage } from '@/lib/wordpress/types'
 import { decodeHtmlEntities } from '@/lib/utils/html'
 import PostContent from '@/components/PostContent'
@@ -61,6 +61,8 @@ export default async function Page({ params }: PageProps) {
       errorMessage: (error as Error)?.message,
       isWPNotFoundError: error instanceof WPNotFoundError,
     })
+
+    if (error instanceof WPForbiddenError) forbidden()
 
     if (isNotFoundError(error)) notFound()
 

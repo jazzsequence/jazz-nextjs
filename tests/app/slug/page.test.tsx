@@ -9,6 +9,9 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
   }),
+  forbidden: vi.fn(() => {
+    throw new Error('NEXT_FORBIDDEN')
+  }),
 }))
 
 // Mock WordPress client
@@ -20,10 +23,19 @@ vi.mock('@/lib/wordpress/client', () => {
     }
   }
 
+  class WPForbiddenError extends Error {
+    statusCode = 403
+    constructor(type: string, slug: string) {
+      super(`${type} is private or restricted: ${slug}`)
+      this.name = 'WPForbiddenError'
+    }
+  }
+
   return {
     fetchPost: vi.fn(),
     fetchMenuItems: vi.fn(),
     WPNotFoundError,
+    WPForbiddenError,
   }
 })
 

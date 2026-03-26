@@ -1,9 +1,9 @@
-import { fetchPost, fetchMenuItems, WPNotFoundError } from '@/lib/wordpress/client';
+import { fetchPost, fetchMenuItems, WPNotFoundError, WPForbiddenError } from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
 import PostContent from '@/components/PostContent';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { notFound } from 'next/navigation';
+import { notFound, forbidden } from 'next/navigation';
 
 export const revalidate = 3600;
 
@@ -27,6 +27,7 @@ export default async function PostPage({ params }: PostPageProps) {
 
     if (post.status === 'rejected') {
       const error = post.reason;
+      if (error instanceof WPForbiddenError) forbidden();
       if (error instanceof WPNotFoundError) notFound();
       throw error;
     }
@@ -44,6 +45,7 @@ export default async function PostPage({ params }: PostPageProps) {
       </>
     );
   } catch (error) {
+    if (error instanceof WPForbiddenError) forbidden();
     if (error instanceof WPNotFoundError) notFound();
 
     const [menuItems] = await Promise.allSettled([

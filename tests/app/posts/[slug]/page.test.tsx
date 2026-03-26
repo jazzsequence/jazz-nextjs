@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import PostPage from '@/app/posts/[slug]/page';
 import * as wpClient from '@/lib/wordpress/client';
-import { notFound } from 'next/navigation';
+import { notFound, forbidden } from 'next/navigation';
 import type { WPPost } from '@/lib/wordpress/types';
 
 // Mock the WordPress client and Next.js navigation
@@ -25,6 +25,7 @@ vi.mock('@/lib/build-info', () => ({
 
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
+  forbidden: vi.fn(),
 }));
 
 // Footer is async — mock to avoid async server component issues in tests
@@ -91,6 +92,16 @@ describe('PostPage', () => {
 
     expect(notFound).toHaveBeenCalled();
   });
+
+  it('should call forbidden() when post is private (WPForbiddenError)', async () => {
+    const error = new wpClient.WPForbiddenError('Post', 'private-post')
+    vi.mocked(wpClient.fetchPost).mockRejectedValue(error)
+
+    await PostPage({ params: Promise.resolve({ slug: 'private-post' }) })
+
+    expect(forbidden).toHaveBeenCalled()
+    expect(notFound).not.toHaveBeenCalled()
+  })
 
   it('should handle other errors gracefully', async () => {
     vi.mocked(wpClient.fetchPost).mockRejectedValue(new Error('API Error'));
