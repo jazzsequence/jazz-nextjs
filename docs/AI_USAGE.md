@@ -80,10 +80,13 @@ This project follows **TDD London School** (mockist approach):
 
 **MANDATORY** before every commit:
 ```bash
-npm test      # All tests must pass
-npm run lint  # No linting errors
-npm run build # Build must succeed
+npm test            # All unit tests must pass
+npm run lint        # No linting errors
+npm run build       # Build must succeed
+npm run test:e2e    # All E2E tests must pass
 ```
+
+After all checks pass, obtain **reviewer agent approval** before committing.
 
 If any command fails, fix the issues before committing. Never:
 - Disable/whitelist linting rules to bypass errors
@@ -108,6 +111,7 @@ Recent dependency decisions:
 - **ESLint**: Migrated from `next lint` to ESLint CLI with flat config
 - **Tailwind CSS**: Using v3.4 (stable) - v4 has ESM compatibility issues
 - **Test Environment**: Switched from jsdom to happy-dom for better ESM compatibility and performance
+- **isomorphic-dompurify**: Retained as a production dependency for server-side HTML sanitization
 - **TypeScript**: Use `unknown` instead of `any` for type safety
 - **Package Type**: Set to `"module"` for ESM support
 

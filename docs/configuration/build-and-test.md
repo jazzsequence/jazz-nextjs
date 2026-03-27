@@ -90,8 +90,8 @@ See `@docs/REVIEWER_WORKFLOW.md` for full enforcement details.
 ## Test Coverage
 
 Current stats:
-- **Unit tests**: 176+ passing
-- **E2E tests**: 16+ passing
+- **Unit tests**: 568 passing (49 files)
+- **E2E tests**: 140 passing (15 spec files)
 - **Coverage**: Aim for >80% statements, >75% branches
 
 Critical paths (auth, payments, data mutations) should have 100% coverage.
@@ -164,7 +164,7 @@ Before deploying to Pantheon:
 - [ ] Environment variables configured in Pantheon dashboard
 - [ ] Documentation updated
 
-See `@docs/DEPLOYMENT.md` for full deployment guide.
+See `docs/configuration/DEPLOYMENT.md` for full deployment guide.
 
 ## Resources
 

@@ -84,16 +84,20 @@ The `npm run start:test` command builds and tests the standalone production buil
 
 ### Test File Structure
 
+All test files live under `tests/`, mirroring the `src/` directory structure.
+
 ```
 src/
 ├── lib/
 │   └── wordpress/
 │       ├── types.ts
-│       ├── types.test.ts      # Unit tests for types
-│       ├── client.ts
-│       └── client.test.ts     # Unit tests for API client
+│       └── client.ts
 tests/
 ├── setup.ts                    # Global test setup
+├── lib/
+│   └── wordpress/
+│       ├── types.test.ts       # Unit tests for types
+│       └── client.test.ts      # Unit tests for API client
 └── mocks/
     ├── handlers.ts             # MSW request handlers
     ├── server.ts               # MSW server setup
@@ -324,6 +328,11 @@ expect(error.name).toBe('WPAPIError')
 - [Playwright Documentation](https://playwright.dev)
 - [TDD London School](https://www.thoughtworks.com/insights/blog/mockists-are-dead-long-live-classicists)
 
+## Test Counts
+
+- **Unit tests**: 568 passing across 49 files
+- **E2E tests**: 140 passing across 15 spec files
+
 ## Last Updated
 
-2026-02-26
+2026-03-27

@@ -431,12 +431,12 @@ const games = await fetchPosts('gc_game', { perPage: 10 })
 ### MCP Server Configuration
 
 **Endpoint**: `https://jazzsequence.com/wp-json/mcp/mcp-adapter-default-server`
-**Server Name**: `jazzsequence-wordpress` (in `~/.config/claude/mcp.json`)
+**Server Name**: `jazzsequence-wordpress` (in project-level `.mcp.json`)
 **Proxy**: `~/.config/claude/mcp-wordpress-http-proxy.js`
 
 **Troubleshooting**:
 If MCP server not available:
-1. Check `~/.config/claude/mcp.json` exists
+1. Check project-level `.mcp.json` exists
 2. Verify proxy script exists
 3. Restart Claude Code
 4. See `docs/SESSION_NOTES.md` for full setup details
@@ -464,9 +464,9 @@ npm run test:e2e      # E2E tests must pass
 
 **Never commit code without:**
 - ✅ Tests written first
-- ✅ All tests passing (471+ unit tests)
+- ✅ All tests passing (568 unit tests)
 - ✅ ESLint clean
-- ✅ E2E tests passing (16+ tests)
+- ✅ E2E tests passing (140+ tests)
 
 See: `/docs/TESTING.md` for full TDD methodology
 

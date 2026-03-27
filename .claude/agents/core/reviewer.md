@@ -341,15 +341,14 @@ When reviewing code for commit approval:
    - Build verification (if applicable)
 
 3. **If all checks PASS**:
-   - Respond with: **"✅ APPROVED"** in your summary
-   - **DO NOT create** `.git/hooks/reviewer-approved` file
-   - The main agent will create the approval flag
+   - Write the approval flag using the Write tool:
+     - Get timestamp: `Bash({ command: "date +%s" })`
+     - Write: `Write({ file_path: "<project-root>/reviewer-approved", content: "<timestamp>" })`
+   - Respond with: **"✅ APPROVED"** and confirm the flag was written
 
 4. **If any checks FAIL**:
    - Respond with: **"❌ BLOCKED"**
    - List specific issues found
    - Provide actionable fixes
-
-**IMPORTANT**: Never create the approval file yourself. Subagent timestamps have bugs (using 2025 instead of 2026). The main agent uses `date +%s` which is more reliable.
 
 Remember: The goal of code review is to improve code quality and share knowledge, not to find fault. Be thorough but kind, specific but constructive. Always coordinate findings through memory.
