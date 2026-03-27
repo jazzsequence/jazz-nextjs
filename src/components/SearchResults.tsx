@@ -1,6 +1,4 @@
 import Link from 'next/link'
-import DOMPurify from 'isomorphic-dompurify'
-import { decodeHtmlEntities } from '@/lib/utils/html'
 import PostCard from './PostCard'
 import type { WPPost } from '@/lib/wordpress/types'
 
@@ -12,19 +10,6 @@ interface SearchResultsProps {
   currentPage: number
 }
 
-/**
- * Highlight all occurrences of `term` within `text` using <mark> elements.
- * Case-insensitive. Returns an array of React nodes.
- */
-function highlightTerm(text: string, term: string): React.ReactNode[] {
-  if (!term) return [text]
-  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const regex = new RegExp(`(${escaped})`, 'gi')
-  const parts = text.split(regex)
-  return parts.map((part, i) =>
-    regex.test(part) ? <mark key={i}>{part}</mark> : part
-  )
-}
 
 const FILTER_TABS = [
   { label: 'All', value: 'all' },
@@ -124,24 +109,18 @@ export default function SearchResults({
 }
 
 /**
- * SearchResultCard — wraps PostCard with a type badge overlay and excerpt highlighting.
+ * SearchResultCard — wraps PostCard with a post-type badge overlay.
+ * PostCard renders the excerpt natively; no need to duplicate it here.
  */
 function SearchResultCard({
   post,
-  query,
+  query: _query,
   priority = false,
 }: {
   post: WPPost
   query: string
   priority?: boolean
 }) {
-  const rawExcerpt = post.excerpt.rendered
-    ? DOMPurify.sanitize(post.excerpt.rendered, { ALLOWED_TAGS: [] }).trim()
-    : ''
-
-  const highlightedExcerpt = highlightTerm(rawExcerpt, query)
-  const title = decodeHtmlEntities(post.title.rendered)
-
   return (
     <div className="relative">
       {/* Post-type badge */}
@@ -149,18 +128,7 @@ function SearchResultCard({
         {post.type}
       </span>
 
-      {/* Render PostCard for consistent visual style */}
       <PostCard post={post} priority={priority} />
-
-      {/* Excerpt with highlighted query term — shown below the card */}
-      {rawExcerpt && (
-        <p
-          aria-label={`Excerpt for ${title}`}
-          className="mt-2 px-1 text-brand-text-sub text-sm leading-relaxed line-clamp-2"
-        >
-          {highlightedExcerpt}
-        </p>
-      )}
     </div>
   )
 }

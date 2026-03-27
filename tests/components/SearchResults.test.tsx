@@ -93,27 +93,27 @@ describe('SearchResults', () => {
   })
 
   describe('query term highlighting', () => {
-    it('highlights the query term in the excerpt with a mark element', () => {
+    // Excerpt highlighting was removed — PostCard renders its own excerpt natively.
+    // Duplicating the excerpt with <mark> caused double excerpt display.
+    it('does not render a duplicate excerpt below the card', () => {
       const results = [
         makePost({
           id: 1,
-          excerpt: { rendered: '<p>This is an excerpt about jazz music and jazz festivals</p>' },
+          excerpt: { rendered: '<p>This is an excerpt about jazz music</p>' },
         }),
       ]
       const { container } = render(
         <SearchResults {...defaultProps} results={results} query="jazz" />
       )
-      const marks = container.querySelectorAll('mark')
-      expect(marks.length).toBeGreaterThan(0)
-      marks.forEach((mark) => {
-        expect(mark.textContent?.toLowerCase()).toBe('jazz')
-      })
+      // There should be at most one excerpt element (from PostCard), not two
+      const excerpts = container.querySelectorAll('[aria-label^="Excerpt for"]')
+      expect(excerpts.length).toBe(0) // no separate excerpt paragraph added by SearchResultCard
     })
 
-    it('does not highlight when query is empty', () => {
+    it('does not render mark elements (excerpt not duplicated)', () => {
       const results = [makePost({ id: 1 })]
       const { container } = render(
-        <SearchResults {...defaultProps} results={results} query="" />
+        <SearchResults {...defaultProps} results={results} query="jazz" />
       )
       expect(container.querySelectorAll('mark').length).toBe(0)
     })

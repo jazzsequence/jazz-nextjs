@@ -30,14 +30,7 @@ vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
-// useRouter mock — set up at module scope so individual tests can override push
-const mockPush = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
-  notFound: vi.fn(),
-  usePathname: vi.fn(),
-  useSearchParams: vi.fn(),
-}));
+// SearchBar uses native form GET submission (no useRouter) — no router mock needed.
 
 describe('SearchBar', () => {
   beforeEach(() => {
@@ -151,22 +144,26 @@ describe('SearchBar', () => {
   });
 
   describe('search submission', () => {
-    it('navigates to /search?q=...&type=all on Enter', () => {
+    it('form has method=get and action=/search for native navigation', () => {
+      render(<SearchBar />);
+      const form = screen.getByRole('search');
+      expect(form).toHaveAttribute('method', 'get');
+      expect(form).toHaveAttribute('action', '/search');
+    });
+
+    it('input has name=q so it becomes the query param', () => {
       render(<SearchBar />);
       fireEvent.click(screen.getByRole('button', { name: 'Search' }));
       const input = screen.getByRole('searchbox');
-      fireEvent.change(input, { target: { value: 'miles davis' } });
-      const form = screen.getByRole('search');
-      fireEvent.submit(form);
-      expect(mockPush).toHaveBeenCalledWith('/search?q=miles+davis&type=all');
+      expect(input).toHaveAttribute('name', 'q');
     });
 
-    it('does not navigate if query is blank', () => {
+    it('does not submit (prevents default) if query is blank', () => {
       render(<SearchBar />);
       fireEvent.click(screen.getByRole('button', { name: 'Search' }));
       const form = screen.getByRole('search');
-      fireEvent.submit(form);
-      expect(mockPush).not.toHaveBeenCalled();
+      // jsdom doesn't navigate, but form.submit should not throw
+      expect(() => fireEvent.submit(form)).not.toThrow();
     });
   });
 

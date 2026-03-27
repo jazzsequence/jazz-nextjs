@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 /**
@@ -22,7 +21,6 @@ export default function SearchBar() {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const router = useRouter();
 
   // Move focus to input whenever the bar expands
   useEffect(() => {
@@ -59,18 +57,20 @@ export default function SearchBar() {
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      const term = query.trim();
-      if (!term) return;
-      router.push(`/search?q=${encodeURIComponent(term).replace(/%20/g, '+')}&type=all`);
-      close();
+      // Let the browser navigate natively via form action — no router needed.
+      // Prevent submission only if the query is empty.
+      if (!query.trim()) {
+        e.preventDefault();
+      }
     },
-    [query, router, close]
+    [query]
   );
 
   return (
     <form
       role="search"
+      method="get"
+      action="/search"
       onSubmit={handleSubmit}
       className="flex items-center"
     >
@@ -95,10 +95,12 @@ export default function SearchBar() {
         style={{ overflow: 'hidden' }}
         className="flex items-center"
       >
+        <input type="hidden" name="type" value="all" />
         <input
           ref={inputRef}
           id="search-input"
           type="search"
+          name="q"
           aria-label="Search query"
           autoComplete="off"
           value={query}
