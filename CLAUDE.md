@@ -73,9 +73,9 @@ Prefer these over `gh` CLI for reading remote files and creating PRs/issues.
 
 ### Reviewer Approval Workflow
 
-**Use Write() tool for approval flags** (auto-approved):
+**The reviewer agent writes the approval flag** on APPROVE using Write() (auto-approved):
 ```typescript
-// After reviewer approves, main agent creates flag:
+// Reviewer agent writes this file on APPROVE:
 const timestamp = await Bash({ command: "date +%s" });
 await Write({
   file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
@@ -213,8 +213,10 @@ Key facts:
 
 **Implemented routes**:
 - `/` — homepage with posts + Altis personalized greeting
+- `/page/[page]` — homepage pagination
 - `/posts` — post list with pagination
 - `/posts/[slug]` — individual posts
+- `/posts/page/[page]` — paginated posts archive pages
 - `/[slug]`, `/[slug]/[child]` — WordPress pages
 - `/games` — game collection with filtering + modal (ISR)
 - `/media` — media CPT listing (paginated, 12/page) + `/media/[slug]` detail pages
@@ -222,6 +224,7 @@ Key facts:
 - `/tag/[slug]` — tag archives
 - `/category/[slug]` — category archives
 - `/series/[slug]` — series archives (Organize Series plugin)
+- `/style-guide` — style guide page
 
 **Remaining work**:
 - Articles page — custom Pantheon.io oembed pattern renders differently from standard posts; oembeds don't render headlessly; needs improved layout/display

@@ -64,19 +64,14 @@ Co-Authored-By: Claude <claude@anthropic.com>"
 
 ### Commit Message Format
 
-Use HEREDOC for multi-line commits:
+Use multiple `-m` flags for multi-line commits. **Do NOT use HEREDOC syntax** — heredoc spans multiple lines and breaks the `Bash(git commit*)` auto-approval pattern:
 
 ```bash
-git commit -m "$(cat <<'EOF'
-feat(api): add WordPress MCP integration
-
-- Add stdio-to-HTTP proxy for MCP server
+git commit -m "feat(api): add WordPress MCP integration" \
+  -m "- Add stdio-to-HTTP proxy for MCP server
 - Configure Claude Code MCP client
-- Document MCP workflow in CLAUDE.md
-
-Co-Authored-By: Claude <claude@anthropic.com>
-EOF
-)"
+- Document MCP workflow in CLAUDE.md" \
+  -m "Co-Authored-By: Claude <claude@anthropic.com>"
 ```
 
 ## Incremental Commits
@@ -141,7 +136,7 @@ Both `git add` and `git commit` are auto-approved for smooth TDD workflow in thi
 
 ### Approval Flag
 
-**Location**: `.git/hooks/reviewer-approved`
+**Location**: `<project-root>/reviewer-approved` (repo root, not `.git/hooks/`)
 **Content**: Unix timestamp
 **Lifetime**: 5 minutes
 
@@ -149,7 +144,7 @@ Both `git add` and `git commit` are auto-approved for smooth TDD workflow in thi
 ```typescript
 const timestamp = await Bash({ command: "date +%s" });
 await Write({
-  file_path: "/Users/chris.reynolds/git/jazz-nextjs/.git/hooks/reviewer-approved",
+  file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
   content: timestamp.trim()
 });
 ```

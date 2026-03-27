@@ -27,9 +27,9 @@
 
 **NEVER commit code without:**
 - ✅ Tests written first
-- ✅ All tests passing (176+ unit tests)
+- ✅ All tests passing (568 unit tests)
 - ✅ ESLint clean
-- ✅ E2E tests passing (16+ tests)
+- ✅ E2E tests passing (140 E2E tests)
 
 ## Test Commands
 
@@ -94,7 +94,7 @@ E2E tests catch runtime errors that unit tests miss:
 - Production-mode behavior
 
 **Real example**: The routing conflict bug passed:
-- ✅ Unit tests (271/271 passing)
+- ✅ Unit tests (271/271 passing — historical example from an earlier session; current count is 568)
 - ✅ Linter (0 errors)
 - ✅ Build (successful)
 - ❌ **E2E tests would have caught:** Server crashed on startup

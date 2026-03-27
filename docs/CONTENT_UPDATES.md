@@ -20,7 +20,9 @@ ISR is the safety net. On-demand revalidation handles the common case of intenti
 - `/posts`, `/posts/[slug]`, `/posts/page/[page]`
 - `/[slug]`, `/[slug]/[child]` — WordPress pages
 - `/games`
+- `/media`, `/media/[slug]`, `/media/page/[page]`
 - `/tag/[slug]`, `/category/[slug]`
+- `app/sitemap.ts` — `export const revalidate = 3600` (sitemap regenerates hourly)
 
 Cache tags are used for grouped invalidation — e.g., all pages tagged `posts` can be revalidated together when any post is published.
 
@@ -61,6 +63,7 @@ curl -X POST https://live-jazz-nextjs15.pantheonsite.io/api/revalidate \
 | `post` | `/posts/<slug>` | `posts`, `post-<slug>` |
 | `page` | `/<slug>` | `pages`, `page-<slug>` |
 | `gc_game` | `/games` | `games`, `game-<slug>` |
+| `media` | `/media/<slug>` | `media`, `media-<slug>` |
 | other | _(no-op)_ | _(no-op)_ |
 
 **Response**:
@@ -110,6 +113,8 @@ Tags used across the codebase for grouped invalidation:
 | `page-<slug>` | Individual page route |
 | `games` | Games archive |
 | `game-<slug>` | Individual game (not a separate route, but tagged for future use) |
+| `media` | Media archive pages (`/media`, `/media/page/[page]`) |
+| `media-<slug>` | Individual media item page (`/media/[slug]`) |
 | `menu`, `header` | All pages that include navigation |
 | `tag-<slug>` | Tag archive page |
 | `category-<slug>` | Category archive page |
