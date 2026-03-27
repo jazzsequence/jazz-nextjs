@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { transformMenuUrl } from '@/lib/url-transform';
 import { decodeHtmlEntities } from '@/lib/utils/html';
 import type { WPMenuItem } from '@/lib/wordpress/types';
+import SearchBar from '@/components/SearchBar';
 
 interface NavigationProps {
   menuItems?: WPMenuItem[];
@@ -163,7 +164,8 @@ export default function Navigation({
           </Link>
 
           {/* Desktop navigation — hidden on mobile */}
-          <nav role="navigation" aria-label="Main navigation" className="hidden md:block">
+          <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-2">
+            <SearchBar />
             {isLoading && (
               <span className="text-brand-muted text-sm font-heading">Loading menu...</span>
             )}
