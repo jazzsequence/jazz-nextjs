@@ -110,6 +110,19 @@ describe('PostCard', () => {
     expect(screen.getByText('Test Post Title')).toBeInTheDocument();
   });
 
+  it('renders excerptContent prop instead of plain excerpt when provided', () => {
+    const highlighted = <span data-testid="highlighted">jazz <mark>music</mark></span>;
+    render(<PostCard post={mockPost} excerptContent={highlighted} />);
+    expect(screen.getByTestId('highlighted')).toBeInTheDocument();
+    // Plain excerpt text should NOT render when excerptContent overrides it
+    expect(screen.queryByText(/This is a test excerpt/)).not.toBeInTheDocument();
+  });
+
+  it('renders plain excerpt when excerptContent is not provided', () => {
+    render(<PostCard post={mockPost} />);
+    expect(screen.getByText(/This is a test excerpt/)).toBeInTheDocument();
+  });
+
   it('decodes HTML entities in post title (e.g. &#8217; → curly apostrophe)', () => {
     const postWithEntities = {
       ...mockPost,

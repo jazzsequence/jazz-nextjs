@@ -27,7 +27,7 @@ const mockMenuItems: WPMenuItem[] = [
 ]
 
 const meta: Meta<typeof Navigation> = {
-  title: 'Components/Navigation',
+  title: 'Design System/Navigation',
   component: Navigation,
   parameters: {
     layout: 'fullscreen',
@@ -55,21 +55,21 @@ export const Desktop: Story = {
   },
 }
 
-/** Mobile collapsed — shows logo and hamburger button only. Tap hamburger to expand. */
+/** Mobile collapsed — hamburger visible, desktop nav hidden. */
 export const MobileCollapsed: Story = {
   name: 'Mobile — collapsed',
   args: { menuItems: mockMenuItems },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
+  globals: {
+    viewport: { value: 'mobile' },
   },
 }
 
-/** Mobile expanded — hamburger clicked, menu panel open with all nav items. */
+/** Mobile expanded — hamburger clicked, menu panel open. */
 export const MobileExpanded: Story = {
   name: 'Mobile — menu open',
   args: { menuItems: mockMenuItems },
-  parameters: {
-    viewport: { defaultViewport: 'mobile' },
+  globals: {
+    viewport: { value: 'mobile' },
   },
   play: async ({ canvasElement }) => {
     const { within, userEvent } = await import('@storybook/test')

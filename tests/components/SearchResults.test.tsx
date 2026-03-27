@@ -93,9 +93,26 @@ describe('SearchResults', () => {
   })
 
   describe('query term highlighting', () => {
-    // Excerpt highlighting was removed — PostCard renders its own excerpt natively.
-    // Duplicating the excerpt with <mark> caused double excerpt display.
-    it('does not render a duplicate excerpt below the card', () => {
+    it('highlights the query term with a brand-styled mark element inside the card excerpt', () => {
+      const results = [
+        makePost({
+          id: 1,
+          excerpt: { rendered: '<p>This is an excerpt about jazz music and jazz festivals</p>' },
+        }),
+      ]
+      const { container } = render(
+        <SearchResults {...defaultProps} results={results} query="jazz" />
+      )
+      const marks = container.querySelectorAll('mark')
+      expect(marks.length).toBeGreaterThan(0)
+      marks.forEach((mark) => {
+        expect(mark.textContent?.toLowerCase()).toBe('jazz')
+        // Brand-styled: cyan highlight, not browser default yellow
+        expect(mark.className).toContain('text-brand-cyan')
+      })
+    })
+
+    it('does not render a separate excerpt paragraph below the card (no duplication)', () => {
       const results = [
         makePost({
           id: 1,
@@ -105,15 +122,15 @@ describe('SearchResults', () => {
       const { container } = render(
         <SearchResults {...defaultProps} results={results} query="jazz" />
       )
-      // There should be at most one excerpt element (from PostCard), not two
-      const excerpts = container.querySelectorAll('[aria-label^="Excerpt for"]')
-      expect(excerpts.length).toBe(0) // no separate excerpt paragraph added by SearchResultCard
+      // The aria-label approach was the old separate <p> — should not exist
+      const separateExcerpts = container.querySelectorAll('[aria-label^="Excerpt for"]')
+      expect(separateExcerpts.length).toBe(0)
     })
 
-    it('does not render mark elements (excerpt not duplicated)', () => {
+    it('does not highlight when query is empty', () => {
       const results = [makePost({ id: 1 })]
       const { container } = render(
-        <SearchResults {...defaultProps} results={results} query="jazz" />
+        <SearchResults {...defaultProps} results={results} query="" />
       )
       expect(container.querySelectorAll('mark').length).toBe(0)
     })

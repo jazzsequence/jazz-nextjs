@@ -1,71 +1,49 @@
+import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import SearchBar from '@/components/SearchBar';
 
 /**
- * SearchBar — accessible collapsible search field in the navigation bar.
+ * SearchBar — controlled collapsible search field used in the desktop Navigation.
  *
- * Collapsed: magnifying-glass icon-only trigger.
- * Expanded:  input expands to the right using a framer-motion width animation.
+ * The component is controlled (isOpen/onOpen/onClose props) so that Navigation
+ * can animate nav items out when search opens. Stories use a stateful wrapper
+ * decorator to simulate the controlled behaviour interactively.
  *
- * WCAG 2.1 AA: role="search" on form, aria-expanded on trigger, focus management
- * on open/close, Escape to collapse, blur-to-collapse when empty.
+ * WCAG 2.1 AA: role="search", aria-expanded, focus management, Escape to close.
  */
-const meta: Meta<typeof SearchBar> = {
+
+/** Stateful wrapper so Storybook can drive the controlled component interactively. */
+function SearchBarWrapper(props: { defaultOpen?: boolean }) {
+  const [isOpen, setIsOpen] = useState(props.defaultOpen ?? false);
+  return (
+    <div className="flex items-center bg-brand-header px-4 py-2 rounded-lg min-w-72">
+      <SearchBar
+        isOpen={isOpen}
+        onOpen={() => setIsOpen(true)}
+        onClose={() => setIsOpen(false)}
+      />
+    </div>
+  );
+}
+
+const meta: Meta = {
   title: 'Components/SearchBar',
-  component: SearchBar,
   parameters: {
     layout: 'centered',
     backgrounds: { default: 'dark' },
-    nextjs: {
-      appDirectory: true,
-      navigation: {
-        push: () => {},
-      },
-    },
   },
-  decorators: [
-    (Story) => (
-      <div className="flex items-center justify-end bg-brand-header px-4 py-2 rounded-lg min-w-72">
-        <Story />
-      </div>
-    ),
-  ],
 };
 
 export default meta;
-type Story = StoryObj<typeof SearchBar>;
 
 /** Default collapsed state — shows only the magnifying-glass button. */
-export const Default: Story = {
+export const Collapsed = {
   name: 'Collapsed (default)',
+  render: () => <SearchBarWrapper />,
 };
 
-/**
- * Expanded state — click the magnifying-glass in the Canvas to see the
- * animation; this story documents the open appearance.
- *
- * To preview the expanded state statically, the story uses play() to
- * simulate a button click after mount.
- */
-export const Expanded: Story = {
+/** Expanded state — shows the input field. Click X or press Escape to close. */
+export const Expanded = {
   name: 'Expanded',
-  play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('@storybook/test');
-    const canvas = within(canvasElement);
-    const btn = canvas.getByRole('button', { name: 'Search' });
-    await userEvent.click(btn);
-  },
-};
-
-/** Expanded with a pre-typed query — shows the filled input state. */
-export const WithQuery: Story = {
-  name: 'With query text',
-  play: async ({ canvasElement }) => {
-    const { within, userEvent } = await import('@storybook/test');
-    const canvas = within(canvasElement);
-    const btn = canvas.getByRole('button', { name: 'Search' });
-    await userEvent.click(btn);
-    const input = canvas.getByRole('searchbox');
-    await userEvent.type(input, 'miles davis');
-  },
+  render: () => <SearchBarWrapper defaultOpen />,
 };
