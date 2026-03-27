@@ -61,6 +61,7 @@ secrets.json
 # next-agents-md
 .next-docs/
 reviewer-approved
+.swarm/
 
 *storybook.log
 storybook-static
