@@ -4,7 +4,25 @@ import * as wpClient from '@/lib/wordpress/client'
 
 vi.mock('@/lib/wordpress/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/wordpress/client')>()
-  return { ...actual, fetchPostsWithPagination: vi.fn(), fetchMenuItems: vi.fn().mockResolvedValue([]) }
+  return {
+    ...actual,
+    fetchPostsWithPagination: vi.fn(),
+    fetchMenuItems: vi.fn().mockResolvedValue([]),
+    fetchPost: vi.fn().mockResolvedValue({
+      id: 16084, slug: 'videos', type: 'page',
+      title: { rendered: 'Videos, Presentations &amp; Podcast appearances' },
+      content: { rendered: '<p>I was doing developer relations long before joining Pantheon.</p>' },
+      excerpt: { rendered: '' },
+      date: '2025-03-12T14:33:19', date_gmt: '2025-03-12T20:33:19',
+      modified: '2025-03-12T14:33:19', modified_gmt: '2025-03-12T20:33:19',
+      status: 'publish', link: 'https://jazzsequence.com/videos/',
+      featured_media: 16085, template: '', meta: {}, parent: 0, menu_order: 0,
+      comment_status: 'closed', ping_status: 'closed', author: 2,
+      _embedded: {
+        'wp:featuredmedia': [{ id: 16085, source_url: 'https://cdn.example.com/chris-wordcamp.jpg', alt_text: '' }],
+      },
+    }),
+  }
 })
 vi.mock('@/lib/build-info', () => ({
   getBuildInfo: vi.fn().mockResolvedValue({ commit: 'abc123', branch: 'main', buildTime: '2024-01-01T00:00:00Z' }),
@@ -67,5 +85,19 @@ describe('Media listing page', () => {
     const MediaPage = (await import('@/app/media/page')).default
     await MediaPage()
     expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith('media', expect.objectContaining({ embed: true }))
+  })
+
+  it('renders intro content from the videos page', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult([]))
+    const MediaPage = (await import('@/app/media/page')).default
+    const { container } = render(await MediaPage())
+    expect(container.innerHTML).toContain('I was doing developer relations long before joining Pantheon.')
+  })
+
+  it('renders the featured image from the videos page', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult([]))
+    const MediaPage = (await import('@/app/media/page')).default
+    const { container } = render(await MediaPage())
+    expect(container.querySelector('img[src*="chris-wordcamp"]')).toBeInTheDocument()
   })
 })

@@ -1,5 +1,5 @@
-import { fetchPostsWithPagination, fetchMenuItems } from '@/lib/wordpress/client'
-import type { WPMedia } from '@/lib/wordpress/types'
+import { fetchPostsWithPagination, fetchMenuItems, fetchPost } from '@/lib/wordpress/client'
+import type { WPMedia, WPPage } from '@/lib/wordpress/types'
 import { resolveMediaEmbed } from '@/lib/utils/media'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
@@ -84,7 +84,7 @@ function MediaCard({ item }: { item: WPMedia }) {
 }
 
 export default async function MediaPage() {
-  const [mediaResult, menuItems] = await Promise.allSettled([
+  const [mediaResult, menuItems, videosPageResult] = await Promise.allSettled([
     fetchPostsWithPagination<WPMedia>('media', {
       embed: true,
       perPage: PER_PAGE,
@@ -92,6 +92,7 @@ export default async function MediaPage() {
       isr: { revalidate: 3600, tags: ['media'] },
     }),
     fetchMenuItems(1698, { isr: { revalidate: 3600, tags: ['menu', 'header'] } }),
+    fetchPost<WPPage>('pages', 'videos', { embed: true, isr: { revalidate: 3600, tags: ['pages'] } }),
   ])
 
   const { data: items, totalPages } = mediaResult.status === 'fulfilled'
@@ -99,15 +100,32 @@ export default async function MediaPage() {
     : { data: [], totalPages: 0 }
   const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined
   const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined
+  const videosPage = videosPageResult.status === 'fulfilled' ? videosPageResult.value : null
+  const heroImage = videosPage?._embedded?.['wp:featuredmedia']?.[0]?.source_url
+  const heroAlt = videosPage?._embedded?.['wp:featuredmedia']?.[0]?.alt_text ?? ''
+  const introHtml = videosPage?.content?.rendered ?? ''
 
   return (
     <>
       <Navigation menuItems={menuItemsData} error={menuError} />
       <main className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        {heroImage && (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={heroImage}
+            alt={heroAlt}
+            className="w-full max-h-64 object-cover rounded-xl mb-8"
+          />
+        )}
         <h1 className="font-heading text-3xl font-bold text-brand-text mb-2">Media</h1>
-        <p className="text-brand-muted mb-8">
-          Videos, talks, and podcast appearances.
-        </p>
+        {introHtml ? (
+          <div
+            className="text-brand-muted mb-8 prose prose-invert max-w-none"
+            dangerouslySetInnerHTML={{ __html: introHtml }}
+          />
+        ) : (
+          <p className="text-brand-muted mb-8">Videos, talks, and podcast appearances.</p>
+        )}
 
         {items.length > 0 ? (
           <>
