@@ -104,6 +104,12 @@ describe('PostCard', () => {
     expect(images).not.toBeInTheDocument();
   });
 
+  it('should accept priority prop without error (defaults to false)', () => {
+    // priority prop is used for above-the-fold cards to prevent CLS
+    render(<PostCard post={mockPost} priority={false} />);
+    expect(screen.getByText('Test Post Title')).toBeInTheDocument();
+  });
+
   it('decodes HTML entities in post title (e.g. &#8217; → curly apostrophe)', () => {
     const postWithEntities = {
       ...mockPost,

@@ -83,4 +83,41 @@ describe('PostsList', () => {
     const articles = container.querySelectorAll('article');
     expect(articles).toHaveLength(2);
   });
+
+  it('renders first 3 posts with priority (above-the-fold CLS fix)', () => {
+    // Build 4 posts with featured images so priority is observable on img elements
+    const postsWithImages: WPPost[] = Array.from({ length: 4 }, (_, i) => ({
+      ...mockPosts[0],
+      id: i + 1,
+      slug: `post-${i + 1}`,
+      title: { rendered: `Post ${i + 1}` },
+      featured_media: 100 + i,
+      _embedded: {
+        'wp:featuredmedia': [
+          {
+            id: 100 + i,
+            source_url: `https://cdn.example.com/image-${i}.jpg`,
+            alt_text: `Image ${i}`,
+            media_details: { width: 800, height: 600 },
+          },
+        ],
+      },
+    }));
+
+    const { container } = render(<PostsList posts={postsWithImages} />);
+
+    // The Image mock exposes priority as data-priority="true" so we can assert.
+    // Posts at indices 0–2 should have priority; index 3 should not.
+    const imgs = container.querySelectorAll('img[data-testid="next-image"]');
+    const priorityImgs = Array.from(imgs).filter(
+      (img) => img.getAttribute('data-priority') === 'true'
+    );
+    const nonPriorityImgs = Array.from(imgs).filter(
+      (img) => img.getAttribute('data-priority') !== 'true'
+    );
+    // First 3 images should be priority (above the fold on desktop 3-col grid)
+    expect(priorityImgs.length).toBe(3);
+    // 4th image should not be priority
+    expect(nonPriorityImgs.length).toBe(1);
+  });
 });

@@ -5,7 +5,7 @@ export const Image = ({
   src,
   alt,
   fill,
-  priority: _priority,  // next/image prop — destructured to prevent spreading non-HTML attribute to <img>
+  priority,
   sizes: _sizes,        // next/image prop — destructured to prevent spreading non-HTML attribute to <img>
   ...props
 }: {
@@ -23,6 +23,10 @@ export const Image = ({
       alt={alt}
       data-testid="next-image"
       data-fill={fill}
+      // Expose priority as data-priority so tests can assert the prop is passed.
+      // The real next/image translates priority=true → fetchpriority="high" + <link rel="preload">,
+      // but that doesn't happen in the test environment.
+      data-priority={priority ? 'true' : undefined}
       {...props}
     />
   );

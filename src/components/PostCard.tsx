@@ -7,9 +7,11 @@ import type { WPPost } from '@/lib/wordpress/types';
 
 interface PostCardProps {
   post: WPPost;
+  /** Preload this card's image — set true for above-the-fold cards to prevent CLS */
+  priority?: boolean;
 }
 
-export default function PostCard({ post }: PostCardProps) {
+export default function PostCard({ post, priority = false }: PostCardProps) {
   const featuredMedia = post._embedded?.['wp:featuredmedia']?.[0];
   const hasImage = post.featured_media > 0 && featuredMedia;
   const formattedDate = format(new Date(post.date), 'MMMM d, yyyy');
@@ -28,6 +30,7 @@ export default function PostCard({ post }: PostCardProps) {
             src={normalizeWordPressUrl(featuredMedia.source_url)}
             alt={featuredMedia.alt_text || decodeHtmlEntities(post.title.rendered)}
             fill
+            priority={priority}
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           />
