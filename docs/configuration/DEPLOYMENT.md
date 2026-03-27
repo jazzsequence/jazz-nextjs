@@ -106,71 +106,39 @@ const nextConfig = {
 - **Process**: Same as Dev, but creates temporary environment
 - **Cleanup**: Environment deleted when PR closes
 
-### Manual Deployments (Test & Live)
+### Deploying to Test & Live (Branch-Based)
 
-Test and Live environments require Git tags with specific naming patterns:
+Test and Live deployments are triggered by merging into the `test` or `live` branches. The [promote-pantheon](.github/workflows/promote-pantheon.yml) GitHub Actions workflow automatically creates the required Pantheon tag (`pantheon_test_N` or `pantheon_live_N`) when a push is detected on either branch.
 
-#### Deploying to Test
-
-1. **Find the next tag number**:
-   ```bash
-   git tag --list 'pantheon_test_*' --sort=v:refname | tail -1
-   ```
-
-2. **Create and push the tag**:
-   ```bash
-   git tag pantheon_test_1 -a -m "Deploying to Test"
-   git push origin --tags
-   ```
-
-3. **Monitor the deployment**:
-   ```bash
-   terminus node:logs:build:list jazz-nextjs15.test
-   ```
-
-#### Deploying to Live
-
-Same process as Test, but use `pantheon_live_N` tags:
-
+**To deploy to Test**, merge `main` into `test`:
 ```bash
-git tag pantheon_live_1 -a -m "Deploying to Live"
-git push origin --tags
+git checkout test
+git merge main
+git push origin test
+# CI creates pantheon_test_N and pushes the tag — Pantheon builds Test automatically
 ```
 
-### GitHub Actions Automation
-
-For automated deployments, you can use GitHub Actions to create tags on merge to main.
-
-Example workflow (`.github/workflows/deploy-live.yml`):
-
-```yaml
-name: Deploy to Live
-
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get next tag number
-        id: tag
-        run: |
-          LATEST=$(git tag --list 'pantheon_live_*' --sort=v:refname | tail -1 | sed 's/pantheon_live_//')
-          NEXT=$((LATEST + 1))
-          echo "number=$NEXT" >> $GITHUB_OUTPUT
-
-      - name: Create and push tag
-        run: |
-          git tag "pantheon_live_${{ steps.tag.outputs.number }}" -a -m "Auto-deploy to Live"
-          git push origin --tags
+**To deploy to Live**, merge `test` into `live`:
+```bash
+git checkout live
+git merge test
+git push origin live
+# CI creates pantheon_live_N and pushes the tag — Pantheon builds Live automatically
 ```
+
+**Monitor the deployment**:
+```bash
+terminus node:logs:build:list jazz-nextjs15.test
+terminus node:logs:build:list jazz-nextjs15.live
+```
+
+**Rollback**: tag a previous commit manually:
+```bash
+git tag pantheon_live_N <previous-commit-hash>
+git push origin pantheon_live_N
+```
+
+> **Note for AI agents**: Do NOT merge to `test` or `live` branches without explicit user request. These are production-affecting actions. See `AGENTS.md` for the full rule.
 
 ## Build Process
 
@@ -365,4 +333,4 @@ See [Pantheon GitHub Application docs](https://docs.pantheon.io/github-applicati
 - [Pantheon Documentation Repository](https://github.com/pantheon-systems/documentation) (reference implementation)
 
 ## Last Updated
-2026-03-20
+2026-03-27

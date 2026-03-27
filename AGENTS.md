@@ -550,6 +550,18 @@ User asks: "Fetch WordPress posts"
 - Create documentation unless requested
 - Commit `.env` files or secrets
 
+### Deployment Authorization — HARD RULE
+
+**NEVER merge code to the `test` or `live` branches unless the user explicitly requests it.**
+
+Merging to `test` or `live` triggers a Pantheon environment deployment. This is a production-affecting action that requires explicit user authorization every time. "Deploy to test" or "deploy to live" or "promote to test/live" from the user is required — do not infer or assume it is desired as part of any other task.
+
+- `main` branch → Dev environment (safe to push as part of normal work)
+- `test` branch → Pantheon Test environment (**requires explicit user request**)
+- `live` branch → Pantheon Live environment (**requires explicit user request**)
+
+If asked to "deploy" without specifying an environment, clarify before acting.
+
 ### 5. Documentation Maintenance - Keep Docs Updated
 
 **When making changes, ALWAYS update relevant documentation:**

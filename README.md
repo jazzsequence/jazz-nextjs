@@ -257,26 +257,47 @@ jazz-nextjs/
 
 ## Deployment
 
-The application is deployed on Pantheon's Next.js infrastructure. Deployments are triggered by:
+The application is deployed on Pantheon's Next.js infrastructure via a branch-based promotion model. The Pantheon GitHub App watches the repository and reacts to branch pushes and Git tags.
 
-- **Dev Environment**: Pushes to `main` branch
-- **PR Environments**: Open pull requests (e.g., `pr-42-jazz-nextjs.pantheonsite.io`)
-- **Test Environment**: Git tags like `pantheon_test_1`
-- **Live Environment**: Git tags like `pantheon_live_1`
+### Branch Strategy
+
+```mermaid
+flowchart LR
+    subgraph branches["Branches (GitHub)"]
+        direction TB
+        F["feature/*"]
+        M["main"]
+        T["test"]
+        L["live"]
+        F -->|"PR merged"| M
+        M -->|"merge"| T
+        T -->|"merge"| L
+    end
+
+    subgraph pantheon["Pantheon Environments"]
+        direction TB
+        PR["Multidev\npr-N-jazz-nextjs15"]
+        DEV["Dev\ndev-jazz-nextjs15"]
+        TEST["Test\ntest-jazz-nextjs15"]
+        LIVE["Live\nlive-jazz-nextjs15"]
+    end
+
+    F -.->|"open PR"| PR
+    M -->|"GitHub App"| DEV
+    T -->|"promote-pantheon.yml\n→ pantheon_test_N"| TEST
+    L -->|"promote-pantheon.yml\n→ pantheon_live_N"| LIVE
+```
+
+| Branch | Pantheon Environment | Trigger |
+|---|---|---|
+| `feature/*` | Multidev (`pr-N`) | Open pull request |
+| `main` | Dev | Push / PR merge |
+| `test` | Test | Push/merge → CI creates `pantheon_test_N` tag |
+| `live` | Live | Push/merge → CI creates `pantheon_live_N` tag |
+
+Merging `main` → `test` or `test` → `live` automatically creates the correct Pantheon tag via the [promote-pantheon](.github/workflows/promote-pantheon.yml) GitHub Actions workflow. No manual tagging required.
 
 See [configuration/DEPLOYMENT.md](docs/configuration/DEPLOYMENT.md) for complete deployment documentation.
-
-### Quick Deploy
-
-```bash
-# Deploy to Test
-git tag pantheon_test_1 -a -m "Deploy to Test"
-git push origin --tags
-
-# Deploy to Live
-git tag pantheon_live_1 -a -m "Deploy to Live"
-git push origin --tags
-```
 
 ## Configuration
 

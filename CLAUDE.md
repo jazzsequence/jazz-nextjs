@@ -16,6 +16,7 @@ This document is a **digest** - detailed documentation is in `@docs/`. Load rele
 - **NEVER save to root folder** - use `/src`, `/tests`, `/docs`, `/config`, `/scripts`
 - **ALWAYS read files before editing** them
 - **NEVER commit secrets**, credentials, or `.env` files
+- **NEVER merge to `test` or `live` branches** without explicit user request — these trigger Pantheon environment deployments. `main` is safe; `test` and `live` are not.
 - **NEVER use compound commands** (`cmd1 && cmd2`) - run commands separately for auto-approval
 
 ---
