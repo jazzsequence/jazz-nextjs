@@ -67,6 +67,27 @@ jobs:
           git push origin "${{ steps.tag.outputs.tag }}"
           echo "✅ Pushed tag ${{ steps.tag.outputs.tag }} — Pantheon will now build and deploy to ${{ steps.tag.outputs.env }}"
 
+      - name: Wait for Pantheon build
+        run: |
+          echo "Waiting 8 minutes for Pantheon to build and deploy..."
+          sleep 480
+
+      - name: Warm ISR cache
+        run: |
+          SITE="${{ env.PANTHEON_SITE_NAME }}"
+          ENV="${{ steps.tag.outputs.env }}"
+          BASE_URL="https://${ENV}-${SITE}.pantheonsite.io"
+
+          echo "Warming ISR cache for ${BASE_URL}..."
+
+          # Warm key pages — fires SSR on first hit, populating ISR cache
+          for path in "/" "/posts" "/games" "/media"; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "${BASE_URL}${path}")
+            echo "  ${path} → ${STATUS}"
+          done
+
+          echo "Cache warm complete."
+
       - name: Summary
         run: |
           echo "### Pantheon Promotion" >> $GITHUB_STEP_SUMMARY

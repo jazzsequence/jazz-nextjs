@@ -99,6 +99,21 @@ export default async function RootLayout({
     <html lang="en">
       <head>
         {/* FontAwesome 6 Free — served from jsDelivr, no auth or pageview limits */}
+        {/* Preload the two most-used woff2 files to avoid render-blocking */}
+        <link
+          rel="preload"
+          href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/webfonts/fa-solid-900.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/webfonts/fa-brands-400.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/css/all.min.css"

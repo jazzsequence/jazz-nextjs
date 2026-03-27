@@ -65,7 +65,12 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <Navigation menuItems={menuItemsData} error={menuError} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Greeting searchParams={searchParams} />
+        {/* min-height reserves space for the greeting so the grid below doesn't shift
+            when the client component resolves the correct variant. The greeting with
+            py-12 padding + h1 + p runs ~220px; 200px is a stable floor. */}
+        <div className="min-h-[200px]">
+          <Greeting searchParams={searchParams} />
+        </div>
 
         {postsError && (
           <div className="p-4 bg-brand-surface border border-brand-border rounded-lg mb-6 text-brand-magenta">
