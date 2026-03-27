@@ -99,6 +99,8 @@ export default async function RootLayout({
     <html lang="en">
       <head>
         {/* FontAwesome 6 Free — served from jsDelivr, no auth or pageview limits */}
+        {/* Preconnect to CDN so font/stylesheet connections are established early */}
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
         {/* Preload the two most-used woff2 files to avoid render-blocking */}
         <link
           rel="preload"
