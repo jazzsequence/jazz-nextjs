@@ -4,8 +4,9 @@ import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 
 export const metadata = {
-  title: 'Games | jazzsequence',
+  title: 'Games',
   description: 'My board game collection.',
+  alternates: { canonical: '/games' },
 }
 
 export default async function GamesPage() {
