@@ -1,9 +1,9 @@
 # WordPress API Client Design Document
 
 **Status**: ✅ Implemented
-**Last Updated**: 2026-02-28
+**Last Updated**: 2026-03-27
 **Implementation**: `src/lib/wordpress/client.ts`
-**Tests**: `tests/lib/wordpress/client.test.ts` (75/75 passing)
+**Tests**: `tests/lib/wordpress/client.test.ts` (part of 568 total unit tests)
 
 ## Overview
 
@@ -158,7 +158,7 @@ const POST_TYPE_CONFIGS: Record<string, PostTypeConfig<any>> = {
     arraySchema: WPRecipesSchema,
   },
   media: {
-    endpoint: 'media',
+    endpoint: 'media-items',
     displayName: 'Media',
     schema: WPMediaSchema,
     arraySchema: WPMediaItemsSchema,
@@ -269,7 +269,7 @@ async function fetchPostTypeItem<T>(
  * @param postType - Post type endpoint (e.g., 'posts', 'gc_game', 'rb_recipe')
  * @param options - Fetch options (pagination, search, ISR, etc.)
  */
-export async function fetchPosts<T = any>(
+export async function fetchPosts<T = WPContent>(
   postType: string,
   options: FetchOptions = {}
 ): Promise<WPAPIListResponse<T>> {
@@ -290,7 +290,7 @@ export async function fetchPosts<T = any>(
  * @param slug - Post slug
  * @param options - Fetch options (pagination, embed, ISR, etc.)
  */
-export async function fetchPost<T = any>(
+export async function fetchPost<T = WPContent>(
   postType: string,
   slug: string,
   options: Omit<FetchOptions, 'search'> = {}
@@ -305,6 +305,19 @@ export async function fetchPost<T = any>(
   }
   return fetchPostTypeItem(config, slug, options)
 }
+```
+
+```typescript
+/**
+ * Fetch list of posts with pagination metadata
+ * @param postType - Post type endpoint (e.g., 'posts', 'gc_game')
+ * @param options - Fetch options (pagination, search, ISR, etc.)
+ * @returns PaginatedResponse with data, totalItems, totalPages, currentPage
+ */
+export async function fetchPostsWithPagination<T = WPContent>(
+  postType: string,
+  options: FetchOptions = {}
+): Promise<PaginatedResponse<T>>
 ```
 
 ### Usage Examples
@@ -441,6 +454,13 @@ export class WPRateLimitError extends WPAPIError {
     this.name = 'WPRateLimitError'
   }
 }
+
+export class WPForbiddenError extends WPAPIError {
+  constructor(type: string, slug: string) {
+    super(`${type} access forbidden: ${slug}`, 403)
+    this.name = 'WPForbiddenError'
+  }
+}
 ```
 
 ### Error Handling Examples
@@ -461,7 +481,7 @@ try {
 
 ## Testing
 
-### Test Coverage (75/75 passing)
+### Test Coverage
 
 **Type Tests (10 tests)**
 - Schema validation for all post types
