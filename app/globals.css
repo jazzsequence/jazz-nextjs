@@ -671,6 +671,17 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Organize Series plugin — hide series navigation blurb
+   The .pps-series-post-details block prepends "This entry is part X of Y
+   in the series..." to rendered post content. It's not useful in headless
+   context since series archives are navigated via /series/[slug].
+   ───────────────────────────────────────────────────────────────────────── */
+
+.post-body .pps-series-post-details {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    FontAwesome font-display override
    The jsDelivr CDN stylesheet does not set font-display, causing render
    blocking. These @font-face rules shadow the CDN declarations and add

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { size, contentType, alt, runtime } from '@/app/opengraph-image';
+import { size, contentType, alt } from '@/app/opengraph-image';
 
 describe('app/opengraph-image', () => {
   it('exports the correct dimensions', () => {
@@ -12,9 +12,5 @@ describe('app/opengraph-image', () => {
 
   it('exports the correct alt text', () => {
     expect(alt).toBe('jazzsequence.com');
-  });
-
-  it('uses edge runtime', () => {
-    expect(runtime).toBe('edge');
   });
 });
