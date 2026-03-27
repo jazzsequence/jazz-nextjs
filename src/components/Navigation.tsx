@@ -210,7 +210,7 @@ export default function Navigation({
           id="mobile-menu"
           role="navigation"
           aria-label="Mobile navigation"
-          className="md:hidden border-t border-brand-border bg-brand-header"
+          className="md:hidden border-t border-brand-border bg-brand-header max-h-[calc(100vh-3.5rem)] overflow-y-auto"
         >
           {isLoading && (
             <p className="px-4 py-3 text-brand-muted text-sm font-heading">Loading menu...</p>
