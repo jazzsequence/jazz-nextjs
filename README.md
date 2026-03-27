@@ -18,7 +18,7 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - Custom error classes with detailed context
 - **Type Safety**: Full TypeScript implementation with runtime Zod schema validation
 - **HTML Sanitization**: DOMPurify integration for safe WordPress content rendering
-- **Testing**: 433 tests passing with comprehensive coverage
+- **Testing**: 521 tests passing with comprehensive coverage
   - Unit tests with Vitest + happy-dom
   - E2E tests with Playwright against live Pantheon environments
   - Automated Playwright report deployment to GitHub Pages
@@ -215,6 +215,9 @@ jazz-nextjs/
 - **[workflows/mcp-server.md](docs/workflows/mcp-server.md)** - WordPress MCP server usage (critical)
 - **[workflows/tdd-workflow.md](docs/workflows/tdd-workflow.md)** - Test-driven development methodology
 
+### Features & Personalization
+- **[PERSONALIZATION.md](docs/PERSONALIZATION.md)** - Altis Experience Blocks integration: how personalized content works, how to add new variants/audiences, who does what
+
 ### Content & Testing
 - **[CONTENT_UPDATES.md](docs/CONTENT_UPDATES.md)** - Content synchronization strategies and ISR
 - **[TESTING.md](docs/TESTING.md)** - Testing guide and TDD methodology
@@ -244,7 +247,7 @@ jazz-nextjs/
 - **@pantheon-systems/nextjs-cache-handler** - Persistent ISR caching
 
 ### Testing
-- **Vitest 4** with happy-dom - Unit and integration testing (433 tests)
+- **Vitest 4** with happy-dom - Unit and integration testing (521 tests)
 - **Playwright** - End-to-end testing against live Pantheon environments
 - **MSW** - API mocking
 - **Testing Library** - React component testing

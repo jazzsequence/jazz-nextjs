@@ -194,25 +194,36 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - **ISR**: 3600s revalidation
 - **Rate Limiting**: 10 req/sec, burst of 20
 
-**Custom Post Types relevant to this site**: `gc_game` (games — implemented), `media` (YouTube/WordPress.tv — future)
+**Custom Post Types relevant to this site**: `gc_game` (games — implemented), `media` (YouTube/WordPress.tv — implemented)
 
 **Out of scope** — these belong to multisite subsites, NOT jazzsequence.com:
 - `rb_recipe` (recipes), `plague-artist` (artists), `movie` (movies) — do NOT build pages for these
 
+### Altis Experience Blocks / Personalization
+
+The homepage greeting is powered by **Altis Accelerate Experience Blocks**. See `@docs/PERSONALIZATION.md` for full details.
+
+Key facts:
+- Block ID `16738` = the greeting reusable block in WordPress
+- Variants and audiences are fetched at runtime — no code changes needed to add new variants/audiences in WordPress, as long as they use supported rule fields (`metrics.hour`, `metrics.day`, `endpoints.country`, etc.)
+- Adding a **new** Experience Block to a different part of the site requires: a new fetcher in `src/lib/wordpress/`, a server+client component pair, and E2E test coverage
+- Matching runs client-side (browser timezone); country detection is server-side (CDN headers)
+
 **Buildpack restriction**: Do NOT commit `.php` files to this repository. PHP files trigger Pantheon's PHP buildpack, which prevents the Node.js runtime from installing correctly and causes `DEPLOYMENT_FAILURE`. WordPress PHP code belongs in the `jazzsequence.com` repository.
 
 **Implemented routes**:
-- `/` — homepage with posts
+- `/` — homepage with posts + Altis personalized greeting
 - `/posts` — post list with pagination
 - `/posts/[slug]` — individual posts
 - `/[slug]`, `/[slug]/[child]` — WordPress pages
 - `/games` — game collection with filtering + modal (ISR)
+- `/media` — media CPT listing (paginated, 12/page) + `/media/[slug]` detail pages
+- `/media/page/[page]` — paginated media archive pages
 - `/tag/[slug]` — tag archives
 - `/category/[slug]` — category archives
 - `/series/[slug]` — series archives (Organize Series plugin)
 
 **Remaining work**:
-- `/media` — YouTube/WordPress.tv CPT (navigation + implementation not yet present)
 - Articles page — custom Pantheon.io oembed pattern renders differently from standard posts; oembeds don't render headlessly; needs improved layout/display
 - Accessibility improvements
 
