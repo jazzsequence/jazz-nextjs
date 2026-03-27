@@ -224,6 +224,7 @@ Key facts:
 - `/tag/[slug]` — tag archives
 - `/category/[slug]` — category archives
 - `/series/[slug]` — series archives (Organize Series plugin)
+- `/search` — search results page (revalidate=0, always fresh; filter tabs: All/Posts/Media)
 - `/style-guide` — style guide page
 
 **Remaining work**:
