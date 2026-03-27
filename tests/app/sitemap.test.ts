@@ -6,7 +6,7 @@ vi.mock('@/lib/wordpress/client', () => ({
 }))
 
 import { fetchPostsWithPagination } from '@/lib/wordpress/client'
-import sitemap from '@/app/sitemap'
+import sitemap, { revalidate } from '@/app/sitemap'
 
 const mockFetch = fetchPostsWithPagination as ReturnType<typeof vi.fn>
 
@@ -15,6 +15,10 @@ const BASE_URL = 'https://jazzsequence.com'
 describe('sitemap', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  it('should export revalidate of 3600 seconds', () => {
+    expect(revalidate).toBe(3600)
   })
 
   it('should include static routes', async () => {

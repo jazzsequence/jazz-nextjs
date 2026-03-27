@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server'
  *   post     → /posts/<slug>        tags: posts, post-<slug>
  *   page     → /<slug>              tags: pages, page-<slug>
  *   gc_game  → /games               tags: games, game-<slug>
+ *   media    → /media/<slug>        tags: media, media-<slug>
  *   (other)  → no-op (safe)
  *
  * WordPress webhook URL:
@@ -45,6 +46,11 @@ function resolveTargets(
       return {
         paths: ['/games'],
         tags: ['games', `game-${post_slug}`],
+      }
+    case 'media':
+      return {
+        paths: [`/media/${post_slug}`],
+        tags: ['media', `media-${post_slug}`],
       }
     default:
       return { paths: [], tags: [] }

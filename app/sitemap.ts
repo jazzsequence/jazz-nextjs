@@ -2,6 +2,8 @@ import { MetadataRoute } from 'next'
 import { fetchPostsWithPagination } from '@/lib/wordpress/client'
 import type { WPPost } from '@/lib/wordpress/types'
 
+export const revalidate = 3600
+
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://jazzsequence.com'
 
 const STATIC_ROUTES: MetadataRoute.Sitemap = [
