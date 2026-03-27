@@ -7,6 +7,7 @@ import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import Pagination from '@/components/Pagination'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 
 export const revalidate = 3600
 
@@ -14,6 +15,14 @@ const PER_PAGE = 12
 
 interface PageProps {
   params: Promise<{ page: string }>
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const page = parseInt((await params).page, 10)
+  return {
+    title: `Media — Page ${page}`,
+    robots: { index: false, follow: true },
+  }
 }
 
 function MediaCard({ item }: { item: WPMedia }) {
@@ -30,7 +39,7 @@ function MediaCard({ item }: { item: WPMedia }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={thumbnail}
-            alt=""
+            alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

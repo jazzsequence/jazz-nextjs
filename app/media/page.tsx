@@ -10,8 +10,9 @@ import { decodeHtmlEntities } from '@/lib/utils/html'
 export const revalidate = 3600
 
 export const metadata = {
-  title: 'Media | jazzsequence',
+  title: 'Media',
   description: 'Videos, talks, and podcast appearances by Chris Reynolds.',
+  alternates: { canonical: '/media' },
 }
 
 const PER_PAGE = 12
@@ -30,7 +31,7 @@ function MediaCard({ item }: { item: WPMedia }) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={thumbnail}
-            alt=""
+            alt={title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">

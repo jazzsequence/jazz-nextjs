@@ -100,4 +100,21 @@ describe('Media listing page', () => {
     const { container } = render(await MediaPage())
     expect(container.querySelector('img[src*="chris-wordcamp"]')).toBeInTheDocument()
   })
+
+  it('uses the item title as alt text on the MediaCard thumbnail', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult([
+      mockMediaItem({ title: { rendered: 'My Talk Title' } }),
+    ]))
+    const MediaPage = (await import('@/app/media/page')).default
+    const { container } = render(await MediaPage())
+    const img = container.querySelector('img[src*="cdn.example.com/thumb"]')
+    expect(img).toBeInTheDocument()
+    expect(img?.getAttribute('alt')).toBe('My Talk Title')
+  })
+
+  it('exports metadata with short title (no site suffix) and canonical', async () => {
+    const { metadata } = await import('@/app/media/page')
+    expect((metadata as { title: string }).title).toBe('Media')
+    expect((metadata as { alternates?: { canonical?: string } }).alternates?.canonical).toBe('/media')
+  })
 })

@@ -5,11 +5,42 @@ import { decodeHtmlEntities } from '@/lib/utils/html'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import { notFound, forbidden } from 'next/navigation'
+import type { Metadata } from 'next'
 
 export const revalidate = 3600
 
 interface MediaItemPageProps {
   params: Promise<{ slug: string }>
+}
+
+export async function generateMetadata({ params }: MediaItemPageProps): Promise<Metadata> {
+  const { slug } = await params
+  try {
+    const item = await fetchPost<WPMedia>('media', slug, {
+      embed: true,
+      isr: { revalidate: 3600, tags: ['media'] },
+    })
+    const title = decodeHtmlEntities(item.title.rendered)
+    const description = item.excerpt?.rendered
+      ? item.excerpt.rendered.replace(/<[^>]+>/g, '').trim().slice(0, 160)
+      : undefined
+    const thumbnail = item._embedded?.['wp:featuredmedia']?.[0]?.source_url
+
+    return {
+      title,
+      description,
+      alternates: { canonical: `/media/${slug}` },
+      openGraph: {
+        type: 'video.other',
+        title,
+        description,
+        url: `/media/${slug}`,
+        images: thumbnail ? [{ url: thumbnail }] : [],
+      },
+    }
+  } catch {
+    return { title: 'Media Not Found' }
+  }
 }
 
 export default async function MediaItemPage({ params }: MediaItemPageProps) {
@@ -66,7 +97,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
             {thumbnail && (
               <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-brand-surface-high mb-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={thumbnail} alt="" className="w-full h-full object-cover" />
+                <img src={thumbnail} alt={title} className="w-full h-full object-cover" />
               </div>
             )}
             <a
