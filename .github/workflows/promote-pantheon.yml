@@ -1,0 +1,82 @@
+name: Promote to Pantheon Environment
+
+# Triggered when code is merged/pushed to the test or live branches.
+# Creates the appropriate Pantheon tag, which the Pantheon GitHub App
+# uses to trigger a build and deploy to that environment.
+#
+# Tag naming convention (required by Pantheon):
+#   pantheon_test_N  →  Test environment
+#   pantheon_live_N  →  Live environment
+#
+# Branches:
+#   test  →  equivalent to Pantheon Test environment
+#   live  →  equivalent to Pantheon Live environment
+#   main  →  equivalent to Pantheon Dev (handled by test-pantheon.yml)
+
+on:
+  push:
+    branches:
+      - test
+      - live
+
+permissions:
+  contents: write  # Required to create and push tags
+
+env:
+  PANTHEON_SITE_NAME: jazz-nextjs15
+
+jobs:
+  promote:
+    name: Tag for Pantheon ${{ github.ref_name }} environment
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout with full tag history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine next tag
+        id: tag
+        run: |
+          BRANCH="${{ github.ref_name }}"
+
+          if [[ "$BRANCH" == "test" ]]; then
+            PREFIX="pantheon_test"
+          elif [[ "$BRANCH" == "live" ]]; then
+            PREFIX="pantheon_live"
+          else
+            echo "Unexpected branch: $BRANCH" && exit 1
+          fi
+
+          LAST=$(git tag -l "${PREFIX}_*" | sort -t_ -k3 -n | tail -1 | grep -o '[0-9]*$')
+          NEXT=$((${LAST:-0} + 1))
+          TAG="${PREFIX}_${NEXT}"
+
+          echo "prefix=${PREFIX}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}"       >> $GITHUB_OUTPUT
+          echo "env=${BRANCH}"    >> $GITHUB_OUTPUT
+
+      - name: Create and push tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "${{ steps.tag.outputs.tag }}"
+          git push origin "${{ steps.tag.outputs.tag }}"
+          echo "✅ Pushed tag ${{ steps.tag.outputs.tag }} — Pantheon will now build and deploy to ${{ steps.tag.outputs.env }}"
+
+      - name: Summary
+        run: |
+          echo "### Pantheon Promotion" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| | |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Tag** | \`${{ steps.tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Pantheon env** | ${{ steps.tag.outputs.env }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          SITE="${{ env.PANTHEON_SITE_NAME }}"
+          ENV="${{ steps.tag.outputs.env }}"
+          echo "🔗 [https://${ENV}-${SITE}.pantheonsite.io](https://${ENV}-${SITE}.pantheonsite.io)" >> $GITHUB_STEP_SUMMARY
