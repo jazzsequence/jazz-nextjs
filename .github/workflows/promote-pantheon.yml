@@ -50,8 +50,9 @@ jobs:
             echo "Unexpected branch: $BRANCH" && exit 1
           fi
 
-          LAST=$(git tag -l "${PREFIX}_*" | sort -t_ -k3 -n | tail -1 | grep -o '[0-9]*$')
-          NEXT=$((${LAST:-0} + 1))
+          LAST_TAG=$(git tag -l "${PREFIX}_*" | sort -t_ -k3 -n | tail -1)
+          LAST=$(echo "${LAST_TAG}" | grep -o '[0-9]*$' || echo "0")
+          NEXT=$(( LAST + 1 ))
           TAG="${PREFIX}_${NEXT}"
 
           echo "prefix=${PREFIX}" >> $GITHUB_OUTPUT
