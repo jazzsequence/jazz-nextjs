@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { fetchSiteInfo } from "@/lib/wordpress/site-info";
 
 // Victor Mono — monospace for site title and code elements
 import "@fontsource/victor-mono/400.css";
@@ -23,10 +24,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Jazz Next.js",
-  description: "Chris Reynolds' personal site - WordPress content powered by Next.js",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const { name, description } = await fetchSiteInfo();
+    return {
+      title: {
+        default: name,
+        template: `%s | ${name}`,
+      },
+      description,
+    };
+  } catch {
+    // Fallback if WordPress is unreachable at build time
+    return {
+      title: {
+        default: "jazzsequence",
+        template: "%s | jazzsequence",
+      },
+      description: "Chris Reynolds' personal site.",
+    };
+  }
+}
 
 export default function RootLayout({
   children,
