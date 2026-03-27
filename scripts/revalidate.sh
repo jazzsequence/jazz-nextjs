@@ -22,7 +22,7 @@ if [[ -z "${REVALIDATE_SECRET:-}" ]]; then
   exit 1
 fi
 
-BASE_URL="${BASE_URL:-https://dev-jazz-nextjs15.pantheonsite.io}"
+BASE_URL="${BASE_URL:-${NEXT_PUBLIC_SITE_URL:-https://dev-jazz-nextjs15.pantheonsite.io}}"
 ENDPOINT="${BASE_URL}/api/revalidate"
 
 # Default: revalidate all common tags

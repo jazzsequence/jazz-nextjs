@@ -91,6 +91,24 @@ npm run test:e2e
 https://jazzsequence.github.io/jazz-nextjs/reports/{run_id}
 ```
 
+### Cache Revalidation
+
+Force ISR cache revalidation on the target environment:
+
+```bash
+# Revalidate all common tags (posts, pages, menu, header, media, games)
+npm run revalidate
+
+# Revalidate specific tag(s)
+npm run revalidate -- menu
+npm run revalidate -- menu header posts
+
+# Target a different environment
+BASE_URL=https://live-jazz-nextjs15.pantheonsite.io npm run revalidate -- menu
+```
+
+Requires `REVALIDATE_SECRET` in `.env.local`. Useful after WordPress menu changes, page edits, or any content that isn't automatically revalidated via webhook.
+
 ### Linting
 
 ```bash

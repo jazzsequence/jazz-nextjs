@@ -30,7 +30,12 @@ npm run lint          # Linter
 npm run build         # Build
 npm run test:e2e      # E2E tests (MANDATORY)
 npm run start:test    # Test standalone build
+npm run revalidate    # Force ISR cache revalidation (all tags, dev env)
 ```
+
+**Cache revalidation**: `npm run revalidate [-- tag [tag...]]` busts ISR cache on Pantheon dev by default.
+Use `BASE_URL=https://... npm run revalidate` to target another environment.
+Needed after: WordPress menu changes, any content edits not auto-revalidated via webhook.
 
 **All 5 commands MUST pass before committing** + Reviewer agent approval
 
