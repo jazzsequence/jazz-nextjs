@@ -14,75 +14,65 @@ interface GreetingVariant {
 interface GreetingClientProps {
   variants: GreetingVariant[];
   audiences: Audience[];
+  /** Forward-compat: allows SSR country injection if needed in future.
+   *  Currently always undefined — Greeting.tsx omits it so the homepage
+   *  stays edge-cacheable. Country is fetched client-side via /api/country. */
   serverCountry?: string;
   greetingParam?: string;
+}
+
+function selectVariant(
+  variants: GreetingVariant[],
+  audiences: Audience[],
+  country: string | undefined,
+  greetingParam: string | undefined
+): GreetingVariant {
+  if (variants.length === 0) {
+    return { audienceId: null, isFallback: true, heading: "Hi, I'm Chris", content: '<p>Welcome to my website.</p>' };
+  }
+
+  let matchedIds: number[];
+
+  if (greetingParam) {
+    const namedVariants: Record<string, number | null> = {
+      morning: 16719, afternoon: 16720, evening: 16722, dnd: 16726, china: 16377, fallback: null,
+    };
+    const audienceId = namedVariants[greetingParam.toLowerCase()] ?? parseInt(greetingParam, 10);
+    matchedIds = isNaN(audienceId as number) ? [] : [audienceId as number];
+  } else {
+    const endpoints: EndpointData = {
+      country,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
+    matchedIds = matchAudiences(audiences, endpoints);
+  }
+
+  return (
+    (matchedIds.length > 0 ? variants.find((v) => v.audienceId === matchedIds[0]) : undefined) ??
+    variants.find((v) => v.isFallback) ??
+    variants[0]
+  );
 }
 
 export function GreetingClient({ variants, audiences, serverCountry, greetingParam }: GreetingClientProps) {
   const [variant, setVariant] = useState<GreetingVariant | null>(null);
 
+  // Pass 1: match without country (runs immediately, enables edge caching on the page)
   useEffect(() => {
-    // If no variants, show default fallback
-    if (variants.length === 0) {
-      setVariant({
-        audienceId: null,
-        isFallback: true,
-        heading: "Hi, I'm Chris",
-        content: '<p>Welcome to my website.</p>',
-      });
-      return;
-    }
+    setVariant(selectVariant(variants, audiences, serverCountry, greetingParam));
+  }, [variants, audiences, serverCountry, greetingParam]);
 
-    let matchedIds: number[];
-
-    // Check for ?greeting= query parameter (for E2E testing)
-    // Allow in all environments so E2E tests work against production builds
-    if (greetingParam) {
-      // E2E testing mode: Force specific greeting variant
-      const namedVariants: Record<string, number | null> = {
-        morning: 16719,
-        afternoon: 16720,
-        evening: 16722,
-        dnd: 16726,
-        china: 16377,
-        fallback: null,
-      };
-
-      const audienceId = namedVariants[greetingParam.toLowerCase()] ?? parseInt(greetingParam, 10);
-      matchedIds = isNaN(audienceId as number) ? [] : [audienceId as number];
-    } else {
-      // Normal mode: Match based on time/day using BROWSER timezone
-      // Get browser's timezone
-      const browserTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-      // Match audiences based on browser timezone and server-detected country
-      const endpoints: EndpointData = {
-        country: serverCountry,
-        timezone: browserTimezone, // Use browser timezone, not server
-      };
-
-      matchedIds = matchAudiences(audiences, endpoints);
-    }
-
-    // Select variant: first matching audience, or fallback
-    let selectedVariant: GreetingVariant | undefined;
-
-    if (matchedIds.length > 0) {
-      // Use first matching audience
-      selectedVariant = variants.find((v) => v.audienceId === matchedIds[0]);
-    }
-
-    // Fall back to fallback variant if no match
-    if (!selectedVariant) {
-      selectedVariant = variants.find((v) => v.isFallback);
-    }
-
-    // Ultimate fallback if nothing found
-    if (!selectedVariant) {
-      selectedVariant = variants[0];
-    }
-
-    setVariant(selectedVariant);
+  // Pass 2: fetch country from /api/country and re-match if it adds new info
+  useEffect(() => {
+    if (greetingParam || serverCountry) return; // already have what we need
+    fetch('/api/country')
+      .then((r) => r.json())
+      .then(({ country }: { country: string | null }) => {
+        if (country) {
+          setVariant(selectVariant(variants, audiences, country, greetingParam));
+        }
+      })
+      .catch(() => { /* country fetch failed — keep time-based variant */ });
   }, [variants, audiences, serverCountry, greetingParam]);
 
   // Show nothing until client-side matching completes (prevents flash)

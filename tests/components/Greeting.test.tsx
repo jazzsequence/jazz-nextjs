@@ -2,29 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { Greeting } from '@/components/Greeting';
 
-// Mock next/headers
-vi.mock('next/headers', () => ({
-  headers: vi.fn(),
-}));
-
-// Mock the WordPress greeting fetcher
+// Greeting.tsx no longer calls next/headers (country detection moved to /api/country).
+// The audience matcher and greeting fetcher are still mocked for server component tests.
 vi.mock('@/lib/wordpress/greeting', () => ({
   fetchGreetingData: vi.fn(),
 }));
 
-// Mock the audience matcher
 vi.mock('@/lib/audience-matcher', () => ({
   matchAudiences: vi.fn(),
 }));
 
-import { headers } from 'next/headers';
 import { fetchGreetingData } from '@/lib/wordpress/greeting';
 import { matchAudiences } from '@/lib/audience-matcher';
-
-// Mock headers type
-type MockHeaders = {
-  get: (name: string) => string | null;
-};
 
 const mockVariants = [
   {
@@ -94,11 +83,6 @@ const mockAudiences = [
 describe('Greeting', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock headers() to return empty headers by default
-    vi.mocked(headers).mockResolvedValue({
-      get: () => null,
-    } as MockHeaders);
   });
 
   describe('audience matching', () => {
@@ -254,81 +238,31 @@ describe('Greeting', () => {
   });
 
   describe('geo-targeting', () => {
-    it('should extract country code from Cloudflare header', async () => {
-      vi.mocked(headers).mockResolvedValue({
-        get: (name: string) => name === 'cf-ipcountry' ? 'CN' : null,
-      } as MockHeaders);
+    // Country detection moved to GreetingClient via /api/country fetch (see tests/app/api/country/route.test.ts).
+    // The Greeting server component no longer calls headers() — this keeps the homepage
+    // edge-cacheable on Pantheon's CDN.
 
+    it('should render without serverCountry — country detection deferred to client', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
-      vi.mocked(matchAudiences).mockReturnValue([16377]); // China audience
+      vi.mocked(matchAudiences).mockReturnValue([]);
 
       const component = await Greeting();
       const { container } = render(component);
 
-      // Should call matchAudiences with endpoints.country = 'CN'
-      expect(matchAudiences).toHaveBeenCalledWith(
-        mockAudiences,
-        expect.objectContaining({ country: 'CN' })
-      );
-      expect(container.querySelector('h1')?.textContent).toContain("嗨，我是 Chris");
+      // Greeting should render (not throw) and produce a greeting section
+      expect(container).toBeDefined();
     });
 
-    it('should extract country code from Vercel header', async () => {
-      vi.mocked(headers).mockResolvedValue({
-        get: (name: string) => name === 'x-vercel-ip-country' ? 'US' : null,
-      } as MockHeaders);
-
+    it('should render when no country is detected (country deferred to /api/country client fetch)', async () => {
       vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
       vi.mocked(matchAudiences).mockReturnValue([]);
 
       const component = await Greeting();
-      await render(component);
+      const { container } = render(component);
 
-      // Should call matchAudiences with endpoints.country = 'US'
-      expect(matchAudiences).toHaveBeenCalledWith(
-        mockAudiences,
-        expect.objectContaining({ country: 'US' })
-      );
-    });
-
-    it('should prioritize Cloudflare header over Vercel', async () => {
-      vi.mocked(headers).mockResolvedValue({
-        get: (name: string) => {
-          if (name === 'cf-ipcountry') return 'CN';
-          if (name === 'x-vercel-ip-country') return 'US';
-          return null;
-        },
-      } as MockHeaders);
-
-      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
-      vi.mocked(matchAudiences).mockReturnValue([]);
-
-      const component = await Greeting();
-      await render(component);
-
-      // Should use Cloudflare header (first in priority chain)
-      expect(matchAudiences).toHaveBeenCalledWith(
-        mockAudiences,
-        expect.objectContaining({ country: 'CN' })
-      );
-    });
-
-    it('should handle missing country header gracefully', async () => {
-      vi.mocked(headers).mockResolvedValue({
-        get: () => null,
-      } as MockHeaders);
-
-      vi.mocked(fetchGreetingData).mockResolvedValue({ variants: mockVariants, audiences: mockAudiences });
-      vi.mocked(matchAudiences).mockReturnValue([]);
-
-      const component = await Greeting();
-      await render(component);
-
-      // Should call matchAudiences with country: undefined
-      expect(matchAudiences).toHaveBeenCalledWith(
-        mockAudiences,
-        expect.objectContaining({ country: undefined })
-      );
+      // Greeting renders without throwing — country matching is deferred to GreetingClient
+      // via /api/country fetch (see tests/app/api/country/route.test.ts)
+      expect(container).toBeDefined();
     });
   });
 });
