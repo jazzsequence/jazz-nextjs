@@ -24,33 +24,77 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://jazzsequence.com';
+
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const { name, description } = await fetchSiteInfo();
     return {
+      metadataBase: new URL(BASE_URL),
       title: {
         default: name,
         template: `%s | ${name}`,
       },
       description,
+      openGraph: {
+        type: 'website',
+        siteName: name,
+        locale: 'en_US',
+      },
+      twitter: {
+        card: 'summary_large_image',
+      },
     };
   } catch {
     // Fallback if WordPress is unreachable at build time
     return {
+      metadataBase: new URL(BASE_URL),
       title: {
         default: "jazzsequence",
         template: "%s | jazzsequence",
       },
       description: "Chris Reynolds' personal site.",
+      openGraph: {
+        type: 'website',
+        siteName: 'jazzsequence',
+        locale: 'en_US',
+      },
+      twitter: {
+        card: 'summary_large_image',
+      },
     };
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  let siteName = 'jazzsequence';
+  try {
+    const siteInfo = await fetchSiteInfo();
+    siteName = siteInfo.name;
+  } catch {
+    // Fallback to default site name if WordPress is unreachable
+  }
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebSite',
+        url: BASE_URL,
+        name: siteName,
+      },
+      {
+        '@type': 'Person',
+        name: 'Chris Reynolds',
+        url: BASE_URL,
+      },
+    ],
+  };
+
   return (
     <html lang="en">
       <head>
@@ -63,6 +107,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {children}
       </body>
     </html>
