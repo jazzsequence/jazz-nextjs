@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { fetchMenuItems, fetchPostsWithPagination } from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
@@ -10,6 +11,14 @@ export const revalidate = 3600;
 
 interface PageProps {
   params: Promise<{ page: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const page = parseInt((await params).page, 10);
+  return {
+    title: `Posts — Page ${page}`,
+    robots: { index: false, follow: true },
+  };
 }
 
 interface PostsData {

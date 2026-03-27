@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { fetchMenuItems, fetchPostsWithPagination } from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
 import PostsList from '@/components/PostsList';
@@ -6,6 +7,12 @@ import Pagination from '@/components/Pagination';
 import Footer from '@/components/Footer';
 
 export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: 'Posts',
+  description: 'Writing by Chris Reynolds — development, music, games, and life.',
+  alternates: { canonical: '/posts' },
+};
 
 interface PostsPageProps {
   searchParams: Promise<{ page?: string }>;

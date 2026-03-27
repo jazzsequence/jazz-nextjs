@@ -1,5 +1,7 @@
+import type { Metadata } from 'next';
 import { fetchPost, fetchMenuItems, WPNotFoundError, WPForbiddenError } from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
+import { decodeHtmlEntities } from '@/lib/utils/html';
 import PostContent from '@/components/PostContent';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -9,6 +11,40 @@ export const revalidate = 3600;
 
 interface PostPageProps {
   params: Promise<{ slug: string }>;
+}
+
+export async function generateMetadata({ params }: PostPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  try {
+    const post = await fetchPost<WPPost>('posts', slug, {
+      embed: true,
+      isr: { revalidate: 3600, tags: ['posts'] },
+    });
+    const title = decodeHtmlEntities(post.title.rendered);
+    const description = post.excerpt?.rendered
+      ? post.excerpt.rendered.replace(/<[^>]+>/g, '').trim().slice(0, 160)
+      : undefined;
+    const featuredImage = post._embedded?.['wp:featuredmedia']?.[0];
+
+    return {
+      title,
+      description,
+      alternates: { canonical: `/posts/${slug}` },
+      openGraph: {
+        type: 'article',
+        title,
+        description,
+        url: `/posts/${slug}`,
+        publishedTime: post.date_gmt,
+        modifiedTime: post.modified_gmt,
+        images: featuredImage
+          ? [{ url: featuredImage.source_url, alt: featuredImage.alt_text }]
+          : [],
+      },
+    };
+  } catch {
+    return { title: 'Post Not Found' };
+  }
 }
 
 export default async function PostPage({ params }: PostPageProps) {

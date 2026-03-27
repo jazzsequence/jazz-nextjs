@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import PostsPage from '@/app/posts/page';
+import PostsPage, { metadata } from '@/app/posts/page';
 import * as wpClient from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
 
@@ -140,5 +140,21 @@ describe('PostsPage', () => {
     render(page);
 
     expect(screen.getByText(/failed to load posts/i)).toBeInTheDocument();
+  });
+});
+
+describe('posts page metadata', () => {
+  it('exports static metadata with title Posts', () => {
+    expect(metadata.title).toBe('Posts');
+  });
+
+  it('exports static metadata with description', () => {
+    expect(metadata.description).toBe(
+      'Writing by Chris Reynolds — development, music, games, and life.'
+    );
+  });
+
+  it('exports static metadata with canonical /posts', () => {
+    expect(metadata.alternates?.canonical).toBe('/posts');
   });
 });
