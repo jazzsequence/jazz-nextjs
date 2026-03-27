@@ -1,64 +1,65 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, useEffect, useCallback, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+
+interface SearchBarProps {
+  /** Controlled open state — owned by Navigation so it can animate nav items out. */
+  isOpen: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+}
 
 /**
- * Accessible collapsible search bar.
+ * Accessible desktop search bar — controlled by Navigation.
  *
- * Collapsed: icon-only trigger button.
- * Expanded:  icon stays as prefix, input expands right via framer-motion width animation.
+ * When open: icon becomes X, input fills the nav area (nav items animate out separately).
+ * When closed: icon-only button.
  *
- * WCAG 2.1 AA requirements satisfied:
- *   - role="search" on the <form>
- *   - trigger: aria-label="Search", aria-expanded, aria-controls="search-input"
- *   - input:   id="search-input", aria-label="Search query", type="search"
- *   - Escape collapses and returns focus to trigger
- *   - Blur collapses only when input is empty (allows submit click)
+ * WCAG 2.1 AA:
+ *   - role="search" on <form>
+ *   - aria-label / aria-expanded / aria-controls on trigger
+ *   - focus moves to input on open; returns to trigger on close
+ *   - Escape closes and restores focus
  */
-export default function SearchBar() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function SearchBar({ isOpen, onOpen, onClose }: SearchBarProps) {
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Move focus to input whenever the bar expands
   useEffect(() => {
     if (isOpen) {
       inputRef.current?.focus();
+    } else {
+      setQuery('');
     }
   }, [isOpen]);
-
-  const open = useCallback(() => setIsOpen(true), []);
-
-  const close = useCallback(() => {
-    setIsOpen(false);
-    setQuery('');
-    // Return focus to the trigger button
-    triggerRef.current?.focus();
-  }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Escape') {
-        close();
+        onClose();
+        triggerRef.current?.focus();
       }
     },
-    [close]
+    [onClose]
   );
 
-  const handleBlur = useCallback(() => {
-    // Only collapse if the input is empty — if the user has typed something
-    // they may be clicking the submit button, so keep it open.
-    if (!query.trim()) {
-      close();
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement>) => {
+    // If focus moved to another element within the header (e.g. the hamburger button
+    // that appears while search is open), don't collapse — let that click fire normally.
+    const relatedTarget = e.relatedTarget as HTMLElement | null;
+    const header = e.currentTarget.closest('header');
+    if (relatedTarget && header?.contains(relatedTarget)) {
+      return;
     }
-  }, [query, close]);
+    if (!query.trim()) {
+      onClose();
+    }
+  }, [query, onClose]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent<HTMLFormElement>) => {
-      // Let the browser navigate natively via form action — no router needed.
-      // Prevent submission only if the query is empty.
       if (!query.trim()) {
         e.preventDefault();
       }
@@ -72,45 +73,55 @@ export default function SearchBar() {
       method="get"
       action="/search"
       onSubmit={handleSubmit}
-      className="flex items-center"
+      className="flex items-center gap-2"
+      style={{
+        flex: isOpen ? '1 1 0%' : '0 0 auto',
+        // When opening: grow immediately. When closing: wait for input to fade out (0.15s) then shrink.
+        transition: isOpen ? 'flex 0.2s ease-in-out' : 'flex 0.15s ease-in-out 0.15s',
+      }}
     >
-      {/* Trigger button — always visible */}
+      {/* Magnifying glass — opens search; clicking again closes (if input is empty) */}
       <button
         ref={triggerRef}
         type="button"
         aria-label="Search"
         aria-expanded={isOpen}
         aria-controls="search-input"
-        onClick={open}
-        className="flex items-center justify-center w-8 h-8 text-brand-text-sub hover:text-brand-cyan transition-colors rounded focus-visible:ring-2 focus-visible:ring-brand-cyan focus-visible:outline-none"
+        onClick={isOpen && !query.trim() ? onClose : onOpen}
+        className="flex-shrink-0 flex items-center justify-center w-8 h-8 text-brand-text-sub hover:text-brand-cyan transition-colors rounded focus-visible:ring-2 focus-visible:ring-brand-cyan focus-visible:outline-none"
       >
         <i className="fa-solid fa-magnifying-glass text-sm" aria-hidden="true" />
       </button>
 
-      {/* Animated input container — expands to the right */}
-      <motion.div
-        animate={{ width: isOpen ? 240 : 0 }}
-        initial={{ width: 0 }}
-        transition={{ duration: 0.2, ease: 'easeInOut' }}
-        style={{ overflow: 'hidden' }}
-        className="flex items-center"
-      >
-        <input type="hidden" name="type" value="all" />
-        <input
-          ref={inputRef}
-          id="search-input"
-          type="search"
-          name="q"
-          aria-label="Search query"
-          autoComplete="off"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
-          placeholder="Search…"
-          className="w-full bg-transparent border-b border-brand-border text-brand-text-sub placeholder-brand-muted text-sm px-2 py-1 focus-visible:outline-none focus-visible:border-brand-cyan transition-colors"
-        />
-      </motion.div>
+      {/* Input — fades in when open, fills remaining nav width via flex-1 */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="search-input-container"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="flex-1 flex items-center"
+          >
+            <input type="hidden" name="type" value="all" />
+            <input
+              ref={inputRef}
+              id="search-input"
+              type="search"
+              name="q"
+              aria-label="Search query"
+              autoComplete="off"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={(e) => handleBlur(e)}
+              placeholder="Search…"
+              className="w-full bg-transparent border-b border-brand-border text-brand-text-sub placeholder-brand-muted text-sm px-2 py-1 focus-visible:outline-none focus-visible:border-brand-cyan transition-colors"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </form>
   );
 }

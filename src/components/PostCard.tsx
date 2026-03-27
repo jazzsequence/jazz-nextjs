@@ -9,9 +9,11 @@ interface PostCardProps {
   post: WPPost;
   /** Preload this card's image — set true for above-the-fold cards to prevent CLS */
   priority?: boolean;
+  /** Override the excerpt with custom content (e.g. highlighted search result text) */
+  excerptContent?: React.ReactNode;
 }
 
-export default function PostCard({ post, priority = false }: PostCardProps) {
+export default function PostCard({ post, priority = false, excerptContent }: PostCardProps) {
   const featuredMedia = post._embedded?.['wp:featuredmedia']?.[0];
   const hasImage = post.featured_media > 0 && featuredMedia;
   const formattedDate = format(new Date(post.date), 'MMMM d, yyyy');
@@ -84,9 +86,9 @@ export default function PostCard({ post, priority = false }: PostCardProps) {
 
       {/* Card body — excerpt and read more */}
       <div className="p-4">
-        {sanitizedExcerpt && (
+        {(excerptContent ?? (sanitizedExcerpt || null)) && (
           <p className="text-brand-text-sub text-sm leading-relaxed mb-3 line-clamp-3">
-            {sanitizedExcerpt}
+            {excerptContent ?? sanitizedExcerpt}
           </p>
         )}
         <Link

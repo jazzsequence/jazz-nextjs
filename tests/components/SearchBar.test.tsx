@@ -1,184 +1,169 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import SearchBar from '@/components/SearchBar';
 
-// framer-motion uses CSS animations; mock it to render children directly
+// framer-motion: render children directly, skip animations
 vi.mock('framer-motion', () => ({
-  motion: {
-    div: ({
-      children,
-      animate: _animate,
-      initial: _initial,
-      transition: _transition,
-      style,
-      className,
-      ...rest
-    }: {
-      children?: React.ReactNode;
-      animate?: unknown;
-      initial?: unknown;
-      transition?: unknown;
-      style?: React.CSSProperties;
-      className?: string;
-      [key: string]: unknown;
-    }) => (
-      <div style={style} className={className} {...rest}>
-        {children}
-      </div>
-    ),
-  },
   AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  motion: {
+    div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }) => <div {...props}>{children}</div>,
+  },
 }));
 
-// SearchBar uses native form GET submission (no useRouter) — no router mock needed.
+// Wrap in <header> so closest('header') works in handleBlur relatedTarget check —
+// matching the real DOM context where SearchBar lives inside Navigation's <header>.
+function renderClosed() {
+  const onOpen = vi.fn();
+  const onClose = vi.fn();
+  const { rerender } = render(
+    <header><SearchBar isOpen={false} onOpen={onOpen} onClose={onClose} /></header>
+  );
+  return { onOpen, onClose, rerender };
+}
+
+function renderOpen() {
+  const onClose = vi.fn();
+  const { rerender } = render(
+    <header><SearchBar isOpen onOpen={vi.fn()} onClose={onClose} /></header>
+  );
+  return { onClose, rerender };
+}
 
 describe('SearchBar', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => { vi.clearAllMocks(); });
 
   describe('collapsed (default) state', () => {
     it('renders a button with aria-label="Search"', () => {
-      render(<SearchBar />);
-      const btn = screen.getByRole('button', { name: 'Search' });
-      expect(btn).toBeInTheDocument();
+      renderClosed();
+      expect(screen.getByRole('button', { name: 'Search' })).toBeInTheDocument();
     });
 
-    it('button has aria-expanded="false" initially', () => {
-      render(<SearchBar />);
-      const btn = screen.getByRole('button', { name: 'Search' });
-      expect(btn).toHaveAttribute('aria-expanded', 'false');
+    it('button has aria-expanded="false" when closed', () => {
+      renderClosed();
+      expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'false');
     });
 
     it('button has aria-controls="search-input"', () => {
-      render(<SearchBar />);
-      const btn = screen.getByRole('button', { name: 'Search' });
-      expect(btn).toHaveAttribute('aria-controls', 'search-input');
+      renderClosed();
+      expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-controls', 'search-input');
     });
 
-    it('form with role="search" is present in the collapsed state', () => {
-      render(<SearchBar />);
-      // The animated container is collapsed (width: 0), but the form is always mounted.
-      // We confirm the search landmark is present even before the bar is opened.
-      const form = screen.getByRole('search');
-      expect(form).toBeInTheDocument();
+    it('form with role="search" is present', () => {
+      renderClosed();
+      expect(screen.getByRole('search')).toBeInTheDocument();
+    });
+
+    it('input is not rendered when closed', () => {
+      renderClosed();
+      expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    });
+
+    it('calls onOpen when button is clicked while closed', () => {
+      const { onOpen } = renderClosed();
+      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+      expect(onOpen).toHaveBeenCalledOnce();
     });
   });
 
   describe('expanded state', () => {
-    it('expands and shows input when button is clicked', () => {
-      render(<SearchBar />);
-      const btn = screen.getByRole('button', { name: 'Search' });
-      fireEvent.click(btn);
-      const input = screen.getByRole('searchbox');
-      expect(input).toBeInTheDocument();
+    it('renders the search input when open', () => {
+      renderOpen();
+      expect(screen.getByRole('searchbox')).toBeInTheDocument();
     });
 
-    it('aria-expanded becomes "true" after clicking trigger', () => {
-      render(<SearchBar />);
-      const btn = screen.getByRole('button', { name: 'Search' });
-      fireEvent.click(btn);
-      expect(btn).toHaveAttribute('aria-expanded', 'true');
+    it('button has aria-expanded="true" when open', () => {
+      renderOpen();
+      expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'true');
     });
 
     it('input has id="search-input"', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-      const input = screen.getByRole('searchbox');
-      expect(input).toHaveAttribute('id', 'search-input');
+      renderOpen();
+      expect(screen.getByRole('searchbox')).toHaveAttribute('id', 'search-input');
     });
 
     it('input has aria-label="Search query"', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-      const input = screen.getByRole('searchbox');
-      expect(input).toHaveAttribute('aria-label', 'Search query');
+      renderOpen();
+      expect(screen.getByRole('searchbox')).toHaveAttribute('aria-label', 'Search query');
     });
 
     it('input has type="search"', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-      const input = screen.getByRole('searchbox');
-      expect(input).toHaveAttribute('type', 'search');
+      renderOpen();
+      expect(screen.getByRole('searchbox')).toHaveAttribute('type', 'search');
     });
 
     it('input has autoComplete="off"', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-      const input = screen.getByRole('searchbox');
-      expect(input).toHaveAttribute('autocomplete', 'off');
+      renderOpen();
+      expect(screen.getByRole('searchbox')).toHaveAttribute('autoComplete', 'off');
+    });
+
+    it('input has name=q', () => {
+      renderOpen();
+      expect(screen.getByRole('searchbox')).toHaveAttribute('name', 'q');
     });
   });
 
   describe('collapse behaviour', () => {
-    it('collapses on Escape key press', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-      // Verify it is open
-      expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'true');
-
-      const input = screen.getByRole('searchbox');
-      fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
-
-      expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'false');
+    it('calls onClose on Escape key press', () => {
+      const { onClose } = renderOpen();
+      fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' });
+      expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it('collapses on blur when input is empty', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    it('calls onClose on blur when input is empty', () => {
+      const { onClose } = renderOpen();
       const input = screen.getByRole('searchbox');
-      // blur with empty value
-      fireEvent.blur(input);
-      expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'false');
+      // relatedTarget is null — focus left the header entirely
+      fireEvent.blur(input, { relatedTarget: null });
+      expect(onClose).toHaveBeenCalledOnce();
     });
 
-    it('does NOT collapse on blur when input has a value', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    it('does NOT call onClose on blur when input has a value', () => {
+      const { onClose } = renderOpen();
       const input = screen.getByRole('searchbox');
       fireEvent.change(input, { target: { value: 'jazz' } });
-      fireEvent.blur(input);
-      // Should remain open so the user can still click submit
-      expect(screen.getByRole('button', { name: 'Search' })).toHaveAttribute('aria-expanded', 'true');
+      fireEvent.blur(input, { relatedTarget: null });
+      expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('does NOT call onClose on blur when focus moves to another element inside the header', () => {
+      const { onClose } = renderOpen();
+      const input = screen.getByRole('searchbox');
+      // The hamburger button lives inside the same <header> that wraps SearchBar in real usage.
+      // Append a button to the header so relatedTarget check can find it via closest('header').
+      const headerEl = input.closest('header')!;
+      const hamburger = document.createElement('button');
+      headerEl.appendChild(hamburger);
+      fireEvent.blur(input, { relatedTarget: hamburger });
+      expect(onClose).not.toHaveBeenCalled();
+      headerEl.removeChild(hamburger);
     });
   });
 
   describe('search submission', () => {
-    it('form has method=get and action=/search for native navigation', () => {
-      render(<SearchBar />);
+    it('form has method=get and action=/search', () => {
+      renderClosed();
       const form = screen.getByRole('search');
       expect(form).toHaveAttribute('method', 'get');
       expect(form).toHaveAttribute('action', '/search');
     });
 
-    it('input has name=q so it becomes the query param', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-      const input = screen.getByRole('searchbox');
-      expect(input).toHaveAttribute('name', 'q');
-    });
-
-    it('does not submit (prevents default) if query is blank', () => {
-      render(<SearchBar />);
-      fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    it('does not submit when query is empty', () => {
+      renderOpen();
       const form = screen.getByRole('search');
-      // jsdom doesn't navigate, but form.submit should not throw
       expect(() => fireEvent.submit(form)).not.toThrow();
     });
   });
 
   describe('accessibility', () => {
-    it('has role="search" on the wrapping form', () => {
-      render(<SearchBar />);
-      const form = screen.getByRole('search');
-      expect(form).toBeInTheDocument();
+    it('has role="search" on the form', () => {
+      renderClosed();
+      expect(screen.getByRole('search')).toBeInTheDocument();
     });
 
-    it('icon inside trigger button has aria-hidden="true"', () => {
-      render(<SearchBar />);
-      const btn = screen.getByRole('button', { name: 'Search' });
-      const icon = btn.querySelector('[aria-hidden="true"]');
-      expect(icon).toBeInTheDocument();
+    it('has a magnifying glass icon with aria-hidden', () => {
+      renderClosed();
+      const icon = document.querySelector('.fa-magnifying-glass');
+      expect(icon).toHaveAttribute('aria-hidden', 'true');
     });
   });
 });

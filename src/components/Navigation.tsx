@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'framer-motion';
 import { transformMenuUrl } from '@/lib/url-transform';
 import { decodeHtmlEntities } from '@/lib/utils/html';
 import type { WPMenuItem } from '@/lib/wordpress/types';
@@ -147,8 +148,15 @@ export default function Navigation({
   className = '',
 }: NavigationProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const organizedItems = organizeMenuItems(menuItems);
   const closeMenu = useCallback(() => setIsOpen(false), []);
+
+  // Lock page scroll when mobile menu is open so only the menu panel scrolls
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
   return (
     <header className={`sticky top-0 z-50 bg-brand-header border-b border-brand-border backdrop-blur-sm ${className}`}>
@@ -164,21 +172,39 @@ export default function Navigation({
           </Link>
 
           {/* Desktop navigation — hidden on mobile */}
-          <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-2">
-            <SearchBar />
-            {isLoading && (
-              <span className="text-brand-muted text-sm font-heading">Loading menu...</span>
-            )}
-            {error && (
-              <span className="text-red-400 text-sm font-heading">{error}</span>
-            )}
-            {!isLoading && !error && organizedItems.length > 0 && (
-              <ul className="flex items-center gap-1">
-                {organizedItems.map(item => (
-                  <MenuItem key={item.id} item={item} />
-                ))}
-              </ul>
-            )}
+          <nav role="navigation" aria-label="Main navigation" className="hidden md:flex items-center gap-2 flex-1 justify-end">
+            <SearchBar
+              isOpen={isSearchOpen}
+              onOpen={() => setIsSearchOpen(true)}
+              onClose={() => setIsSearchOpen(false)}
+            />
+            <AnimatePresence>
+              {!isSearchOpen && (
+                <motion.div
+                  layout
+                  key="nav-items"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center gap-1"
+                >
+                  {isLoading && (
+                    <span className="text-brand-muted text-sm font-heading">Loading menu...</span>
+                  )}
+                  {error && (
+                    <span className="text-red-400 text-sm font-heading">{error}</span>
+                  )}
+                  {!isLoading && !error && organizedItems.length > 0 && (
+                    <ul className="flex items-center gap-1">
+                      {organizedItems.map(item => (
+                        <MenuItem key={item.id} item={item} />
+                      ))}
+                    </ul>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </nav>
 
           {/* Hamburger button — mobile only */}
@@ -218,8 +244,24 @@ export default function Navigation({
           {error && (
             <p className="px-4 py-3 text-red-400 text-sm font-heading">{error}</p>
           )}
-          {!isLoading && !error && organizedItems.length > 0 && (
+          {!isLoading && !error && (
             <ul className="py-2">
+              {/* Mobile search — always visible at top of hamburger menu */}
+              <li className="px-4 py-3 border-b border-brand-border">
+                <form role="search" method="get" action="/search" className="flex items-center gap-2">
+                  <input type="hidden" name="type" value="all" />
+                  <i className="fa-solid fa-magnifying-glass text-brand-text-sub text-sm flex-shrink-0" aria-hidden="true" />
+                  <label htmlFor="mobile-search-input" className="sr-only">Search</label>
+                  <input
+                    id="mobile-search-input"
+                    type="search"
+                    name="q"
+                    placeholder="Search…"
+                    autoComplete="off"
+                    className="flex-1 bg-transparent border-b border-brand-border text-brand-text-sub placeholder-brand-muted text-sm py-1 focus-visible:outline-none focus-visible:border-brand-cyan transition-colors"
+                  />
+                </form>
+              </li>
               {organizedItems.map(item => (
                 <MobileMenuItem key={item.id} item={item} onClose={closeMenu} />
               ))}

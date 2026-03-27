@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import DOMPurify from 'isomorphic-dompurify'
 import PostCard from './PostCard'
 import type { WPPost } from '@/lib/wordpress/types'
 
@@ -107,20 +108,35 @@ export default function SearchResults({
     </div>
   )
 }
+function highlightTerm(text: string, term: string): React.ReactNode[] {
+  if (!term) return [text]
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escaped})`, 'gi')
+  const parts = text.split(regex)
+  return parts.map((part, i) =>
+    regex.test(part)
+      ? <mark key={i} className="bg-brand-cyan/20 text-brand-cyan rounded-sm px-0.5 not-italic">{part}</mark>
+      : part
+  )
+}
 
 /**
- * SearchResultCard — wraps PostCard with a post-type badge overlay.
- * PostCard renders the excerpt natively; no need to duplicate it here.
+ * SearchResultCard — PostCard with hideExcerpt + a highlighted excerpt below.
+ * Using hideExcerpt avoids showing two excerpts; the highlighted one replaces it.
  */
 function SearchResultCard({
   post,
-  query: _query,
+  query,
   priority = false,
 }: {
   post: WPPost
   query: string
   priority?: boolean
 }) {
+  const rawExcerpt = post.excerpt.rendered
+    ? DOMPurify.sanitize(post.excerpt.rendered, { ALLOWED_TAGS: [] }).trim()
+    : ''
+
   return (
     <div className="relative">
       {/* Post-type badge */}
@@ -128,7 +144,12 @@ function SearchResultCard({
         {post.type}
       </span>
 
-      <PostCard post={post} priority={priority} />
+      {/* Pass highlighted excerpt into PostCard — replaces plain excerpt, no duplicate */}
+      <PostCard
+        post={post}
+        priority={priority}
+        excerptContent={rawExcerpt ? highlightTerm(rawExcerpt, query) : undefined}
+      />
     </div>
   )
 }
