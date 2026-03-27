@@ -273,8 +273,9 @@ flowchart LR
         T["test"]
         L["live"]
         F -->|"PR merged"| M
-        M -->|"merge"| T
+        M -->|"merge (test first)"| T
         T -->|"merge"| L
+        M -->|"merge (skip test)"| L
     end
 
     subgraph pantheon["Pantheon Environments"]
@@ -294,11 +295,17 @@ flowchart LR
 | Branch | Pantheon Environment | Trigger |
 |---|---|---|
 | `feature/*` | Multidev (`pr-N`) | Open pull request |
-| `main` | Dev | Push / PR merge |
+| `main` | Dev | Push / PR merge (always) |
 | `test` | Test | Push/merge → CI creates `pantheon_test_N` tag |
 | `live` | Live | Push/merge → CI creates `pantheon_live_N` tag |
 
-Merging `main` → `test` or `test` → `live` automatically creates the correct Pantheon tag via the [promote-pantheon](.github/workflows/promote-pantheon.yml) GitHub Actions workflow. No manual tagging required.
+Promotion is **non-linear and tag-based** — there is no forced sequence:
+- `main` always auto-deploys to **Dev** via the Pantheon GitHub App.
+- `main` can be merged to **`test`** to validate in the test environment before going live.
+- `main` can be merged directly to **`live`** to publish immediately without going through `test`.
+- `test` can be merged to **`live`** via the traditional path.
+
+Merging to `test` or `live` automatically creates the correct Pantheon deployment tag (`pantheon_test_N` or `pantheon_live_N`) via the [promote-pantheon](.github/workflows/promote-pantheon.yml) GitHub Actions workflow. No manual tagging required.
 
 See [configuration/DEPLOYMENT.md](docs/configuration/DEPLOYMENT.md) for complete deployment documentation.
 
