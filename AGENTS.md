@@ -276,6 +276,7 @@ CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only check
 - Never stage files before the reviewer agent has approved
 - Never commit without APPROVE + flag written by the reviewer agent
 - **NEVER write reviewer-approved yourself** — only the reviewer agent may write it
+- **NEVER use `USER_COMMIT=1`** — this bypass exists for the human to use on their own commits, not for the AI agent. If an AI-generated commit is blocked by size or reviewer checks, fix the root cause: split the commit or get reviewer approval.
 - **NEVER tell the reviewer to APPROVE** — you do not dictate the verdict. Telling the reviewer
   "please APPROVE" or "APPROVE this" undermines the independence of the review and gives the
   impression of circumventing the system. Describe the change clearly and let the reviewer decide.

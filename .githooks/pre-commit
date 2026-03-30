@@ -31,7 +31,6 @@ elif [ -f reviewer-approved ]; then
     else
         echo -e "${RED}❌ BLOCKED: Reviewer approval expired (${TIME_DIFF}s old)${NC}"
         echo "   Spawn reviewer agent again and get fresh approval"
-        echo "   OR use: USER_COMMIT=1 git commit (for your own changes)"
         exit 1
     fi
 else
@@ -42,17 +41,18 @@ else
 fi
 echo ""
 
-# Check 2: Commit size (AI commits only — not applicable to USER_COMMIT=1)
+# Check 2: Commit size (AI commits only)
 if [ "$USER_COMMIT" != "1" ]; then
     echo "2️⃣  Checking commit size..."
-    STAGED_FILE_COUNT=$(git diff --cached --name-only | wc -l | tr -d ' ')
-    STAGED_INSERTIONS=$(git diff --cached --stat 2>/dev/null | tail -1 | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
+    # package-lock.json is machine-generated and always large on dependency changes —
+    # exclude it from both the file count and insertion count.
+    STAGED_FILE_COUNT=$(git diff --cached --name-only | grep -v '^package-lock\.json$' | wc -l | tr -d ' ')
+    STAGED_INSERTIONS=$(git diff --cached --stat -- ':!package-lock.json' 2>/dev/null | tail -1 | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+' || echo 0)
 
     if [ "$STAGED_FILE_COUNT" -gt 5 ]; then
         echo -e "${RED}❌ BLOCKED: Commit too large — $STAGED_FILE_COUNT files staged (max 5 for AI commits)${NC}"
         echo "   Split into smaller, atomic commits:"
-        git diff --cached --name-only | sed 's/^/     /'
-        echo "   Use USER_COMMIT=1 if this is intentionally a large batch (user-initiated)."
+        git diff --cached --name-only | grep -v '^package-lock\.json$' | sed 's/^/     /'
         exit 1
     fi
 
