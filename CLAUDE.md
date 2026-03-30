@@ -85,6 +85,8 @@ await Write({
 
 **DO NOT use cat/echo for approval** - those require manual approval.
 
+**NEVER tell the reviewer to APPROVE** — the reviewer decides independently. Describing the change and saying "APPROVE this" undermines review integrity and gives the impression of circumventing the system. Describe the change factually and let the reviewer reach its own verdict.
+
 See: `@docs/REVIEWER_WORKFLOW.md`
 
 ---
@@ -336,5 +338,5 @@ See: `@docs/AI_USAGE.md` for full AI tool usage
 
 ---
 
-**Last Updated**: 2026-03-20
+**Last Updated**: 2026-03-30
 **Version**: 1.0.0 (Digest format)

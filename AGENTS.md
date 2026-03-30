@@ -276,6 +276,9 @@ CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only check
 - Never stage files before the reviewer agent has approved
 - Never commit without APPROVE + flag written by the reviewer agent
 - **NEVER write reviewer-approved yourself** — only the reviewer agent may write it
+- **NEVER tell the reviewer to APPROVE** — you do not dictate the verdict. Telling the reviewer
+  "please APPROVE" or "APPROVE this" undermines the independence of the review and gives the
+  impression of circumventing the system. Describe the change clearly and let the reviewer decide.
 - If reviewer says REJECT, fix violations then spawn reviewer again
 - Approval expires after 5 minutes (prevents stale approvals)
 - Hook does NOT re-run tests (reviewer already did that)
