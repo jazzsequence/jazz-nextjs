@@ -138,4 +138,44 @@ test.describe('Revalidation API', () => {
     expect(body.tags).toContain('games')
     expect(body.tags).toContain('game-twilight-imperium')
   })
+
+  // ── surrogate_keys payload (webhook mu-plugin format) ──────────────────────
+
+  test('should accept surrogate_keys array in request body', async ({ request }) => {
+    const response = await request.post('/api/revalidate', {
+      headers: { 'X-Revalidate-Secret': revalidateSecret },
+      data: {
+        surrogate_keys: ['post-123', 'post-list', 'term-5'],
+      },
+    })
+
+    expect(response.status()).toBe(200)
+    const body = await response.json()
+    expect(body.success).toBe(true)
+    expect(body.tags).toEqual(expect.arrayContaining(['post-123', 'post-list', 'term-5']))
+  })
+
+  test('should accept surrogate_keys via body secret field', async ({ request }) => {
+    // The webhook mu-plugin sends the secret in the body as well as the header
+    const response = await request.post('/api/revalidate', {
+      data: {
+        secret: revalidateSecret,
+        surrogate_keys: ['post-42', 'post-list'],
+      },
+    })
+
+    expect(response.status()).toBe(200)
+    const body = await response.json()
+    expect(body.success).toBe(true)
+    expect(body.tags).toContain('post-42')
+  })
+
+  test('surrogate_keys with no valid keys returns 400', async ({ request }) => {
+    const response = await request.post('/api/revalidate', {
+      headers: { 'X-Revalidate-Secret': revalidateSecret },
+      data: { surrogate_keys: [] },
+    })
+
+    expect(response.status()).toBe(400)
+  })
 })
