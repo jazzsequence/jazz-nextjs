@@ -681,34 +681,8 @@
   display: none;
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   FontAwesome font-display override
-   The jsDelivr CDN stylesheet does not set font-display, causing render
-   blocking. These @font-face rules shadow the CDN declarations and add
-   font-display: swap so the browser doesn't block rendering while the
-   woff2 files download.
-   ───────────────────────────────────────────────────────────────────────── */
-
-@font-face {
-  font-family: "Font Awesome 6 Free";
-  font-style: normal;
-  font-weight: 900;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/webfonts/fa-solid-900.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Font Awesome 6 Brands";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/webfonts/fa-brands-400.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Font Awesome 6 Free";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/webfonts/fa-regular-400.woff2") format("woff2");
-}
+/* Font Awesome @font-face overrides moved to app/layout.tsx as an inline
+   <style> placed after the jsDelivr <link>. This guarantees cascade order
+   so font-display: optional wins over jsDelivr's implicit font-display: block.
+   A <style> tag in this CSS bundle loads before the jsDelivr <link> and
+   would be overridden by it in Chromium — the inline approach is required. */

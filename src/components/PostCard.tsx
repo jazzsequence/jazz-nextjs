@@ -34,7 +34,7 @@ export default function PostCard({ post, priority = false, excerptContent }: Pos
             fill
             priority={priority}
             className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            sizes="(max-width: 768px) calc(100vw - 32px), (max-width: 1200px) 50vw, 33vw"
           />
         ) : (
           // Retrowave image placeholder — matches style guide Image Overlay section (#2d0b4e → #0b2d4e → #1a0d2e)
