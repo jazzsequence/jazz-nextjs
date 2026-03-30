@@ -6,10 +6,6 @@ import PostsList from '@/components/PostsList';
 import { Greeting } from '@/components/Greeting';
 import type { WPPost } from '@/lib/wordpress/types';
 
-interface HomePageProps {
-  searchParams: Promise<{ page?: string; greeting?: string }>;
-}
-
 interface PostsData {
   posts: WPPost[];
   totalPages: number;
@@ -41,12 +37,9 @@ async function fetchPostsData(page: number): Promise<PostsData> {
   }
 }
 
-export default async function HomePage({ searchParams }: HomePageProps) {
-  const params = await searchParams;
-  const page = Number(params?.page) || 1;
-
+export default async function HomePage() {
   const [postsData, menuItems] = await Promise.allSettled([
-    fetchPostsData(page),
+    fetchPostsData(1),
     fetchMenuItems(1698, {
       isr: { revalidate: 3600, tags: ['menu', 'header'] },
     }),
@@ -69,7 +62,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             when the client component resolves the correct variant. The greeting with
             py-12 padding + h1 + p runs ~220px; 200px is a stable floor. */}
         <div className="min-h-[200px]">
-          <Greeting searchParams={searchParams} />
+          <Greeting />
         </div>
 
         {postsError && (
@@ -87,7 +80,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         {!postsError && posts.length > 0 && (
           <>
             <PostsList posts={posts} />
-            <Pagination currentPage={page} totalPages={totalPages} basePath="/" />
+            <Pagination currentPage={1} totalPages={totalPages} basePath="/" />
           </>
         )}
       </main>

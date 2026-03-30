@@ -1,25 +1,17 @@
 import { fetchGreetingData } from '@/lib/wordpress/greeting';
 import { GreetingClient } from './GreetingClient';
 
-interface GreetingProps {
-  searchParams?: Promise<{ greeting?: string }>;
-}
-
-export async function Greeting({ searchParams }: GreetingProps = {}) {
+export async function Greeting() {
   try {
     const { variants, audiences } = await fetchGreetingData();
 
-    // Country detection is deferred to GreetingClient via /api/country.
-    // Keeping headers() out of this server component allows the homepage
-    // to be edge-cached by Pantheon's CDN — headers() forces no-store.
-    const params = searchParams ? await searchParams : undefined;
-    const greetingParam = params?.greeting;
-
+    // No searchParams here — accessing searchParams forces dynamic rendering
+    // (Cache-Control: no-store) on the homepage. The ?greeting= param is read
+    // client-side by GreetingClient via window.location.search instead.
     return (
       <GreetingClient
         variants={variants}
         audiences={audiences}
-        greetingParam={greetingParam}
       />
     );
   } catch (error) {

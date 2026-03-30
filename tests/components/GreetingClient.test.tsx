@@ -105,6 +105,33 @@ describe('GreetingClient', () => {
   });
 
   describe('query parameter testing', () => {
+    it('should read ?greeting= from window.location.search when no greetingParam prop', () => {
+      // Server no longer reads searchParams for greeting (would force dynamic rendering).
+      // GreetingClient reads it client-side from the URL instead.
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, search: '?greeting=morning' },
+        writable: true,
+        configurable: true,
+      })
+
+      const { container } = render(
+        <GreetingClient
+          variants={mockVariants}
+          audiences={mockAudiences}
+          serverCountry={undefined}
+        />
+      )
+
+      expect(container.querySelector('h1')?.textContent).toContain('Good morning')
+
+      // Reset
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, search: '' },
+        writable: true,
+        configurable: true,
+      })
+    })
+
     it('should force morning greeting with ?greeting=morning', () => {
       const { container } = render(
         <GreetingClient

@@ -44,9 +44,11 @@ vi.mock('@/components/Footer', () => ({
 }));
 
 describe('HomePage', () => {
-  it('should display Greeting component', async () => {
-    const searchParams = { page: '1' };
-    const Page = await HomePage({ searchParams });
+  // Homepage must not use searchParams — it forces dynamic rendering (Cache-Control: no-store).
+  // Page 1 is always hardcoded; pagination uses /page/[page] routes.
+  // ?greeting= is read client-side by GreetingClient, not via server searchParams.
+  it('should display Greeting component without searchParams', async () => {
+    const Page = await HomePage();
     render(Page);
 
     const heading = screen.getByRole('heading', { level: 1 });
@@ -54,8 +56,7 @@ describe('HomePage', () => {
   });
 
   it('should render without errors when no posts available', async () => {
-    const searchParams = { page: '1' };
-    const Page = await HomePage({ searchParams });
+    const Page = await HomePage();
     const { container } = render(Page);
 
     const main = container.querySelector('main');
@@ -66,8 +67,7 @@ describe('HomePage', () => {
   });
 
   it('should render footer', async () => {
-    const searchParams = { page: '1' };
-    const Page = await HomePage({ searchParams });
+    const Page = await HomePage();
     const { container } = render(Page);
 
     expect(container.querySelector('footer')).toBeTruthy();
