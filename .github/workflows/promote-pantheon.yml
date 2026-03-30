@@ -138,17 +138,42 @@ jobs:
           # Clear Pantheon GCDN cache — same as 'terminus env:clear-cache'.
           # A code deployment changes rendered HTML; without this, Fastly serves
           # stale content for up to a year (the Surrogate-Control TTL).
+          # Uses api.pantheon.io/v0 (public Swagger-documented API) with
+          # Authorization: Bearer — tested and confirmed working.
           echo "Clearing Pantheon GCDN cache for ${SITE}.${ENV}..."
           CLEAR_RESPONSE=$(curl -s -X POST \
-            -H "X-Pantheon-Session: $SESSION_TOKEN" \
+            -H "Authorization: Bearer $SESSION_TOKEN" \
             -H "Content-Type: application/json" \
             -d '{"type":"clear_cache"}' \
-            "https://terminus.pantheon.io/api/sites/$SITE_UUID/environments/${ENV}/workflows")
+            "https://api.pantheon.io/v0/sites/$SITE_UUID/environments/${ENV}/workflows")
           CLEAR_ID=$(echo "$CLEAR_RESPONSE" | jq -r '.id // empty')
           if [ -n "$CLEAR_ID" ]; then
             echo "✅ Cache clear workflow dispatched (id: $CLEAR_ID)"
+            # Poll GET /v0/sites/{id}/workflows/{workflow_id} until terminal result.
+            # result values per Swagger: "succeeded", "failed", "running" (null = queued)
+            CLEAR_ATTEMPT=0
+            CLEAR_MAX=30
+            while [ $CLEAR_ATTEMPT -lt $CLEAR_MAX ]; do
+              CLEAR_ATTEMPT=$((CLEAR_ATTEMPT + 1))
+              sleep 5
+              STATUS=$(curl -s \
+                -H "Authorization: Bearer $SESSION_TOKEN" \
+                "https://api.pantheon.io/v0/sites/$SITE_UUID/workflows/$CLEAR_ID" \
+                | jq -r '.result // empty')
+              echo "  Cache clear status: ${STATUS:-pending}"
+              if [ "$STATUS" = "succeeded" ]; then
+                echo "✅ Cache cleared"
+                break
+              elif [ "$STATUS" = "failed" ]; then
+                echo "⚠️  Cache clear failed — proceeding anyway"
+                break
+              fi
+            done
+            if [ $CLEAR_ATTEMPT -eq $CLEAR_MAX ]; then
+              echo "⚠️  Cache clear polling timed out after 2.5 min — proceeding anyway"
+            fi
           else
-            echo "⚠️  Cache clear response: $CLEAR_RESPONSE"
+            echo "⚠️  Cache clear dispatch failed: $CLEAR_RESPONSE"
           fi
 
       - name: Warm ISR cache

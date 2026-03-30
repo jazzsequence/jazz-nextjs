@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import fs from 'fs'
+import path from 'path'
 import PostCard from '@/components/PostCard';
 import type { WPPost } from '@/lib/wordpress/types';
 
@@ -122,6 +124,18 @@ describe('PostCard', () => {
     render(<PostCard post={mockPost} />);
     expect(screen.getByText(/This is a test excerpt/)).toBeInTheDocument();
   });
+
+  it('uses accurate mobile sizes on featured image to avoid over-fetching', () => {
+    // Lighthouse flags 100vw as too large on mobile — cards have ~32px of horizontal padding.
+    // calc(100vw - 32px) selects a smaller Next.js image size bucket (~384px vs ~750px),
+    // saving ~94 KiB across the post grid.
+    // next/image renders differently in tests so we check the source directly.
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '../../src/components/PostCard.tsx'),
+      'utf8'
+    )
+    expect(src).toContain('(max-width: 768px) calc(100vw - 32px)')
+  })
 
   it('decodes HTML entities in post title (e.g. &#8217; → curly apostrophe)', () => {
     const postWithEntities = {
