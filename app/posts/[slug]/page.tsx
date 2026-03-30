@@ -9,6 +9,13 @@ import { notFound, forbidden } from 'next/navigation';
 
 export const revalidate = 3600;
 
+// Empty array registers this route in prerenderManifest.dynamicRoutes so
+// Next.js treats it as ISR (isSSG=true) and sends s-maxage Cache-Control
+// headers. Pages are still generated on-demand — nothing is pre-built.
+export async function generateStaticParams() {
+  return []
+}
+
 interface PostPageProps {
   params: Promise<{ slug: string }>;
 }

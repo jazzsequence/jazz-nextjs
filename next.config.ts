@@ -33,6 +33,13 @@ const nextConfig: NextConfig = {
             key: "Surrogate-Control",
             value: "max-age=31536000",
           },
+          {
+            // Next.js skips assigning no-store when Cache-Control is already
+            // present (checked in app-page.js before rendering). This catches
+            // any route that remains dynamic after generateStaticParams is added.
+            key: "Cache-Control",
+            value: "s-maxage=31536000, stale-while-revalidate=31536000",
+          },
         ],
       },
     ];
