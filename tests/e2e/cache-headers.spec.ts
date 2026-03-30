@@ -4,9 +4,15 @@ import { test, expect } from '@playwright/test'
  * Verifies that Pantheon GCDN (Fastly) edge caching is correctly configured.
  *
  * Fastly uses Surrogate-Control for its own TTL decisions and strips it before
- * forwarding to the browser. These tests confirm the header is present on
- * cacheable page routes and absent (or set to no-store) on dynamic routes.
+ * forwarding to the browser. Presence tests only run against localhost (origin)
+ * because Fastly correctly consumes and strips the header before clients see it.
+ * Absence tests (search/API) run everywhere.
  */
+
+// Fastly strips Surrogate-Control before forwarding — only testable against the
+// Next.js origin directly (localhost). Skip when BASE_URL points to a deployed site.
+const isDeployed = !!process.env.BASE_URL
+
 test.describe('Cache headers', () => {
   test.describe('Surrogate-Control on page routes', () => {
     const cacheableRoutes = [
@@ -19,6 +25,7 @@ test.describe('Cache headers', () => {
 
     for (const route of cacheableRoutes) {
       test(`${route} has Surrogate-Control: max-age=31536000`, async ({ request }) => {
+        test.skip(isDeployed, 'Fastly strips Surrogate-Control before forwarding — only testable against origin')
         const response = await request.get(route)
         expect(response.status()).toBe(200)
         expect(response.headers()['surrogate-control']).toBe('max-age=31536000')
@@ -26,6 +33,7 @@ test.describe('Cache headers', () => {
     }
 
     test('dynamic post page has Surrogate-Control: max-age=31536000', async ({ request }) => {
+      test.skip(isDeployed, 'Fastly strips Surrogate-Control before forwarding — only testable against origin')
       // Fetch the homepage first to get a real post slug
       const home = await request.get('/')
       const html = await home.text()
