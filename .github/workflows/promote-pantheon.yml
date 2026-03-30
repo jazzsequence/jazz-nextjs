@@ -89,18 +89,7 @@ jobs:
             exit 1
           fi
 
-          # Look up site UUID by name — GET /api/site-names/{name} returns { "id": "uuid" }
-          SITE_UUID=$(curl -s \
-            -H "Authorization: Bearer $SESSION_TOKEN" \
-            "https://terminus.pantheon.io/api/site-names/${SITE}" \
-            | jq -r '.id')
-
-          if [ -z "$SITE_UUID" ] || [ "$SITE_UUID" == "null" ]; then
-            echo "❌ Failed to get site UUID for ${SITE}"
-            exit 1
-          fi
-
-          echo "Site UUID: $SITE_UUID"
+          SITE_UUID="${{ secrets.SITE_UUID }}"
 
           MAX_ATTEMPTS=60
           SLEEP_TIME=10
@@ -111,7 +100,7 @@ jobs:
             echo "Check $ATTEMPT of $MAX_ATTEMPTS..."
 
             BUILDS_RESPONSE=$(curl -s \
-              -H "Authorization: Bearer $SESSION_TOKEN" \
+              -H "X-Pantheon-Session: $SESSION_TOKEN" \
               "https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/${ENV}/build/list?limit=10")
 
             if ! echo "$BUILDS_RESPONSE" | jq empty 2>/dev/null; then
@@ -144,6 +133,22 @@ jobs:
           if [ $ATTEMPT -eq $MAX_ATTEMPTS ]; then
             echo "❌ Timeout after 10 minutes"
             exit 1
+          fi
+
+          # Clear Pantheon GCDN cache — same as 'terminus env:clear-cache'.
+          # A code deployment changes rendered HTML; without this, Fastly serves
+          # stale content for up to a year (the Surrogate-Control TTL).
+          echo "Clearing Pantheon GCDN cache for ${SITE}.${ENV}..."
+          CLEAR_RESPONSE=$(curl -s -X POST \
+            -H "X-Pantheon-Session: $SESSION_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"type":"clear_cache"}' \
+            "https://terminus.pantheon.io/api/sites/$SITE_UUID/environments/${ENV}/workflows")
+          CLEAR_ID=$(echo "$CLEAR_RESPONSE" | jq -r '.id // empty')
+          if [ -n "$CLEAR_ID" ]; then
+            echo "✅ Cache clear workflow dispatched (id: $CLEAR_ID)"
+          else
+            echo "⚠️  Cache clear response: $CLEAR_RESPONSE"
           fi
 
       - name: Warm ISR cache
