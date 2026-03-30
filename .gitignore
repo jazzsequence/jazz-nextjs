@@ -67,3 +67,5 @@ reviewer-approved
 *storybook.log
 storybook-static
 storybook-static/
+# Pantheon API helper — generated docs
+.pantheonapi-docs/
