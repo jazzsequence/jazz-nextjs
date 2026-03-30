@@ -67,16 +67,6 @@ jobs:
           git push origin "${{ steps.tag.outputs.tag }}"
           echo "✅ Pushed tag ${{ steps.tag.outputs.tag }} — Pantheon will now build and deploy to ${{ steps.tag.outputs.env }}"
 
-      - name: Setup PHP (required for Terminus)
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-
-      - name: Install and authenticate Terminus
-        uses: pantheon-systems/terminus-github-actions@v1
-        with:
-          pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
-
       - name: Wait for Pantheon build and deployment to complete
         run: |
           SITE="${{ env.PANTHEON_SITE_NAME }}"
@@ -87,8 +77,7 @@ jobs:
           echo "Site: ${SITE}.${ENV}"
           echo "Commit: ${COMMIT_SHA:0:7}"
 
-          SITE_UUID=$(terminus site:info $SITE --field=id)
-
+          # Exchange machine token for session token (curl + jq only — no Terminus needed)
           SESSION_RESPONSE=$(curl -s -X POST https://api.pantheon.io/v0/authorize/machine-token \
             -H "Content-Type: application/json" \
             -d "{\"machine_token\": \"${{ secrets.PANTHEON_MACHINE_TOKEN }}\", \"client\": \"github-actions\"}")
@@ -100,6 +89,19 @@ jobs:
             exit 1
           fi
 
+          # Look up site UUID by name — GET /api/site-names/{name} returns { "id": "uuid" }
+          SITE_UUID=$(curl -s \
+            -H "Authorization: Bearer $SESSION_TOKEN" \
+            "https://terminus.pantheon.io/api/site-names/${SITE}" \
+            | jq -r '.id')
+
+          if [ -z "$SITE_UUID" ] || [ "$SITE_UUID" == "null" ]; then
+            echo "❌ Failed to get site UUID for ${SITE}"
+            exit 1
+          fi
+
+          echo "Site UUID: $SITE_UUID"
+
           MAX_ATTEMPTS=60
           SLEEP_TIME=10
           ATTEMPT=0
@@ -108,8 +110,9 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "Check $ATTEMPT of $MAX_ATTEMPTS..."
 
-            BUILDS_RESPONSE=$(curl -s "https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/${ENV}/build/list?limit=10" \
-              -H "X-Pantheon-Session: $SESSION_TOKEN")
+            BUILDS_RESPONSE=$(curl -s \
+              -H "Authorization: Bearer $SESSION_TOKEN" \
+              "https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/${ENV}/build/list?limit=10")
 
             if ! echo "$BUILDS_RESPONSE" | jq empty 2>/dev/null; then
               sleep $SLEEP_TIME
