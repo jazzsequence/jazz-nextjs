@@ -81,7 +81,6 @@ export const MobileExpanded: Story = {
 
 /** Loading state — menu items are being fetched. */
 export const Loading: Story = {
-  name: 'Loading',
   args: { menuItems: [], isLoading: true },
 }
 

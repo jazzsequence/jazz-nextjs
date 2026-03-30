@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import type { Meta } from '@storybook/nextjs-vite';
 import SearchBar from '@/components/SearchBar';
 
 /**
@@ -44,6 +44,5 @@ export const Collapsed = {
 
 /** Expanded state — shows the input field. Click X or press Escape to close. */
 export const Expanded = {
-  name: 'Expanded',
   render: () => <SearchBarWrapper defaultOpen />,
 };
