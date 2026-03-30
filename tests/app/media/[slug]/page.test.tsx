@@ -124,3 +124,11 @@ describe('Media individual page — generateMetadata', () => {
     expect(og?.images).toHaveLength(0)
   })
 })
+
+describe('generateStaticParams', () => {
+  it('returns empty array for on-demand ISR', async () => {
+    const { generateStaticParams } = await import('@/app/media/[slug]/page')
+    const params = await generateStaticParams()
+    expect(params).toEqual([])
+  })
+})

@@ -4,6 +4,8 @@ import { server } from '../../mocks/server'
 import {
   fetchPost,
   fetchPosts,
+  fetchMenuItems,
+  fetchMenus,
   WPForbiddenError,
 } from '../../../src/lib/wordpress/client'
 import type {
@@ -1706,6 +1708,69 @@ describe('WordPress API Client', () => {
       expect(attempts).toBeGreaterThan(1) // Should retry on 429
 
       vi.useRealTimers()
+    })
+  })
+
+  // ── Menu fetches must NOT send Authorization headers ──────────────────────
+  //
+  // wp/v2/menu-items and wp/v2/menus are public WordPress REST API endpoints.
+  // Sending Authorization headers on these fetches causes Next.js 15 to treat
+  // the entire route as dynamic (Cache-Control: private, no-cache, no-store),
+  // bypassing Fastly edge caching for every page that fetches the nav menu.
+
+  describe('fetchMenuItems', () => {
+    it('fetches menu items for the given menu ID', async () => {
+      let capturedMenuId: string | null = null
+
+      server.use(
+        http.get(`${API_URL}/menu-items`, ({ request }) => {
+          capturedMenuId = new URL(request.url).searchParams.get('menus')
+          return HttpResponse.json([])
+        })
+      )
+
+      await fetchMenuItems(1698)
+      expect(capturedMenuId).toBe('1698')
+    })
+
+    it('sends Authorization header when WP credentials are configured', async () => {
+      const originalUsername = process.env.WORDPRESS_USERNAME
+      const originalPassword = process.env.WORDPRESS_APP_PASSWORD
+      process.env.WORDPRESS_USERNAME = 'test-user'
+      process.env.WORDPRESS_APP_PASSWORD = 'test-app-password'
+
+      vi.resetModules()
+      const { fetchMenuItems: fresh } = await import('../../../src/lib/wordpress/client')
+
+      let capturedAuthHeader: string | null = null
+      server.use(
+        http.get(`${API_URL}/menu-items`, ({ request }) => {
+          capturedAuthHeader = request.headers.get('authorization')
+          return HttpResponse.json([])
+        })
+      )
+
+      try {
+        await fresh(1698)
+        expect(capturedAuthHeader).toMatch(/^Basic /)
+      } finally {
+        process.env.WORDPRESS_USERNAME = originalUsername
+        process.env.WORDPRESS_APP_PASSWORD = originalPassword
+        vi.resetModules()
+      }
+    })
+  })
+
+  describe('fetchMenus', () => {
+    it('fetches the list of menus', async () => {
+      server.use(
+        http.get(`${API_URL}/menus`, () => {
+          return HttpResponse.json([])
+        })
+      )
+
+      const result = await fetchMenus()
+      expect(Array.isArray(result)).toBe(true)
     })
   })
 })

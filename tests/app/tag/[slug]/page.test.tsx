@@ -175,3 +175,4 @@ describe('TagArchivePage', () => {
     ).rejects.toThrow('NEXT_NOT_FOUND')
   })
 })
+

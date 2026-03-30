@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import PostPage, { generateMetadata } from '@/app/posts/[slug]/page';
+import PostPage, { generateMetadata, generateStaticParams } from '@/app/posts/[slug]/page';
 import * as wpClient from '@/lib/wordpress/client';
 import { notFound, forbidden } from 'next/navigation';
 import type { WPPost } from '@/lib/wordpress/types';
@@ -223,4 +223,15 @@ describe('generateMetadata', () => {
 
     expect(result.title).toBe('Post Not Found');
   });
+});
+
+describe('generateStaticParams', () => {
+  it('returns empty array for on-demand ISR (no pages pre-built at build time)', async () => {
+    // Empty array registers the route in prerenderManifest.dynamicRoutes so
+    // Next.js treats it as ISR (isSSG=true) and sends s-maxage Cache-Control
+    // headers instead of private, no-cache, no-store. Pages are still generated
+    // on-demand — nothing is pre-built.
+    const params = await generateStaticParams()
+    expect(params).toEqual([])
+  })
 });
