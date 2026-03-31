@@ -47,6 +47,11 @@ vi.mock('@/lib/build-info', () => ({
   }),
 }))
 
+// Mock ContactForm so About page tests don't need to test form internals
+vi.mock('@/components/ContactForm', () => ({
+  default: () => <section data-testid="contact-form">Contact Form</section>,
+}))
+
 // Mock components
 vi.mock('@/components/PostContent', () => ({
   default: ({ post }: { post: WPPage }) => (
@@ -179,5 +184,36 @@ describe('generateMetadata', () => {
     const metadata = await generateMetadata({ params })
 
     expect(metadata.title).toBe('Page Not Found')
+  })
+})
+
+describe('About page — ContactForm integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(client.fetchMenuItems).mockResolvedValue([])
+  })
+
+  it('renders ContactForm on the about page', async () => {
+    vi.mocked(client.fetchPost).mockResolvedValue({
+      ...mockPage,
+      slug: 'about',
+      title: { rendered: 'About' },
+    })
+
+    const params = Promise.resolve({ slug: 'about' })
+    const component = await Page({ params })
+    render(component)
+
+    expect(screen.getByTestId('contact-form')).toBeInTheDocument()
+  })
+
+  it('does not render ContactForm on other pages', async () => {
+    vi.mocked(client.fetchPost).mockResolvedValue(mockPage) // slug: 'music'
+
+    const params = Promise.resolve({ slug: 'music' })
+    const component = await Page({ params })
+    render(component)
+
+    expect(screen.queryByTestId('contact-form')).not.toBeInTheDocument()
   })
 })

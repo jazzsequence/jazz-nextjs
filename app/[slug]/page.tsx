@@ -6,6 +6,7 @@ import { decodeHtmlEntities } from '@/lib/utils/html'
 import PostContent from '@/components/PostContent'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
+import ContactForm from '@/components/ContactForm'
 
 export const revalidate = 3600
 
@@ -98,6 +99,12 @@ export default async function Page({ params }: PageProps) {
       <Navigation menuItems={menuItemsData} error={menuError} />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <PostContent post={pageData} />
+        {slug === 'about' && (
+          <section className="mt-12 pt-12 border-t border-brand-border">
+            <h2 className="font-mono text-2xl font-bold text-brand-text mb-6">Get in Touch</h2>
+            <ContactForm />
+          </section>
+        )}
       </main>
       <Footer />
     </>
