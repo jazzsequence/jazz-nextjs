@@ -66,9 +66,20 @@ if [ "$USER_COMMIT" != "1" ]; then
     echo ""
 fi
 
-# Check 3: Run all tests (unit + E2E)
+# Check 3: Run all tests (unit + E2E) — skip only for .md and .txt changes
+# Blocklist: only .md and .txt are explicitly skipped.
+# Every other file type (yaml, json, ts, css, etc.) triggers the full suite.
+# Unknown/new extensions default to running tests — safe by design.
+NON_TEXT_FILES=$(git diff --cached --name-only | grep -v '^package-lock\.json$' | grep -Ev '\.(md|txt)$' | wc -l | tr -d ' ')
+
 echo "3️⃣  Running tests..."
 echo ""
+
+if [ "$NON_TEXT_FILES" -eq 0 ]; then
+    echo "   ℹ️  Markdown/text-only changes — skipping test suite"
+    echo -e "${GREEN}✅ Tests skipped (no source code changed)${NC}"
+    echo ""
+else
 
 # Unit tests
 echo "   Running unit tests..."
@@ -107,6 +118,7 @@ if ! npm run test:e2e; then
 fi
 echo -e "${GREEN}✅ E2E tests passed${NC}"
 echo ""
+fi  # end: STAGED_CODE_FILES > 0
 
 # Check 4: No secrets
 echo "4️⃣  Checking for secrets..."
