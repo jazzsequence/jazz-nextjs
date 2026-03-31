@@ -40,6 +40,8 @@ Needed after: WordPress menu changes, any content edits not auto-revalidated via
 
 **All 5 commands MUST pass before committing** + Reviewer agent approval
 
+**Exception**: commits where every staged file is `.md` or `.txt` skip the test suite automatically (blocklist approach — all other file types run tests).
+
 **E2E test output**: Always redirect E2E output to a file for efficient debugging:
 ```bash
 npm run test:e2e -- --reporter=line 2>/tmp/e2e-output.txt; echo "exit:$?"
