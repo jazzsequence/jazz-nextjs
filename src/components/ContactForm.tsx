@@ -4,9 +4,16 @@ import { useState, FormEvent } from 'react'
 
 type FormState = 'idle' | 'submitting' | 'success' | 'error'
 
-export default function ContactForm() {
-  const [state, setState] = useState<FormState>('idle')
-  const [errorMessage, setErrorMessage] = useState<string>('')
+interface ContactFormProps {
+  /** Override initial state — used in Storybook to render specific states without interaction */
+  initialState?: FormState
+  /** Override initial error message — used with initialState='error' in Storybook */
+  initialError?: string
+}
+
+export default function ContactForm({ initialState = 'idle', initialError = '' }: ContactFormProps = {}) {
+  const [state, setState] = useState<FormState>(initialState)
+  const [errorMessage, setErrorMessage] = useState<string>(initialError)
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
