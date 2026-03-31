@@ -149,15 +149,20 @@ await Write({
 });
 ```
 
+## Pre-Commit Hook Notes
+
+- `package-lock.json` is excluded from the file count and insertion count — lockfile changes are always large on dependency installs and are not meaningful to review for size.
+- Commits where **every staged file** is `.md` or `.txt` skip the test suite entirely (blocklist approach — all other file types run tests). Safe by default: new/unknown file types trigger tests.
+
 ## User Bypass
 
-For manual commits (not AI-generated):
+For the **human's** own manual commits (not AI-generated):
 
 ```bash
 USER_COMMIT=1 git commit -m "Your commit message"
 ```
 
-This bypasses reviewer approval requirement.
+This bypasses the reviewer approval requirement. **AI agents must never use this bypass.**
 
 ## Branch Strategy
 

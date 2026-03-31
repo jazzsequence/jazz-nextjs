@@ -72,20 +72,21 @@ WordPress (Altis Accelerate)
 
 Next.js (server, per request)
   ├── fetchGreetingData()               ← fetches both endpoints in parallel
-  ├── Reads CDN country header          ← fastly-client-country / cf-ipcountry / etc.
-  └── Passes {variants, audiences, serverCountry} to client component
+  └── Passes {variants, audiences} to client component
 
 Browser (client)
-  ├── Gets browser's IANA timezone      ← Intl.DateTimeFormat().resolvedOptions().timeZone
-  ├── matchAudiences(audiences, {country, timezone})
-  │     └── evaluates rules against current hour/day/date/country
+  ├── Pass 1: time-based match (runs immediately, no network)
+  │     └── matchAudiences(audiences, {timezone: Intl.DateTimeFormat()...})
+  ├── Pass 2: fetch /api/country        ← isolated API route reads CDN country header
+  │     └── re-runs matchAudiences with country if it changes the result
+  ├── Reads ?greeting= from window.location.search (for testing/E2E)
   ├── Selects first matching variant (or fallback)
   └── Renders heading + content (sanitized via DOMPurify)
 ```
 
 ### Why the matching runs in the browser
 
-Time-of-day greetings must reflect the **visitor's local time**, not the server's timezone. Matching runs client-side so the browser's timezone is used. The server only contributes the visitor's country (read from CDN-injected headers), which cannot be spoofed client-side.
+Time-of-day greetings must reflect the **visitor's local time**, not the server's timezone. Matching runs client-side so the browser's timezone is used. Country is fetched from `app/api/country/route.ts` — an isolated API route that reads CDN-injected headers (`fastly-client-country`, `cf-ipcountry`, etc.) without exposing `next/headers` to the page component (which would force `Cache-Control: no-store` on the homepage).
 
 ### The two WordPress API endpoints
 
@@ -125,8 +126,9 @@ const GREETING_BLOCK_ID = 16738;
 |---|---|
 | `src/lib/wordpress/greeting.ts` | Fetches block + audiences from WP REST API, parses variants |
 | `src/lib/audience-matcher.ts` | Client-side rule evaluation against time/geo metrics |
-| `src/components/Greeting.tsx` | Server component — fetches data, reads country header |
-| `src/components/GreetingClient.tsx` | Client component — runs matching, renders selected variant |
+| `src/components/Greeting.tsx` | Server component — fetches data, passes variants+audiences to client |
+| `src/components/GreetingClient.tsx` | Client component — fetches country via /api/country, reads ?greeting= from URL, runs matching, renders variant |
+| `app/api/country/route.ts` | API route that reads CDN country header (isolated so homepage stays edge-cacheable) |
 | `app/page.tsx` | Renders `<Greeting />` on the homepage |
 
 ---
@@ -192,12 +194,12 @@ The `getAuthHeaders()` pattern and `parseAudiences()` logic can be reused direct
 
 Follow the `Greeting` / `GreetingClient` split:
 
-- **Server component**: fetches data, reads the country header from `next/headers`, passes `{ variants, audiences, serverCountry }` as props.
-- **Client component** (`'use client'`): runs `matchAudiences()` in `useEffect`, selects a variant, renders it. Sanitize any HTML content with DOMPurify.
+- **Server component**: fetches data, passes `{ variants, audiences }` as props. Do NOT call `next/headers` or access `searchParams` here — this forces `Cache-Control: no-store` on the page, bypassing Fastly edge caching.
+- **Client component** (`'use client'`): fetches country via `/api/country` in a `useEffect`, reads `?greeting=` from `window.location.search` for testing, runs `matchAudiences()`, renders the selected variant. Sanitize any HTML content with DOMPurify.
 
 ### Step 4 — Place the component
 
-Add `<MyBlock searchParams={searchParams} />` wherever the personalized content should appear.
+Add `<MyBlock />` wherever the personalized content should appear. Do not pass `searchParams` — testing variants via URL params should be read client-side from `window.location.search`.
 
 ---
 
@@ -284,4 +286,4 @@ The `?greeting=<name>` query parameter forces a specific variant for E2E testing
 ---
 
 ## Last Updated
-2026-03-27
+2026-03-30

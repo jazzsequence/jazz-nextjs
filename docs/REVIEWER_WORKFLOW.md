@@ -63,7 +63,7 @@ if (cmd.includes('git commit')) {
 
 **What it does:**
 - ✅ Re-validates approval flag (defense in depth)
-- ✅ Checks commit size (AI commits only: ≤5 files, ≤500 insertions)
+- ✅ Checks commit size (AI commits only: ≤5 files, ≤500 insertions; `package-lock.json` excluded)
 - ✅ Checks for secrets in staged files
 - ✅ Manual confirmation prompt
 - ✅ Deletes approval flag after use (single-use)
@@ -104,13 +104,14 @@ Before ANY commit is allowed, all of these checks must pass:
 ### 0. Commit Size (AI commits only — hard block)
 
 The pre-commit hook enforces atomic commit size for AI-generated commits:
-- **Max 5 files** staged per commit
-- **Max 500 lines** inserted per commit
+- **Max 5 files** staged per commit (`package-lock.json` excluded — always large on dependency changes)
+- **Max 500 lines** inserted per commit (`package-lock.json` excluded)
 
 If exceeded, the commit is blocked. Split into smaller atomic commits.
-`USER_COMMIT=1` bypasses this check.
 
 The reviewer agent also checks this and will **REJECT** any staged set exceeding these limits.
+
+`USER_COMMIT=1` is available for the **human's own commits** only — AI agents must never use it.
 
 ### 1. Unit Tests
 ```bash
