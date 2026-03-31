@@ -1,0 +1,40 @@
+name: Homepage Keep-Alive
+
+# Pings the live homepage every 15 minutes to prevent the Pantheon Node.js
+# container from going cold. Cold starts cause 30s+ initial load times.
+# Scoped to the live site only — dev/test cold starts are not a concern.
+#
+# TODO: Migrate to Pantheon native scheduled jobs when that feature reaches
+# public beta (currently limited early access only).
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {}  # Allow manual trigger for testing/validation
+
+env:
+  LIVE_URL: https://next.jazzsequence.com/
+
+concurrency:
+  group: keep-alive
+  cancel-in-progress: false  # Never cancel an in-flight ping — let it complete
+
+jobs:
+  warm:
+    name: Keep live homepage warm
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Ping live homepage
+        run: |
+          echo "Pinging $LIVE_URL ..."
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$LIVE_URL" || echo "CURL_FAILED")
+          echo "Response: HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Container is warm"
+          elif [ "$HTTP_CODE" = "CURL_FAILED" ]; then
+            echo "⚠️  curl failed (DNS/network error) — non-fatal"
+          else
+            echo "⚠️  Unexpected response: $HTTP_CODE (non-fatal — container may be restarting)"
+          fi
