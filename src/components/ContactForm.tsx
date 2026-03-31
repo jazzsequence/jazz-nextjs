@@ -70,9 +70,14 @@ export default function ContactForm({ initialState = 'idle', initialError = '' }
         </div>
       )}
 
+      <p className="text-xs text-brand-muted">
+        Fields marked <span className="text-brand-magenta" aria-hidden="true">*</span>
+        {' '}<span className="sr-only">with an asterisk</span> are required.
+      </p>
+
       <div>
         <label htmlFor="contact-name" className="block text-sm font-medium text-brand-text mb-1">
-          Name
+          Name <span className="text-brand-magenta" aria-hidden="true">*</span>
         </label>
         <input
           id="contact-name"
@@ -87,7 +92,7 @@ export default function ContactForm({ initialState = 'idle', initialError = '' }
 
       <div>
         <label htmlFor="contact-email" className="block text-sm font-medium text-brand-text mb-1">
-          Email
+          Email <span className="text-brand-magenta" aria-hidden="true">*</span>
         </label>
         <input
           id="contact-email"
@@ -102,7 +107,7 @@ export default function ContactForm({ initialState = 'idle', initialError = '' }
 
       <div>
         <label htmlFor="contact-message" className="block text-sm font-medium text-brand-text mb-1">
-          Message
+          Message <span className="text-brand-magenta" aria-hidden="true">*</span>
         </label>
         <textarea
           id="contact-message"
