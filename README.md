@@ -18,7 +18,7 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - Custom error classes with detailed context
 - **Type Safety**: Full TypeScript implementation with runtime Zod schema validation
 - **HTML Sanitization**: DOMPurify integration for safe WordPress content rendering
-- **Testing**: 521 tests passing with comprehensive coverage
+- **Testing**: Comprehensive unit and E2E test coverage
   - Unit tests with Vitest + happy-dom
   - E2E tests with Playwright against live Pantheon environments
   - Automated Playwright report deployment to GitHub Pages
@@ -73,7 +73,7 @@ The `start:test` script starts the standalone server on port 3000 and runs E2E t
 
 ### Testing
 
-**Current Status**: ✅ All tests passing (433 unit/integration)
+**Current Status**: ✅ All tests passing
 
 ```bash
 # Unit and integration tests (Vitest)
@@ -247,7 +247,7 @@ jazz-nextjs/
 - **@pantheon-systems/nextjs-cache-handler** - Persistent ISR caching
 
 ### Testing
-- **Vitest 4** with happy-dom - Unit and integration testing (521 tests)
+- **Vitest 4** with happy-dom - Unit and integration testing
 - **Playwright** - End-to-end testing against live Pantheon environments
 - **MSW** - API mocking
 - **Testing Library** - React component testing

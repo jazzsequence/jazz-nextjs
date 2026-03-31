@@ -328,11 +328,6 @@ expect(error.name).toBe('WPAPIError')
 - [Playwright Documentation](https://playwright.dev)
 - [TDD London School](https://www.thoughtworks.com/insights/blog/mockists-are-dead-long-live-classicists)
 
-## Test Counts
-
-- **Unit tests**: 568 passing across 49 files
-- **E2E tests**: 140 passing across 15 spec files
-
 ## Last Updated
 
 2026-03-27

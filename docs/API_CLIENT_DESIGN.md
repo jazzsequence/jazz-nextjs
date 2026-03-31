@@ -3,7 +3,7 @@
 **Status**: ✅ Implemented
 **Last Updated**: 2026-03-27
 **Implementation**: `src/lib/wordpress/client.ts`
-**Tests**: `tests/lib/wordpress/client.test.ts` (part of 568 total unit tests)
+**Tests**: `tests/lib/wordpress/client.test.ts`
 
 ## Overview
 
@@ -483,12 +483,12 @@ try {
 
 ### Test Coverage
 
-**Type Tests (10 tests)**
+**Type Tests**
 - Schema validation for all post types
 - Required vs optional fields
 - Custom post type metadata
 
-**Client Tests (65 tests)**
+**Client Tests**
 - Fetch operations (posts, pages, games, recipes, artists, movies, media, addresses)
 - Error handling (404, 429, 500, network failures)
 - Retry logic with exponential backoff
