@@ -232,8 +232,7 @@ Key facts:
 - `/style-guide` — style guide page
 
 **Remaining work**:
-- Articles page — custom Pantheon.io oembed pattern renders differently from standard posts; oembeds don't render headlessly; needs improved layout/display
-- Accessibility improvements
+- Homepage OG image — investigate dynamically generated screenshot as `og:image` (Next.js `opengraph-image` route / `ImageResponse`)
 
 ---
 
