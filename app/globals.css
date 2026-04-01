@@ -35,7 +35,22 @@
   }
 
   body {
-    background-color: var(--color-bg);
+    /*
+     * Deep-dusk retrowave gradient — top is the faintest purple haze of a
+     * sky just past sunset, darkening toward near-black at the bottom.
+     * Subtle enough that it reads as "dark background" at a glance but
+     * adds depth when you notice it. background-attachment:fixed keeps the
+     * gradient anchored to the viewport as an ambient atmosphere.
+     */
+    background: linear-gradient(
+      180deg,
+      #1c0d16 0%,
+      #160d18 15%,
+      #110d1a 35%,
+      #0d0d1a 70%,
+      #06060f 100%
+    );
+    background-attachment: fixed;
     color: var(--color-text);
     font-family: var(--font-body);
     font-size: 1.1rem;
@@ -679,6 +694,176 @@
 
 .post-body .pps-series-post-details {
   display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Neon effects
+   .neon-text  — glowing neon-sign text with subtle idle flicker.
+                 Color inherits from the element; glow uses brand-cyan.
+   .neon-border-hover — softer border glow on :hover for cards/buttons.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@keyframes neon-flicker {
+  /*
+   * Rapid lightning/strobe bursts — linear timing so keyframe percentages
+   * map directly to wall-clock time. Each "dim" frame is ~32ms at 8s duration
+   * (0.4% of 8000ms). Fast enough to be subliminal — "did I see that?".
+   *
+   * Three irregular bursts at ~35%, ~63%, ~88% — different counts and gaps
+   * so no mechanical pattern is detectable.
+   */
+
+  /* Stable full glow */
+  0%, 35%, 36.8%,
+  63%, 65.2%,
+  88%, 89.8%, 100% {
+    text-shadow:
+      0 0 6px var(--color-cyan),
+      0 0 14px rgba(0, 229, 204, 0.7),
+      0 0 28px rgba(0, 229, 204, 0.4);
+    opacity: 1;
+  }
+
+  /* Burst 1 at 35% — triple rapid strobe (~32ms each frame) */
+  35.4%, 36.2% {
+    text-shadow: 0 0 4px rgba(0, 229, 204, 0.4);
+    opacity: 0.55;
+  }
+  35.8% {
+    text-shadow:
+      0 0 5px var(--color-cyan),
+      0 0 10px rgba(0, 229, 204, 0.5);
+    opacity: 0.8;
+  }
+
+  /* Burst 2 at 63% — quadruple rapid strobe, shallower recovery */
+  63.3%, 64.1%, 64.8% {
+    text-shadow: 0 0 4px rgba(0, 229, 204, 0.35);
+    opacity: 0.5;
+  }
+  63.7%, 64.5% {
+    text-shadow:
+      0 0 5px var(--color-cyan),
+      0 0 9px rgba(0, 229, 204, 0.45);
+    opacity: 0.75;
+  }
+
+  /* Burst 3 at 88% — double rapid strobe, slightly dimmer */
+  88.3%, 89.1% {
+    text-shadow: 0 0 4px rgba(0, 229, 204, 0.4);
+    opacity: 0.6;
+  }
+  88.7% {
+    text-shadow:
+      0 0 5px var(--color-cyan),
+      0 0 10px rgba(0, 229, 204, 0.5);
+    opacity: 0.82;
+  }
+}
+
+@keyframes neon-border-flicker {
+  /*
+   * Identical burst rhythm to neon-flicker — same "did I see that?" speed.
+   * Dims the glow rather than killing it — border stays visible throughout.
+   * Duration: 8s to match title. Fires after 1s hover hold.
+   */
+
+  /* Full border glow */
+  0%, 35%, 36.8%,
+  63%, 65.2%,
+  88%, 89.8%, 100% {
+    box-shadow:
+      0 0 0 1px var(--color-cyan),
+      0 0 8px rgba(0, 229, 204, 0.7),
+      0 0 20px rgba(0, 229, 204, 0.4),
+      inset 0 0 8px rgba(0, 229, 204, 0.05);
+    border-color: var(--color-cyan);
+  }
+
+  /* Burst 1 */
+  35.4%, 36.2% {
+    box-shadow:
+      0 0 0 1px rgba(0, 229, 204, 0.35),
+      0 0 3px rgba(0, 229, 204, 0.25);
+    border-color: rgba(0, 229, 204, 0.4);
+  }
+  35.8% {
+    box-shadow:
+      0 0 0 1px rgba(0, 229, 204, 0.6),
+      0 0 5px rgba(0, 229, 204, 0.4);
+    border-color: rgba(0, 229, 204, 0.7);
+  }
+
+  /* Burst 2 */
+  63.3%, 64.1%, 64.8% {
+    box-shadow:
+      0 0 0 1px rgba(0, 229, 204, 0.3),
+      0 0 3px rgba(0, 229, 204, 0.2);
+    border-color: rgba(0, 229, 204, 0.35);
+  }
+  63.7%, 64.5% {
+    box-shadow:
+      0 0 0 1px rgba(0, 229, 204, 0.55),
+      0 0 4px rgba(0, 229, 204, 0.35);
+    border-color: rgba(0, 229, 204, 0.65);
+  }
+
+  /* Burst 3 */
+  88.3%, 89.1% {
+    box-shadow:
+      0 0 0 1px rgba(0, 229, 204, 0.35),
+      0 0 3px rgba(0, 229, 204, 0.25);
+    border-color: rgba(0, 229, 204, 0.4);
+  }
+  88.7% {
+    box-shadow:
+      0 0 0 1px rgba(0, 229, 204, 0.6),
+      0 0 5px rgba(0, 229, 204, 0.4);
+    border-color: rgba(0, 229, 204, 0.7);
+  }
+}
+
+.neon-text {
+  animation: neon-flicker 8s linear infinite;
+  text-shadow:
+    0 0 6px var(--color-cyan),
+    0 0 14px rgba(0, 229, 204, 0.7),
+    0 0 28px rgba(0, 229, 204, 0.4);
+  transition: color 0.35s ease, text-shadow 0.35s ease;
+}
+
+.neon-text:hover {
+  /*
+   * Magenta on hover — the tube shifts colour. Flicker stops; fully on.
+   * Transition smooths cyan→magenta over 0.35s.
+   */
+  animation: none;
+  color: var(--color-magenta);
+  text-shadow:
+    0 0 6px var(--color-magenta),
+    0 0 16px var(--color-magenta),
+    0 0 32px rgba(255, 45, 120, 0.7),
+    0 0 60px rgba(255, 45, 120, 0.3);
+  opacity: 1;
+}
+
+/*
+ * Border glow — neon tube lighting effect on bordered elements.
+ * Transition handles the initial appear (0.2s). After 1s hold, the
+ * flicker animation kicks in — same rhythm as the site title.
+ */
+.neon-border-hover {
+  transition: box-shadow 0.5s ease, border-color 0.5s ease;
+}
+
+.neon-border-hover:hover {
+  border-color: var(--color-cyan);
+  box-shadow:
+    0 0 0 1px var(--color-cyan),
+    0 0 8px rgba(0, 229, 204, 0.7),
+    0 0 20px rgba(0, 229, 204, 0.4),
+    inset 0 0 8px rgba(0, 229, 204, 0.05);
+  animation: neon-border-flicker 8s linear 1s infinite;
 }
 
 /* Font Awesome @font-face overrides moved to app/layout.tsx as an inline
