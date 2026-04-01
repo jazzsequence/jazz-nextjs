@@ -23,6 +23,14 @@ describe('Footer', () => {
     expect(screen.getAllByText('jazzsequence').length).toBeGreaterThanOrEqual(1)
   })
 
+  it('applies the neon-text class to the site title', async () => {
+    const FooterEl = await Footer()
+    const { container } = render(FooterEl)
+    const neonEl = container.querySelector('.neon-text')
+    expect(neonEl).toBeTruthy()
+    expect(neonEl?.textContent).toBe('jazzsequence')
+  })
+
   it('renders copyright text with the current year', async () => {
     const FooterEl = await Footer()
     render(FooterEl)

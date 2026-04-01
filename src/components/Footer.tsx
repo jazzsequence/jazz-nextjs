@@ -1,5 +1,6 @@
 import { getBuildInfo } from '@/lib/build-info'
 import OpenSocialFollow from './OpenSocialFollow'
+import NeonText from '@/components/NeonText'
 
 const SOCIAL_LINKS = [
   { label: 'Personal site',  fa: 'fa-solid fa-link',       href: 'https://chrisreynolds.io' },
@@ -58,7 +59,7 @@ export default async function Footer() {
               title={label}
               target="_blank"
               rel="noopener noreferrer"
-              className="no-underline flex items-center justify-center w-9 h-9 bg-brand-surface-high border border-brand-border rounded text-brand-muted hover:text-brand-cyan hover:border-brand-cyan transition-colors"
+              className="neon-border-hover no-underline flex items-center justify-center w-9 h-9 bg-brand-surface-high border border-brand-border rounded text-brand-muted hover:text-brand-cyan transition-colors"
             >
               <i className={fa} aria-hidden="true" />
             </a>
@@ -67,9 +68,9 @@ export default async function Footer() {
 
         {/* Bottom bar */}
         <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-brand-border">
-          <span className="font-mono font-bold text-brand-cyan text-sm">
+          <NeonText className="font-mono font-bold text-brand-cyan text-sm">
             jazzsequence
-          </span>
+          </NeonText>
           <div className="flex items-center gap-4">
             {buildInfo && (
               <span className="font-mono text-brand-muted text-xs">

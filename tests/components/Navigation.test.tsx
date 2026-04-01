@@ -298,6 +298,13 @@ describe('Navigation', () => {
       expect(screen.getByText('jazzsequence')).toBeTruthy();
     });
 
+    it('applies the neon-text class to the site title', () => {
+      const { container } = render(<Navigation menuItems={mockMenuItems} />);
+      const title = container.querySelector('.neon-text');
+      expect(title).toBeTruthy();
+      expect(title?.textContent).toBe('jazzsequence');
+    });
+
     it('renders the site title as a link to the home page', () => {
       render(<Navigation menuItems={mockMenuItems} />);
       const titleLink = screen.getByRole('link', { name: 'jazzsequence' });

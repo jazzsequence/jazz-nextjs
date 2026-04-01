@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import NeonText from '@/components/NeonText';
 import { transformMenuUrl } from '@/lib/url-transform';
 import { decodeHtmlEntities } from '@/lib/utils/html';
 import type { WPMenuItem } from '@/lib/wordpress/types';
@@ -163,12 +164,11 @@ export default function Navigation({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
 
-          {/* Site title — Victor Mono */}
-          <Link
-            href="/"
-            className="font-mono font-bold text-brand-cyan text-lg tracking-tight no-underline hover:opacity-80 transition-opacity"
-          >
-            jazzsequence
+          {/* Site title — Victor Mono, neon glow effect */}
+          <Link href="/" className="no-underline">
+            <NeonText className="font-mono font-bold text-brand-cyan text-lg tracking-tight">
+              jazzsequence
+            </NeonText>
           </Link>
 
           {/* Desktop navigation — hidden on mobile */}
