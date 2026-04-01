@@ -713,7 +713,7 @@
    * so no mechanical pattern is detectable.
    */
 
-  /* Stable full glow */
+  /* Stable full glow — opacity always 1 to maintain WCAG contrast */
   0%, 35%, 36.8%,
   63%, 65.2%,
   88%, 89.8%, 100% {
@@ -721,43 +721,42 @@
       0 0 6px var(--color-cyan),
       0 0 14px rgba(0, 229, 204, 0.7),
       0 0 28px rgba(0, 229, 204, 0.4);
-    opacity: 1;
   }
+
+  /*
+   * Dim frames: glow collapses to a faint shadow only — no opacity change.
+   * Opacity is kept at 1 throughout so text contrast is never degraded.
+   * The "dimming" effect comes purely from reduced text-shadow intensity.
+   */
 
   /* Burst 1 at 35% — triple rapid strobe (~32ms each frame) */
   35.4%, 36.2% {
-    text-shadow: 0 0 4px rgba(0, 229, 204, 0.4);
-    opacity: 0.55;
+    text-shadow: 0 0 3px rgba(0, 229, 204, 0.25);
   }
   35.8% {
     text-shadow:
       0 0 5px var(--color-cyan),
       0 0 10px rgba(0, 229, 204, 0.5);
-    opacity: 0.8;
   }
 
   /* Burst 2 at 63% — quadruple rapid strobe, shallower recovery */
   63.3%, 64.1%, 64.8% {
-    text-shadow: 0 0 4px rgba(0, 229, 204, 0.35);
-    opacity: 0.5;
+    text-shadow: 0 0 3px rgba(0, 229, 204, 0.2);
   }
   63.7%, 64.5% {
     text-shadow:
       0 0 5px var(--color-cyan),
       0 0 9px rgba(0, 229, 204, 0.45);
-    opacity: 0.75;
   }
 
   /* Burst 3 at 88% — double rapid strobe, slightly dimmer */
   88.3%, 89.1% {
-    text-shadow: 0 0 4px rgba(0, 229, 204, 0.4);
-    opacity: 0.6;
+    text-shadow: 0 0 3px rgba(0, 229, 204, 0.25);
   }
   88.7% {
     text-shadow:
       0 0 5px var(--color-cyan),
       0 0 10px rgba(0, 229, 204, 0.5);
-    opacity: 0.82;
   }
 }
 
@@ -844,7 +843,6 @@
     0 0 16px var(--color-magenta),
     0 0 32px rgba(255, 45, 120, 0.7),
     0 0 60px rgba(255, 45, 120, 0.3);
-  opacity: 1;
 }
 
 /*
