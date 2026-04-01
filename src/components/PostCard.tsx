@@ -23,7 +23,7 @@ export default function PostCard({ post, priority = false, excerptContent }: Pos
     : '';
 
   return (
-    <article className="bg-brand-surface border border-brand-border rounded-xl overflow-hidden group transition-colors hover:border-brand-border-bright">
+    <article className="neon-border-hover bg-brand-surface border border-brand-border rounded-xl overflow-hidden group transition-colors">
 
       {/* Image area — eyebrow + title overlaid at the bottom */}
       <Link href={`/posts/${post.slug}`} className="block relative h-56 overflow-hidden no-underline">

@@ -29,7 +29,7 @@ export default function OpenSocialFollow() {
           <button
             type="button"
             onClick={() => setOpen(o => !o)}
-            className="inline-flex items-center gap-1.5 font-heading text-xs font-semibold bg-brand-surface-high border border-brand-border text-brand-cyan hover:border-brand-cyan px-3 py-1.5 rounded transition-colors"
+            className="neon-border-hover inline-flex items-center gap-1.5 font-heading text-xs font-semibold bg-brand-surface-high border border-brand-border text-brand-cyan px-3 py-1.5 rounded transition-colors"
             aria-expanded={open}
             aria-controls="opensocial-instructions"
           >
@@ -63,7 +63,7 @@ export default function OpenSocialFollow() {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="font-heading text-xs font-medium text-brand-text-sub hover:text-brand-cyan border border-brand-border hover:border-brand-cyan bg-brand-surface-high px-2 py-1.5 rounded transition-colors flex-shrink-0"
+                className="neon-border-hover font-heading text-xs font-medium text-brand-text-sub hover:text-brand-cyan border border-brand-border bg-brand-surface-high px-2 py-1.5 rounded transition-colors flex-shrink-0"
               >
                 {copied ? (
                   <span className="text-brand-cyan">Copied!</span>

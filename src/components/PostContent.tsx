@@ -510,7 +510,7 @@ export default function PostContent({ post }: PostContentProps) {
                 <Link
                   key={t.id}
                   href={`/category/${t.slug}`}
-                  className="no-underline font-heading text-sm bg-brand-surface-high border border-brand-border text-brand-text-sub hover:text-brand-cyan hover:border-brand-cyan transition-colors px-2 py-0.5 rounded"
+                  className="neon-border-hover no-underline font-heading text-sm bg-brand-surface-high border border-brand-border text-brand-text-sub hover:text-brand-cyan transition-colors px-2 py-0.5 rounded"
                 >
                   {decodeHtmlEntities(t.name)}
                 </Link>
@@ -526,7 +526,7 @@ export default function PostContent({ post }: PostContentProps) {
                 <Link
                   key={t.id}
                   href={`/tag/${t.slug}`}
-                  className="no-underline font-heading text-sm bg-brand-surface-high border border-brand-border text-brand-text-sub hover:text-brand-cyan hover:border-brand-cyan transition-colors px-2 py-0.5 rounded"
+                  className="neon-border-hover no-underline font-heading text-sm bg-brand-surface-high border border-brand-border text-brand-text-sub hover:text-brand-cyan transition-colors px-2 py-0.5 rounded"
                 >
                   {decodeHtmlEntities(t.name)}
                 </Link>

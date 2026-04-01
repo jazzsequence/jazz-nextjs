@@ -137,6 +137,12 @@ describe('PostCard', () => {
     expect(src).toContain('(max-width: 768px) calc(100vw - 32px)')
   })
 
+  it('applies neon-border-hover class for border glow on hover', () => {
+    const { container } = render(<PostCard post={mockPost} />)
+    const article = container.querySelector('article')
+    expect(article?.className).toContain('neon-border-hover')
+  })
+
   it('decodes HTML entities in post title (e.g. &#8217; → curly apostrophe)', () => {
     const postWithEntities = {
       ...mockPost,
