@@ -62,10 +62,10 @@ export function GamesGrid({ games }: GamesGridProps) {
         <button
           type="button"
           onClick={resetFilters}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+          className={`neon-border-hover rounded-full px-4 py-1.5 text-sm font-medium transition ${
             !hasActiveFilter
               ? 'bg-brand-cyan text-brand-bg'
-              : 'bg-brand-surface-high text-brand-text-sub border border-brand-border hover:border-brand-cyan hover:text-brand-cyan'
+              : 'bg-brand-surface-high text-brand-text-sub border border-brand-border hover:text-brand-cyan'
           }`}
         >
           Show All
@@ -77,10 +77,10 @@ export function GamesGrid({ games }: GamesGridProps) {
             key={attr}
             type="button"
             onClick={() => setSelectedAttribute(selectedAttribute === attr ? '' : attr)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${
+            className={`neon-border-hover rounded-full px-4 py-1.5 text-sm font-medium transition ${
               selectedAttribute === attr
                 ? 'bg-brand-cyan text-brand-bg'
-                : 'bg-brand-surface-high text-brand-text-sub border border-brand-border hover:border-brand-cyan hover:text-brand-cyan'
+                : 'bg-brand-surface-high text-brand-text-sub border border-brand-border hover:text-brand-cyan'
             }`}
           >
             {attr}
