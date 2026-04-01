@@ -1,11 +1,15 @@
 name: Slack Deployment Notifications
 
-# This workflow sends Slack notifications for successful Pantheon deployments
-# Runs after the test-pantheon workflow completes
+# This workflow sends Slack notifications for successful Pantheon deployments.
+# Triggers on completion of:
+#   - "Test on Pantheon"             → dev / PR environments
+#   - "Promote to Pantheon Environment" → test and live environments
 
 on:
   workflow_run:
-    workflows: ["Test on Pantheon"]
+    workflows:
+      - "Test on Pantheon"
+      - "Promote to Pantheon Environment"
     types:
       - completed
 
@@ -44,11 +48,19 @@ jobs:
       - name: Determine environment
         id: env
         run: |
-          if [ "${{ github.event.workflow_run.event }}" == "pull_request" ]; then
-            # Extract PR number from workflow run
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          EVENT="${{ github.event.workflow_run.event }}"
+
+          if [ "$EVENT" == "pull_request" ]; then
             PR_NUM=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }} --jq '.pull_requests[0].number')
             ENV_NAME="pr-${PR_NUM}"
             BASE_URL="https://pr-${PR_NUM}-${PANTHEON_SITE_NAME}.pantheonsite.io"
+          elif [ "$BRANCH" == "test" ]; then
+            ENV_NAME="test"
+            BASE_URL="https://test-${PANTHEON_SITE_NAME}.pantheonsite.io"
+          elif [ "$BRANCH" == "live" ]; then
+            ENV_NAME="live"
+            BASE_URL="https://live-${PANTHEON_SITE_NAME}.pantheonsite.io"
           else
             ENV_NAME="dev"
             BASE_URL="https://dev-${PANTHEON_SITE_NAME}.pantheonsite.io"
