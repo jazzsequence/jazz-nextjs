@@ -5,6 +5,7 @@ import Footer from '@/components/Footer'
 vi.mock('@/lib/build-info', () => ({
   getBuildInfo: vi.fn().mockResolvedValue({
     commitShort: 'abc1234',
+    commitHash: 'abc1234abcdef1234567890abcdef1234567890ab',
     buildTime: '2026-01-01T00:00:00.000Z',
   }),
 }))
@@ -23,12 +24,10 @@ describe('Footer', () => {
     expect(screen.getAllByText('jazzsequence').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('applies the neon-text class to the site title', async () => {
+  it('does not apply the neon-text class to the footer site title', async () => {
     const FooterEl = await Footer()
     const { container } = render(FooterEl)
-    const neonEl = container.querySelector('.neon-text')
-    expect(neonEl).toBeTruthy()
-    expect(neonEl?.textContent).toBe('jazzsequence')
+    expect(container.querySelector('.neon-text')).toBeNull()
   })
 
   it('renders copyright text with the current year', async () => {
@@ -67,10 +66,18 @@ describe('Footer', () => {
     expect(bskyLink).toBeTruthy()
   })
 
-  it('renders build info in the format "Build: ... MT • Commit: hash"', async () => {
+  it('renders build info with "Last Built" label', async () => {
     const FooterEl = await Footer()
     render(FooterEl)
-    expect(screen.getByText(/Build:.*MT.*Commit:.*abc1234/s)).toBeTruthy()
+    expect(screen.getByText(/Last Built:.*MT/s)).toBeTruthy()
+  })
+
+  it('renders the commit hash as a link to GitHub', async () => {
+    const FooterEl = await Footer()
+    const { container } = render(FooterEl)
+    const commitLink = container.querySelector('a[href*="/commit/abc1234abcdef"]')
+    expect(commitLink).toBeTruthy()
+    expect(commitLink?.textContent).toBe('abc1234')
   })
 
   it('renders the ActivityPub webfinger address @jazzsequence@jazzsequence.com', async () => {

@@ -1,6 +1,5 @@
 import { getBuildInfo } from '@/lib/build-info'
 import OpenSocialFollow from './OpenSocialFollow'
-import NeonText from '@/components/NeonText'
 
 const SOCIAL_LINKS = [
   { label: 'Personal site',  fa: 'fa-solid fa-link',       href: 'https://chrisreynolds.io' },
@@ -68,13 +67,21 @@ export default async function Footer() {
 
         {/* Bottom bar */}
         <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-brand-border">
-          <NeonText className="font-mono font-bold text-brand-cyan text-sm">
+          <span className="font-mono font-bold text-brand-cyan text-sm">
             jazzsequence
-          </NeonText>
+          </span>
           <div className="flex items-center gap-4">
             {buildInfo && (
               <span className="font-mono text-brand-muted text-xs">
-                Build: {new Date(buildInfo.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver' })} MT &bull; Commit: {buildInfo.commitShort}
+                Last Built: {new Date(buildInfo.buildTime).toLocaleString('en-US', { timeZone: 'America/Denver' })} MT &bull;{' '}
+                <a
+                  href={`https://github.com/jazzsequence/jazz-nextjs/commit/${buildInfo.commitHash}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-brand-cyan transition-colors"
+                >
+                  {buildInfo.commitShort}
+                </a>
               </span>
             )}
             <span className="font-heading text-brand-muted text-sm">
