@@ -14,7 +14,7 @@ export function GameCard({ game, onClick }: GameCardProps) {
     <button
       type="button"
       onClick={() => onClick(game)}
-      className="neon-border-hover group flex flex-col overflow-hidden rounded-xl border border-brand-border bg-brand-surface transition focus:outline-none focus:ring-2 focus:ring-brand-cyan text-left"
+      className="neon-border-hover-subtle group flex flex-col overflow-hidden rounded-xl border border-brand-border bg-brand-surface transition focus:outline-none focus:ring-2 focus:ring-brand-cyan text-left"
     >
       {/* Box art */}
       <div className="relative aspect-[3/4] w-full overflow-hidden">

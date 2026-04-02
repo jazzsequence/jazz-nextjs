@@ -96,7 +96,7 @@ const Pagination = ({ currentPage, totalPages, basePath }: PaginationProps) => {
               aria-current={isCurrentPage ? 'page' : undefined}
               className={`neon-border-hover no-underline px-4 py-2 border rounded-md text-sm font-heading font-medium transition-colors ${
                 isCurrentPage
-                  ? 'bg-brand-cyan text-brand-bg border-brand-cyan font-bold'
+                  ? 'bg-brand-cyan text-brand-bg border-brand-cyan font-bold hover:text-brand-bg'
                   : 'bg-brand-surface border-brand-border text-brand-text-sub hover:text-brand-cyan'
               }`}
             >
