@@ -152,6 +152,13 @@ describe('Pagination', () => {
       expect(currentLink?.className).toContain('bg-brand-cyan');
     });
 
+    it('active page link locks text color on hover to prevent magenta bleed-through', () => {
+      const { container } = render(<Pagination currentPage={2} totalPages={5} basePath="/posts" />);
+      const currentLink = container.querySelector('a[aria-current="page"]');
+      // Global a:hover sets color to magenta — active page must override with hover:text-brand-bg
+      expect(currentLink?.className).toContain('hover:text-brand-bg');
+    });
+
     it('styles inactive pages with brand surface colors (not white)', () => {
       const { container } = render(<Pagination currentPage={2} totalPages={5} basePath="/posts" />);
       const page1Link = container.querySelector('a[aria-label="Go to page 1"]');

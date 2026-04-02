@@ -779,46 +779,107 @@
     border-color: var(--color-cyan);
   }
 
-  /* Burst 1 */
+  /* Burst 1 — dim: drops to ~55% glow, clearly dimmed but not off */
   35.4%, 36.2% {
     box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.35),
-      0 0 3px rgba(0, 229, 204, 0.25);
-    border-color: rgba(0, 229, 204, 0.4);
+      0 0 0 1px rgba(0, 229, 204, 0.55),
+      0 0 5px rgba(0, 229, 204, 0.35);
+    border-color: rgba(0, 229, 204, 0.6);
   }
   35.8% {
     box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.6),
-      0 0 5px rgba(0, 229, 204, 0.4);
-    border-color: rgba(0, 229, 204, 0.7);
+      0 0 0 1px rgba(0, 229, 204, 0.75),
+      0 0 7px rgba(0, 229, 204, 0.5);
+    border-color: rgba(0, 229, 204, 0.8);
   }
 
   /* Burst 2 */
   63.3%, 64.1%, 64.8% {
     box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.3),
-      0 0 3px rgba(0, 229, 204, 0.2);
-    border-color: rgba(0, 229, 204, 0.35);
+      0 0 0 1px rgba(0, 229, 204, 0.5),
+      0 0 4px rgba(0, 229, 204, 0.3);
+    border-color: rgba(0, 229, 204, 0.55);
   }
   63.7%, 64.5% {
     box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.55),
-      0 0 4px rgba(0, 229, 204, 0.35);
-    border-color: rgba(0, 229, 204, 0.65);
+      0 0 0 1px rgba(0, 229, 204, 0.7),
+      0 0 6px rgba(0, 229, 204, 0.45);
+    border-color: rgba(0, 229, 204, 0.75);
   }
 
   /* Burst 3 */
   88.3%, 89.1% {
     box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.35),
-      0 0 3px rgba(0, 229, 204, 0.25);
-    border-color: rgba(0, 229, 204, 0.4);
+      0 0 0 1px rgba(0, 229, 204, 0.55),
+      0 0 5px rgba(0, 229, 204, 0.35);
+    border-color: rgba(0, 229, 204, 0.6);
   }
   88.7% {
     box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.6),
-      0 0 5px rgba(0, 229, 204, 0.4);
-    border-color: rgba(0, 229, 204, 0.7);
+      0 0 0 1px rgba(0, 229, 204, 0.75),
+      0 0 7px rgba(0, 229, 204, 0.5);
+    border-color: rgba(0, 229, 204, 0.8);
+  }
+}
+
+@keyframes neon-border-flicker-subtle {
+  /*
+   * Same burst rhythm as neon-border-flicker but using accent purple.
+   * For cards and other elements where full cyan is too jarring.
+   */
+
+  /* Full purple glow */
+  0%, 35%, 36.8%,
+  63%, 65.2%,
+  88%, 89.8%, 100% {
+    box-shadow:
+      0 0 0 1px rgba(157, 92, 255, 0.7),
+      0 0 8px rgba(157, 92, 255, 0.4),
+      0 0 16px rgba(157, 92, 255, 0.2),
+      inset 0 0 6px rgba(157, 92, 255, 0.04);
+    border-color: var(--color-purple);
+  }
+
+  /* Burst 1 — dim */
+  35.4%, 36.2% {
+    box-shadow:
+      0 0 0 1px rgba(157, 92, 255, 0.4),
+      0 0 4px rgba(157, 92, 255, 0.2);
+    border-color: rgba(157, 92, 255, 0.5);
+  }
+  35.8% {
+    box-shadow:
+      0 0 0 1px rgba(157, 92, 255, 0.6),
+      0 0 6px rgba(157, 92, 255, 0.35);
+    border-color: rgba(157, 92, 255, 0.7);
+  }
+
+  /* Burst 2 */
+  63.3%, 64.1%, 64.8% {
+    box-shadow:
+      0 0 0 1px rgba(157, 92, 255, 0.35),
+      0 0 3px rgba(157, 92, 255, 0.2);
+    border-color: rgba(157, 92, 255, 0.45);
+  }
+  63.7%, 64.5% {
+    box-shadow:
+      0 0 0 1px rgba(157, 92, 255, 0.55),
+      0 0 5px rgba(157, 92, 255, 0.3);
+    border-color: rgba(157, 92, 255, 0.65);
+  }
+
+  /* Burst 3 */
+  88.3%, 89.1% {
+    box-shadow:
+      0 0 0 1px rgba(157, 92, 255, 0.4),
+      0 0 4px rgba(157, 92, 255, 0.2);
+    border-color: rgba(157, 92, 255, 0.5);
+  }
+  88.7% {
+    box-shadow:
+      0 0 0 1px rgba(157, 92, 255, 0.6),
+      0 0 6px rgba(157, 92, 255, 0.35);
+    border-color: rgba(157, 92, 255, 0.7);
   }
 }
 
@@ -862,6 +923,25 @@
     0 0 20px rgba(0, 229, 204, 0.4),
     inset 0 0 8px rgba(0, 229, 204, 0.05);
   animation: neon-border-flicker 8s linear 1s infinite;
+}
+
+/*
+ * Subtle variant — accent purple for cards where full cyan is too jarring.
+ * Cards previously had only a faint border-brightness change on hover; the
+ * purple keeps the neon-tube feel at a lower intensity that matches the design.
+ */
+.neon-border-hover-subtle {
+  transition: box-shadow 0.5s ease, border-color 0.5s ease;
+}
+
+.neon-border-hover-subtle:hover {
+  border-color: var(--color-purple);
+  box-shadow:
+    0 0 0 1px rgba(157, 92, 255, 0.7),
+    0 0 8px rgba(157, 92, 255, 0.4),
+    0 0 16px rgba(157, 92, 255, 0.2),
+    inset 0 0 6px rgba(157, 92, 255, 0.04);
+  animation: neon-border-flicker-subtle 8s linear 1s infinite;
 }
 
 /* Font Awesome @font-face overrides moved to app/layout.tsx as an inline
