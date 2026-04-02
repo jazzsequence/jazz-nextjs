@@ -705,72 +705,89 @@
 
 @keyframes neon-flicker {
   /*
-   * Rapid lightning/strobe bursts — linear timing so keyframe percentages
-   * map directly to wall-clock time. Each "dim" frame is ~32ms at 8s duration
-   * (0.4% of 8000ms). Fast enough to be subliminal — "did I see that?".
+   * Authentic neon-tube flicker: mostly stable, two irregular bursts with
+   * complex multi-step patterns (tube struggles → partial recovery → struggles
+   * again → settles). Opacity stays 1 throughout for WCAG compliance.
    *
-   * Three irregular bursts at ~35%, ~63%, ~88% — different counts and gaps
-   * so no mechanical pattern is detectable.
+   * Burst positions: 22% and 71% (not evenly spaced — 49% gap then 29% gap).
+   * A single brief flash at 53% adds a third unpredictable event.
+   * 8s cycle, linear timing: 0.3% ≈ 24ms (fast enough to feel subliminal).
    */
 
-  /* Stable full glow — opacity always 1 to maintain WCAG contrast */
-  0%, 35%, 36.8%,
-  63%, 65.2%,
-  88%, 89.8%, 100% {
+  /* ── Stable full glow ─────────────────────────────────────────────────── */
+  0%, 22%, 24.5%,
+  52.8%, 53.6%,
+  71%, 73.5%,
+  100% {
     text-shadow:
       0 0 6px var(--color-cyan),
       0 0 14px rgba(0, 229, 204, 0.7),
       0 0 28px rgba(0, 229, 204, 0.4);
   }
 
-  /*
-   * Dim frames: glow collapses to a faint shadow only — no opacity change.
-   * Opacity is kept at 1 throughout so text contrast is never degraded.
-   * The "dimming" effect comes purely from reduced text-shadow intensity.
-   */
-
-  /* Burst 1 at 35% — triple rapid strobe (~32ms each frame) */
-  35.4%, 36.2% {
-    text-shadow: 0 0 3px rgba(0, 229, 204, 0.25);
+  /* ── Burst 1 at 22% — tube struggles, 5 steps over ~200ms ────────────── */
+  /* ramp down → deep dim → partial recovery → dim → settle */
+  22.3% {
+    text-shadow:
+      0 0 4px var(--color-cyan),
+      0 0 8px rgba(0, 229, 204, 0.4);   /* ramp down */
   }
-  35.8% {
+  22.6%, 23.3% {
+    text-shadow: 0 0 2px rgba(0, 229, 204, 0.25);  /* deep dim */
+  }
+  22.9%, 23.7% {
     text-shadow:
       0 0 5px var(--color-cyan),
-      0 0 10px rgba(0, 229, 204, 0.5);
+      0 0 10px rgba(0, 229, 204, 0.5);  /* partial recovery */
   }
-
-  /* Burst 2 at 63% — quadruple rapid strobe, shallower recovery */
-  63.3%, 64.1%, 64.8% {
-    text-shadow: 0 0 3px rgba(0, 229, 204, 0.2);
-  }
-  63.7%, 64.5% {
+  24.1% {
     text-shadow:
       0 0 5px var(--color-cyan),
-      0 0 9px rgba(0, 229, 204, 0.45);
+      0 0 11px rgba(0, 229, 204, 0.6);  /* nearly there */
   }
 
-  /* Burst 3 at 88% — double rapid strobe, slightly dimmer */
-  88.3%, 89.1% {
-    text-shadow: 0 0 3px rgba(0, 229, 204, 0.25);
+  /* ── Brief single flash at 53% — quick dip, different character ───────── */
+  53.1% {
+    text-shadow: 0 0 3px rgba(0, 229, 204, 0.3);   /* single dip */
   }
-  88.7% {
+  53.4% {
+    text-shadow:
+      0 0 4px var(--color-cyan),
+      0 0 9px rgba(0, 229, 204, 0.45);  /* quick recovery */
+  }
+
+  /* ── Burst 2 at 71% — longer struggle, 6 steps over ~250ms ───────────── */
+  71.3% {
+    text-shadow:
+      0 0 4px var(--color-cyan),
+      0 0 7px rgba(0, 229, 204, 0.35);  /* ramp down */
+  }
+  71.6%, 72.4%, 72.9% {
+    text-shadow: 0 0 2px rgba(0, 229, 204, 0.2);   /* deep dim */
+  }
+  72.0%, 72.7% {
     text-shadow:
       0 0 5px var(--color-cyan),
-      0 0 10px rgba(0, 229, 204, 0.5);
+      0 0 9px rgba(0, 229, 204, 0.45);  /* partial recovery */
+  }
+  73.2% {
+    text-shadow:
+      0 0 5px var(--color-cyan),
+      0 0 12px rgba(0, 229, 204, 0.6);  /* settling */
   }
 }
 
 @keyframes neon-border-flicker {
   /*
-   * Identical burst rhythm to neon-flicker — same "did I see that?" speed.
-   * Dims the glow rather than killing it — border stays visible throughout.
-   * Duration: 8s to match title. Fires after 1s hover hold.
+   * Same irregular burst pattern as neon-flicker.
+   * Border dims but stays visible — never cuts out.
    */
 
   /* Full border glow */
-  0%, 35%, 36.8%,
-  63%, 65.2%,
-  88%, 89.8%, 100% {
+  0%, 22%, 24.5%,
+  52.8%, 53.6%,
+  71%, 73.5%,
+  100% {
     box-shadow:
       0 0 0 1px var(--color-cyan),
       0 0 8px rgba(0, 229, 204, 0.7),
@@ -779,59 +796,63 @@
     border-color: var(--color-cyan);
   }
 
-  /* Burst 1 — dim: drops to ~55% glow, clearly dimmed but not off */
-  35.4%, 36.2% {
-    box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.55),
-      0 0 5px rgba(0, 229, 204, 0.35);
-    border-color: rgba(0, 229, 204, 0.6);
+  /* Burst 1 — 5 steps */
+  22.3% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.65), 0 0 5px rgba(0, 229, 204, 0.4);
+    border-color: rgba(0, 229, 204, 0.7);
   }
-  35.8% {
-    box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.75),
-      0 0 7px rgba(0, 229, 204, 0.5);
-    border-color: rgba(0, 229, 204, 0.8);
+  22.6%, 23.3% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.45), 0 0 3px rgba(0, 229, 204, 0.25);
+    border-color: rgba(0, 229, 204, 0.5);
+  }
+  22.9%, 23.7% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.72), 0 0 7px rgba(0, 229, 204, 0.5);
+    border-color: rgba(0, 229, 204, 0.78);
+  }
+  24.1% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.82), 0 0 8px rgba(0, 229, 204, 0.6);
+    border-color: rgba(0, 229, 204, 0.88);
   }
 
-  /* Burst 2 */
-  63.3%, 64.1%, 64.8% {
-    box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.5),
-      0 0 4px rgba(0, 229, 204, 0.3);
+  /* Brief flash at 53% */
+  53.1% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.5), 0 0 4px rgba(0, 229, 204, 0.3);
     border-color: rgba(0, 229, 204, 0.55);
   }
-  63.7%, 64.5% {
-    box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.7),
-      0 0 6px rgba(0, 229, 204, 0.45);
-    border-color: rgba(0, 229, 204, 0.75);
+  53.4% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.72), 0 0 6px rgba(0, 229, 204, 0.45);
+    border-color: rgba(0, 229, 204, 0.78);
   }
 
-  /* Burst 3 */
-  88.3%, 89.1% {
-    box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.55),
-      0 0 5px rgba(0, 229, 204, 0.35);
-    border-color: rgba(0, 229, 204, 0.6);
+  /* Burst 2 — 6 steps */
+  71.3% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.62), 0 0 5px rgba(0, 229, 204, 0.35);
+    border-color: rgba(0, 229, 204, 0.68);
   }
-  88.7% {
-    box-shadow:
-      0 0 0 1px rgba(0, 229, 204, 0.75),
-      0 0 7px rgba(0, 229, 204, 0.5);
-    border-color: rgba(0, 229, 204, 0.8);
+  71.6%, 72.4%, 72.9% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.42), 0 0 3px rgba(0, 229, 204, 0.22);
+    border-color: rgba(0, 229, 204, 0.48);
+  }
+  72.0%, 72.7% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.7), 0 0 6px rgba(0, 229, 204, 0.45);
+    border-color: rgba(0, 229, 204, 0.76);
+  }
+  73.2% {
+    box-shadow: 0 0 0 1px rgba(0, 229, 204, 0.82), 0 0 8px rgba(0, 229, 204, 0.58);
+    border-color: rgba(0, 229, 204, 0.88);
   }
 }
 
 @keyframes neon-border-flicker-subtle {
   /*
-   * Same burst rhythm as neon-border-flicker but using accent purple.
-   * For cards and other elements where full cyan is too jarring.
+   * Same irregular burst pattern as neon-border-flicker, accent purple.
    */
 
   /* Full purple glow */
-  0%, 35%, 36.8%,
-  63%, 65.2%,
-  88%, 89.8%, 100% {
+  0%, 22%, 24.5%,
+  52.8%, 53.6%,
+  71%, 73.5%,
+  100% {
     box-shadow:
       0 0 0 1px rgba(157, 92, 255, 0.7),
       0 0 8px rgba(157, 92, 255, 0.4),
@@ -840,46 +861,50 @@
     border-color: var(--color-purple);
   }
 
-  /* Burst 1 — dim */
-  35.4%, 36.2% {
-    box-shadow:
-      0 0 0 1px rgba(157, 92, 255, 0.4),
-      0 0 4px rgba(157, 92, 255, 0.2);
-    border-color: rgba(157, 92, 255, 0.5);
+  /* Burst 1 */
+  22.3% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.55), 0 0 5px rgba(157, 92, 255, 0.3);
+    border-color: rgba(157, 92, 255, 0.6);
   }
-  35.8% {
-    box-shadow:
-      0 0 0 1px rgba(157, 92, 255, 0.6),
-      0 0 6px rgba(157, 92, 255, 0.35);
-    border-color: rgba(157, 92, 255, 0.7);
+  22.6%, 23.3% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.35), 0 0 3px rgba(157, 92, 255, 0.18);
+    border-color: rgba(157, 92, 255, 0.4);
+  }
+  22.9%, 23.7% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.6), 0 0 6px rgba(157, 92, 255, 0.35);
+    border-color: rgba(157, 92, 255, 0.68);
+  }
+  24.1% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.68), 0 0 7px rgba(157, 92, 255, 0.42);
+    border-color: rgba(157, 92, 255, 0.76);
+  }
+
+  /* Brief flash at 53% */
+  53.1% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.4), 0 0 3px rgba(157, 92, 255, 0.2);
+    border-color: rgba(157, 92, 255, 0.45);
+  }
+  53.4% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.6), 0 0 5px rgba(157, 92, 255, 0.32);
+    border-color: rgba(157, 92, 255, 0.68);
   }
 
   /* Burst 2 */
-  63.3%, 64.1%, 64.8% {
-    box-shadow:
-      0 0 0 1px rgba(157, 92, 255, 0.35),
-      0 0 3px rgba(157, 92, 255, 0.2);
-    border-color: rgba(157, 92, 255, 0.45);
+  71.3% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.52), 0 0 4px rgba(157, 92, 255, 0.28);
+    border-color: rgba(157, 92, 255, 0.58);
   }
-  63.7%, 64.5% {
-    box-shadow:
-      0 0 0 1px rgba(157, 92, 255, 0.55),
-      0 0 5px rgba(157, 92, 255, 0.3);
+  71.6%, 72.4%, 72.9% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.33), 0 0 3px rgba(157, 92, 255, 0.16);
+    border-color: rgba(157, 92, 255, 0.38);
+  }
+  72.0%, 72.7% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.58), 0 0 5px rgba(157, 92, 255, 0.32);
     border-color: rgba(157, 92, 255, 0.65);
   }
-
-  /* Burst 3 */
-  88.3%, 89.1% {
-    box-shadow:
-      0 0 0 1px rgba(157, 92, 255, 0.4),
-      0 0 4px rgba(157, 92, 255, 0.2);
-    border-color: rgba(157, 92, 255, 0.5);
-  }
-  88.7% {
-    box-shadow:
-      0 0 0 1px rgba(157, 92, 255, 0.6),
-      0 0 6px rgba(157, 92, 255, 0.35);
-    border-color: rgba(157, 92, 255, 0.7);
+  73.2% {
+    box-shadow: 0 0 0 1px rgba(157, 92, 255, 0.66), 0 0 7px rgba(157, 92, 255, 0.4);
+    border-color: rgba(157, 92, 255, 0.74);
   }
 }
 
