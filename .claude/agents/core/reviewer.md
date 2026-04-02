@@ -335,10 +335,12 @@ When reviewing code for commit approval:
      - Tell main agent to address those messages before proceeding with commit
    - Only proceed with validation if no queued messages
 
-2. **Run all validation checks**:
-   - Unit tests (`npm test` or `vitest run`)
-   - Lint (`npm run lint`)
-   - Build verification (if applicable)
+2. **Run all validation checks** — run each command separately, never chain with `&&` or `;`:
+   - Unit tests: `npm test`
+   - Lint: `npm run lint`
+   - Build: `npm run build`
+
+   **CRITICAL — no compound commands**: Each command must be a separate Bash call. Commands chained with `&&`, `;`, or `|` require manual human approval in this project and will block the workflow. Run them one at a time.
 
 3. **If all checks PASS**:
    - Write the approval flag using the Write tool:

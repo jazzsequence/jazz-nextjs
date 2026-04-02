@@ -296,6 +296,20 @@ Reviewer agent: state which tests you ran, what you checked, your APPROVE/REJECT
 verdict with specific findings, and confirm explicitly that you wrote (or did not
 write) the reviewer-approved flag.
 
+**REVIEWER — NO COMPOUND COMMANDS:**
+Run each validation step as a separate Bash call. Never chain commands with `&&`,
+`;`, or pipes. Compound commands require manual human approval in this project and
+will stall the workflow. Correct pattern:
+```
+Bash({ command: "npm test" })         // ✅ separate call
+Bash({ command: "npm run lint" })     // ✅ separate call
+Bash({ command: "npm run build" })    // ✅ separate call
+```
+Not:
+```
+Bash({ command: "npm test && npm run lint && npm run build" })  // ❌ blocked
+```
+
 ---
 
 **STEP 3: Connect to WordPress MCP Server**
