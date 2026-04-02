@@ -178,13 +178,12 @@ export default function Navigation({
               onOpen={() => setIsSearchOpen(true)}
               onClose={() => setIsSearchOpen(false)}
             />
-            {/* initial={false} prevents the mount animation from playing on every
-                page load. The enter/exit animation still fires when the search
-                bar toggles, which is the only intentional use of this transition. */}
+            {/* initial={false} — no mount animation on page load.
+                layout removed — caused framer-motion to animate the element's
+                DOM position on mount, making the nav slide in from off-screen. */}
             <AnimatePresence initial={false}>
               {!isSearchOpen && (
                 <motion.div
-                  layout
                   key="nav-items"
                   initial={{ opacity: 0, x: 10 }}
                   animate={{ opacity: 1, x: 0 }}

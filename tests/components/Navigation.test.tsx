@@ -300,9 +300,21 @@ describe('Navigation', () => {
       // nav items are immediately visible.
       const { container } = render(<Navigation menuItems={mockMenuItems} />)
       const navItemsDiv = container.querySelector('.flex.items-center.gap-1')
-      // Must NOT have inline opacity:0 or transform styles from framer-motion initial state
       const style = (navItemsDiv as HTMLElement | null)?.style
       expect(style?.opacity).not.toBe('0')
+    })
+
+    it('nav items container has no layout-animation transform on initial mount', () => {
+      // The `layout` prop on motion.div causes framer-motion to animate the element
+      // from its "measured" position to its final position. On page load this can
+      // produce a translateY animation making the nav appear to slide from the bottom.
+      // Without `layout`, the element renders in place with no positional transform.
+      const { container } = render(<Navigation menuItems={mockMenuItems} />)
+      const navItemsDiv = container.querySelector('.flex.items-center.gap-1')
+      const style = (navItemsDiv as HTMLElement | null)?.style
+      // transform should be empty or 'none' — not a translateY or matrix value
+      const transform = style?.transform ?? ''
+      expect(transform).not.toMatch(/translateY|translateX|matrix/)
     })
 
     it('renders the site title "jazzsequence" in the header', () => {

@@ -133,6 +133,19 @@ test.describe('Navigation Component', () => {
     expect(firstLinkText?.trim().length).toBeGreaterThan(0);
   });
 
+  test('header is at the top of the viewport immediately after navigation — no slide-in animation', async ({ page }) => {
+    // The framer-motion `layout` prop caused the nav to animate its DOM position
+    // on every page mount, making it appear to slide in from off-screen.
+    // With `layout` removed, the header must be at y≈0 immediately after load.
+    await page.goto('/category/ministry-of-music');
+    await page.waitForLoadState('domcontentloaded');
+
+    const header = page.locator('header').first();
+    const box = await header.boundingBox();
+    // Header top must be at or very near the top of the viewport (within 5px)
+    expect(box?.y).toBeLessThanOrEqual(5);
+  });
+
   test('should maintain navigation state across pages', async ({ page }) => {
     await page.goto('/');
 
