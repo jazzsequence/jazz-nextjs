@@ -178,7 +178,10 @@ export default function Navigation({
               onOpen={() => setIsSearchOpen(true)}
               onClose={() => setIsSearchOpen(false)}
             />
-            <AnimatePresence>
+            {/* initial={false} prevents the mount animation from playing on every
+                page load. The enter/exit animation still fires when the search
+                bar toggles, which is the only intentional use of this transition. */}
+            <AnimatePresence initial={false}>
               {!isSearchOpen && (
                 <motion.div
                   layout

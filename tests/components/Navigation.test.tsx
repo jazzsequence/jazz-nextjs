@@ -293,6 +293,18 @@ describe('Navigation', () => {
   });
 
   describe('styling', () => {
+    it('nav items container does not start with opacity:0 on initial mount', () => {
+      // AnimatePresence without initial={false} applies initial={{ opacity:0, x:10 }}
+      // on mount, causing the nav to visually animate in on every page load.
+      // With initial={false}, AnimatePresence skips the mount animation so the
+      // nav items are immediately visible.
+      const { container } = render(<Navigation menuItems={mockMenuItems} />)
+      const navItemsDiv = container.querySelector('.flex.items-center.gap-1')
+      // Must NOT have inline opacity:0 or transform styles from framer-motion initial state
+      const style = (navItemsDiv as HTMLElement | null)?.style
+      expect(style?.opacity).not.toBe('0')
+    })
+
     it('renders the site title "jazzsequence" in the header', () => {
       render(<Navigation menuItems={mockMenuItems} />);
       expect(screen.getByText('jazzsequence')).toBeTruthy();
