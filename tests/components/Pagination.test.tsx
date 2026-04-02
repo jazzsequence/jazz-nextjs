@@ -216,4 +216,48 @@ describe('Pagination', () => {
       expect(page3Link).toBeInTheDocument();
     });
   });
+
+  describe('Query-param basePath (search pagination)', () => {
+    it('uses &page=N when basePath contains a query string', () => {
+      render(
+        <Pagination currentPage={1} totalPages={5} basePath="/search?q=wordpress&type=all" />
+      );
+      const page2Link = screen.getByRole('link', { name: 'Go to page 2' });
+      expect(page2Link).toHaveAttribute('href', '/search?q=wordpress&type=all&page=2');
+    });
+
+    it('links page 1 back to bare basePath with query string', () => {
+      render(
+        <Pagination currentPage={2} totalPages={5} basePath="/search?q=wordpress&type=all" />
+      );
+      const page1Link = screen.getByRole('link', { name: 'Go to page 1' });
+      expect(page1Link).toHaveAttribute('href', '/search?q=wordpress&type=all');
+    });
+
+    it('Next button uses &page=N for query-param basePath', () => {
+      render(
+        <Pagination currentPage={1} totalPages={5} basePath="/search?q=wordpress&type=all" />
+      );
+      const nextLink = screen.getByRole('link', { name: /next/i });
+      expect(nextLink).toHaveAttribute('href', '/search?q=wordpress&type=all&page=2');
+    });
+
+    it('Previous button uses &page=N for query-param basePath', () => {
+      render(
+        <Pagination currentPage={3} totalPages={5} basePath="/search?q=wordpress&type=all" />
+      );
+      const prevLink = screen.getByRole('link', { name: /previous/i });
+      expect(prevLink).toHaveAttribute('href', '/search?q=wordpress&type=all&page=2');
+    });
+
+    it('does not produce double-appended page segments', () => {
+      render(
+        <Pagination currentPage={2} totalPages={5} basePath="/search?q=wordpress&type=all" />
+      );
+      const page3Link = screen.getByRole('link', { name: 'Go to page 3' });
+      const href = page3Link.getAttribute('href') ?? '';
+      expect(href).not.toContain('/page/');
+      expect(href).toBe('/search?q=wordpress&type=all&page=3');
+    });
+  });
 });

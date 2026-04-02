@@ -14,6 +14,9 @@ const Pagination = ({ currentPage, totalPages, basePath }: PaginationProps) => {
   const getPageUrl = (page: number): string => {
     if (page === 1) return basePath;
     if (basePath === '/') return `/page/${page}`;
+    // Query-string basePaths (e.g. /search?q=foo&type=all) must use &page=N
+    // rather than appending /page/N, which would corrupt the URL structure.
+    if (basePath.includes('?')) return `${basePath}&page=${page}`;
     return `${basePath}/page/${page}`;
   };
 
