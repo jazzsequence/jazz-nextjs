@@ -183,6 +183,7 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - **Testing**: Vitest 4.0.18, Playwright 1.58.2
 - **Styling**: Tailwind CSS 3.4
 - **Validation**: Zod schemas with `.passthrough()` for plugin fields
+- **CDN cache invalidation**: `proxy.ts` at project root emits `Surrogate-Key` response headers using `createSurrogateKeyMiddleware` from `@pantheon-systems/nextjs-cache-handler`. NOTE: v0.4.0 of this package does not expose `./middleware` in its exports map — `scripts/patch-cache-handler.mjs` postinstall patches this. This is a known workaround pending a proper fix.
 
 ### Design Patterns
 - Domain-Driven Design with bounded contexts
@@ -232,7 +233,6 @@ Key facts:
 - `/style-guide` — style guide page
 
 **Remaining work**:
-- Homepage OG image — investigate dynamically generated screenshot as `og:image` (Next.js `opengraph-image` route / `ImageResponse`)
 - Homepage OG image — investigate dynamically generated screenshot as `og:image` (Next.js `opengraph-image` route / `ImageResponse`)
 
 ---

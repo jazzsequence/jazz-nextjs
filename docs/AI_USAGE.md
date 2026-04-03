@@ -166,4 +166,4 @@ GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests again
 **Required GitHub Secret**: `PANTHEON_MACHINE_TOKEN` for Terminus authentication
 
 ## Last Updated
-2026-03-20
+2026-04-03

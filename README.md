@@ -23,20 +23,28 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - E2E tests with Playwright against live Pantheon environments
   - Automated Playwright report deployment to GitHub Pages
 - **Deployment**: Optimized for Pantheon's Next.js hosting platform
+- **Surrogate-Key response headers**: `proxy.ts` emits `Surrogate-Key` headers via `createSurrogateKeyMiddleware` from `@pantheon-systems/nextjs-cache-handler` for targeted GCDN cache invalidation
 
 ### Implemented Routes
 
 | Route | Description |
 |---|---|
-| `/` | Homepage with recent posts |
+| `/` | Homepage with recent posts and personalized greeting |
+| `/page/[page]` | Homepage pagination |
 | `/posts` | Post archive with pagination |
 | `/posts/[slug]` | Individual post pages |
+| `/posts/page/[page]` | Paginated posts archive pages |
 | `/[slug]` | WordPress pages (e.g. `/music`, `/about`) |
 | `/[slug]/[child]` | Child pages (e.g. `/music/loafmen`) |
 | `/games` | Board game collection with filtering and modal detail view |
+| `/media` | Media CPT listing (paginated, 12/page) |
+| `/media/[slug]` | Individual media detail pages |
+| `/media/page/[page]` | Paginated media archive pages |
 | `/tag/[slug]` | Tag archive pages |
 | `/category/[slug]` | Category archive pages |
 | `/series/[slug]` | Series archive pages (Organize Series plugin) |
+| `/search` | Search results page (always fresh; filter tabs: All/Posts/Media) |
+| `/style-guide` | Design system style guide |
 
 ## Getting Started
 

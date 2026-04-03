@@ -1,7 +1,7 @@
 # WordPress API Client Design Document
 
 **Status**: ✅ Implemented
-**Last Updated**: 2026-03-27
+**Last Updated**: 2026-04-03
 **Implementation**: `src/lib/wordpress/client.ts`
 **Tests**: `tests/lib/wordpress/client.test.ts`
 

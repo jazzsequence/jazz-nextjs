@@ -482,9 +482,9 @@ npm run test:e2e      # E2E tests must pass
 
 **Never commit code without:**
 - ✅ Tests written first
-- ✅ All tests passing (568 unit tests)
+- ✅ All tests passing (683 unit tests)
 - ✅ ESLint clean
-- ✅ E2E tests passing (140+ tests)
+- ✅ E2E tests passing (150 E2E tests)
 
 See: `/docs/TESTING.md` for full TDD methodology
 
