@@ -2,6 +2,7 @@ import { fetchPost, fetchMenuItems, WPNotFoundError, WPForbiddenError } from '@/
 import type { WPMedia } from '@/lib/wordpress/types'
 import { resolveMediaEmbed } from '@/lib/utils/media'
 import { decodeHtmlEntities, excerptToDescription } from '@/lib/utils/html'
+import { OG_IMAGE_URL } from '@/lib/utils/og'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import { notFound, forbidden } from 'next/navigation'
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
         url: `/media/${slug}`,
         images: thumbnail
           ? [{ url: thumbnail }]
-          : [{ url: '/opengraph-image', alt: 'jazzsequence.com' }],
+          : [{ url: OG_IMAGE_URL, width: 1200, height: 630, alt: 'jazzsequence.com' }],
       },
     }
   } catch {

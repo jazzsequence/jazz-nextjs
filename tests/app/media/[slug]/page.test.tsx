@@ -122,7 +122,8 @@ describe('Media individual page — generateMetadata', () => {
     const metadata: Metadata = await generateMetadata({ params: Promise.resolve({ slug: 'test' }) })
     const og = metadata.openGraph as { images?: Array<{ url: string }> }
     expect(og?.images).toHaveLength(1)
-    expect(og?.images?.[0].url).toBe('/opengraph-image')
+    expect(og?.images?.[0].url).toMatch(/^https?:\/\//)
+    expect(og?.images?.[0].url).toContain('/opengraph-image')
   })
 })
 

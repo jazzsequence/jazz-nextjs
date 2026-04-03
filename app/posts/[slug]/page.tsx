@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { fetchPost, fetchMenuItems, WPNotFoundError, WPForbiddenError } from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
 import { decodeHtmlEntities, excerptToDescription } from '@/lib/utils/html';
+import { OG_IMAGE_URL } from '@/lib/utils/og';
 import PostContent from '@/components/PostContent';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -44,7 +45,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
         modifiedTime: post.modified_gmt,
         images: featuredImage
           ? [{ url: featuredImage.source_url, alt: featuredImage.alt_text }]
-          : [{ url: '/opengraph-image', alt: 'jazzsequence.com' }],
+          : [{ url: OG_IMAGE_URL, width: 1200, height: 630, alt: 'jazzsequence.com' }],
       },
     };
   } catch {

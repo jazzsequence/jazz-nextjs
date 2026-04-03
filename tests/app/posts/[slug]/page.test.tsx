@@ -214,7 +214,9 @@ describe('generateMetadata', () => {
 
     const og = result.openGraph as { images?: Array<{ url: string }> };
     expect(og?.images).toHaveLength(1);
-    expect(og?.images?.[0].url).toBe('/opengraph-image');
+    // Must be absolute — relative URLs resolve against metadataBase (jazzsequence.com WordPress site)
+    expect(og?.images?.[0].url).toMatch(/^https?:\/\//);
+    expect(og?.images?.[0].url).toContain('/opengraph-image');
   });
 
   it('returns fallback title on fetch error', async () => {
