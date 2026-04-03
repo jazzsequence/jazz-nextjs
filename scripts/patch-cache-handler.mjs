@@ -2,16 +2,17 @@
  * Patches @pantheon-systems/nextjs-cache-handler to expose its middleware
  * directory via the package exports map.
  *
- * WHY: The package ships `dist/middleware/surrogate-key.js` which is needed
- * by proxy.ts to emit Surrogate-Key headers on every response so Fastly can
- * build its tag→response mapping. Without it, revalidateTag() calls purge
- * nothing because Fastly has no tag index.
+ * WHY: The package (v0.4.0) ships `dist/middleware/surrogate-key.js` and
+ * `dist/middleware/index.js` with full TypeScript types, but does not include
+ * `./middleware` in its `exports` field. This prevents Turbopack from resolving
+ * the import in `proxy.ts`, which is the correct Pantheon-provided mechanism
+ * for emitting Surrogate-Key response headers for GCDN cache tagging.
  *
- * The package (v0.4.0) does not include `./middleware` in its exports field,
- * so Turbopack blocks the deep import. This script adds it as a postinstall step.
+ * This is tracked upstream:
+ *   https://github.com/pantheon-systems/nextjs-cache-handler/issues/28
  *
- * When the package adds this export officially, this script becomes a no-op
- * (the key is already present, JSON.stringify is idempotent for same content).
+ * When the package adds `./middleware` to its exports map, this script becomes
+ * a no-op (the idempotency check prevents double-patching).
  */
 
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -35,6 +36,5 @@ try {
     console.log('ℹ️  @pantheon-systems/nextjs-cache-handler already has ./middleware export — no patch needed')
   }
 } catch (err) {
-  // Non-fatal: package may not be installed yet or path may differ
   console.warn('⚠️  Could not patch @pantheon-systems/nextjs-cache-handler:', err.message)
 }
