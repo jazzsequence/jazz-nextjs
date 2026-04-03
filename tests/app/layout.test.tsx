@@ -64,6 +64,17 @@ describe('generateMetadata', () => {
     expect(metadata.description).toBe('Test site description')
   })
 
+  it('includes openGraph.images with the absolute OG card URL as default fallback', async () => {
+    const metadata = await generateMetadata()
+    const og = metadata.openGraph as { images?: Array<{ url: string }> }
+    expect(og?.images).toBeDefined()
+    expect(og?.images?.[0].url).toContain('/opengraph-image')
+    // Must be an absolute URL — relative URLs resolve against metadataBase
+    // which may point to jazzsequence.com (the WordPress site), not this app
+    expect(og?.images?.[0].url).toMatch(/^https?:\/\//)
+    expect(og?.images?.[0].url).not.toBe('https://jazzsequence.com/opengraph-image')
+  })
+
   it('should return fallback metadataBase when fetchSiteInfo throws', async () => {
     const { fetchSiteInfo } = await import('@/lib/wordpress/site-info')
     vi.mocked(fetchSiteInfo).mockRejectedValueOnce(new Error('Network error'))

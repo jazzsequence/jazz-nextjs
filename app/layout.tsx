@@ -26,6 +26,8 @@ const geistMono = Geist_Mono({
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://jazzsequence.com';
 
+import { OG_IMAGE_URL } from '@/lib/utils/og';
+
 export async function generateMetadata(): Promise<Metadata> {
   try {
     const { name, description } = await fetchSiteInfo();
@@ -40,6 +42,7 @@ export async function generateMetadata(): Promise<Metadata> {
         type: 'website',
         siteName: name,
         locale: 'en_US',
+        images: [{ url: OG_IMAGE_URL, width: 1200, height: 630, alt: name }],
       },
       twitter: {
         card: 'summary_large_image',
@@ -58,6 +61,7 @@ export async function generateMetadata(): Promise<Metadata> {
         type: 'website',
         siteName: 'jazzsequence',
         locale: 'en_US',
+        images: [{ url: OG_IMAGE_URL, width: 1200, height: 630, alt: 'jazzsequence.com' }],
       },
       twitter: {
         card: 'summary_large_image',
