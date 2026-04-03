@@ -187,7 +187,7 @@ jobs:
 
           # Warm key pages — fires SSR on first hit, populating ISR cache.
           # Cold starts after deployment can be slow; failures here are non-fatal.
-          for path in "/" "/posts" "/games" "/media"; do
+          for path in "/" "/posts" "/games" "/media" "/opengraph-image"; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 "${BASE_URL}${path}")
             echo "  ${path} → ${STATUS}"
           done
