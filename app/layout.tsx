@@ -25,6 +25,11 @@ const geistMono = Geist_Mono({
 });
 
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://jazzsequence.com';
+// METADATA_BASE is used for metadataBase only — resolves relative og:image URLs.
+// Must point to where the Next.js app lives (next.jazzsequence.com) during the
+// pre-migration period so file-based opengraph-image.tsx resolves to the right host.
+// BASE_URL stays as jazzsequence.com for sitemaps, canonicals, and structured data.
+const METADATA_BASE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://next.jazzsequence.com';
 
 import { OG_IMAGE_URL } from '@/lib/utils/og';
 
@@ -32,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const { name, description } = await fetchSiteInfo();
     return {
-      metadataBase: new URL(BASE_URL),
+      metadataBase: new URL(METADATA_BASE),
       title: {
         default: name,
         template: `%s | ${name}`,
@@ -51,7 +56,7 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     // Fallback if WordPress is unreachable at build time
     return {
-      metadataBase: new URL(BASE_URL),
+      metadataBase: new URL(METADATA_BASE),
       title: {
         default: "jazzsequence",
         template: "%s | jazzsequence",

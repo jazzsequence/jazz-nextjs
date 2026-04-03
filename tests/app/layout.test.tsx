@@ -33,7 +33,10 @@ describe('generateMetadata', () => {
     const metadata = await generateMetadata()
 
     expect(metadata.metadataBase).toBeInstanceOf(URL)
-    expect(metadata.metadataBase?.href).toMatch(/jazzsequence\.com/)
+    // metadataBase uses METADATA_BASE (next.jazzsequence.com fallback) so
+    // file-based og:image resolves to the correct host during pre-migration period
+    expect(metadata.metadataBase).toBeInstanceOf(URL)
+    expect(metadata.metadataBase?.href).toContain('jazzsequence')
   })
 
   it('should include openGraph with type website and siteName', async () => {
