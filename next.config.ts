@@ -41,28 +41,6 @@ const nextConfig: NextConfig = {
         ],
       },
 
-      // ── Surrogate-Key headers ───────────────────────────────────────────────
-      // The GCDN indexes these so targeted purges work when content is published.
-      // Path params (e.g. :slug) are interpolated by Next.js into the value.
-      // The GCS cache handler's onRevalidateComplete() calls the Pantheon
-      // outbound proxy to purge these keys from the GCDN after revalidateTag().
-      { source: "/",                           headers: [{ key: "Surrogate-Key", value: "posts home" }] },
-      { source: "/page/:page",                 headers: [{ key: "Surrogate-Key", value: "posts home" }] },
-      { source: "/posts",                      headers: [{ key: "Surrogate-Key", value: "posts" }] },
-      { source: "/posts/page/:page",           headers: [{ key: "Surrogate-Key", value: "posts" }] },
-      { source: "/posts/:slug",                headers: [{ key: "Surrogate-Key", value: "post-:slug posts" }] },
-      { source: "/media",                      headers: [{ key: "Surrogate-Key", value: "media" }] },
-      { source: "/media/page/:page",           headers: [{ key: "Surrogate-Key", value: "media" }] },
-      { source: "/media/:slug",                headers: [{ key: "Surrogate-Key", value: "media-:slug media" }] },
-      { source: "/games",                      headers: [{ key: "Surrogate-Key", value: "games" }] },
-      { source: "/category/:slug",             headers: [{ key: "Surrogate-Key", value: "category-:slug categories" }] },
-      { source: "/category/:slug/page/:page",  headers: [{ key: "Surrogate-Key", value: "category-:slug categories" }] },
-      { source: "/tag/:slug",                  headers: [{ key: "Surrogate-Key", value: "tag-:slug tags" }] },
-      { source: "/tag/:slug/page/:page",       headers: [{ key: "Surrogate-Key", value: "tag-:slug tags" }] },
-      { source: "/series/:slug",               headers: [{ key: "Surrogate-Key", value: "series-:slug series" }] },
-      { source: "/series/:slug/page/:page",    headers: [{ key: "Surrogate-Key", value: "series-:slug series" }] },
-      { source: "/:slug",                      headers: [{ key: "Surrogate-Key", value: "pages" }] },
-      { source: "/:slug/:child",               headers: [{ key: "Surrogate-Key", value: "pages" }] },
     ];
   },
 
