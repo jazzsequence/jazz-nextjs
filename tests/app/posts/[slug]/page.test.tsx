@@ -206,14 +206,15 @@ describe('generateMetadata', () => {
     expect(og?.images?.[0].alt).toBe('Test image');
   });
 
-  it('returns empty images array when no featured media', async () => {
+  it('uses OG card fallback image when no featured media', async () => {
     const postWithoutImage = { ...mockPost, featured_media: 0, _embedded: undefined };
     vi.mocked(wpClient.fetchPost).mockResolvedValue(postWithoutImage);
 
     const result = await generateMetadata({ params: Promise.resolve({ slug: 'test-post' }) });
 
-    const og = result.openGraph as { images?: unknown[] };
-    expect(og?.images).toHaveLength(0);
+    const og = result.openGraph as { images?: Array<{ url: string }> };
+    expect(og?.images).toHaveLength(1);
+    expect(og?.images?.[0].url).toBe('/opengraph-image');
   });
 
   it('returns fallback title on fetch error', async () => {

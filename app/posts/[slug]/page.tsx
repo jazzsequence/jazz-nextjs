@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
         modifiedTime: post.modified_gmt,
         images: featuredImage
           ? [{ url: featuredImage.source_url, alt: featuredImage.alt_text }]
-          : [],
+          : [{ url: '/opengraph-image', alt: 'jazzsequence.com' }],
       },
     };
   } catch {

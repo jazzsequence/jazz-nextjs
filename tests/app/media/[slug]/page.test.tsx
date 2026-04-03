@@ -114,14 +114,15 @@ describe('Media individual page — generateMetadata', () => {
     expect(metadata.title).toBe('Media Not Found')
   })
 
-  it('omits openGraph images when there is no featured media', async () => {
+  it('uses OG card fallback image when there is no featured media', async () => {
     vi.mocked(wpClient.fetchPost).mockResolvedValue(mockMedia({
       _embedded: undefined,
     }))
     const { generateMetadata } = await import('@/app/media/[slug]/page')
     const metadata: Metadata = await generateMetadata({ params: Promise.resolve({ slug: 'test' }) })
-    const og = metadata.openGraph as { images?: unknown[] }
-    expect(og?.images).toHaveLength(0)
+    const og = metadata.openGraph as { images?: Array<{ url: string }> }
+    expect(og?.images).toHaveLength(1)
+    expect(og?.images?.[0].url).toBe('/opengraph-image')
   })
 })
 

@@ -39,7 +39,9 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
         title,
         description,
         url: `/media/${slug}`,
-        images: thumbnail ? [{ url: thumbnail }] : [],
+        images: thumbnail
+          ? [{ url: thumbnail }]
+          : [{ url: '/opengraph-image', alt: 'jazzsequence.com' }],
       },
     }
   } catch {
