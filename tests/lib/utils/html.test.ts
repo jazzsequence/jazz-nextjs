@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { decodeHtmlEntities, normalizeWordPressUrl, stripWordPressSize } from '@/lib/utils/html'
+import { decodeHtmlEntities, normalizeWordPressUrl, stripWordPressSize, excerptToDescription } from '@/lib/utils/html'
 
 describe('normalizeWordPressUrl', () => {
   it('collapses double slash in wp-content path', () => {
@@ -156,5 +156,39 @@ describe('decodeHtmlEntities', () => {
   it('does not double-decode (single pass only)', () => {
     // &amp;amp; should become &amp; (one level decoded), not &
     expect(decodeHtmlEntities('&amp;amp;')).toBe('&amp;')
+  })
+})
+
+describe('excerptToDescription', () => {
+  const seriesPrefix = '<div class="pps-series-post-details pps-series-post-details-variant-classic pps-series-post-details-16399 pps-series-meta-excerpt" data-series-id="5188"><div class="pps-series-meta-content"><div class="pps-series-meta-text">This entry is part 22 of 22 in the series <a href="https://jazzsequence.com/series/artificial-intelligence/">Artificial Intelligence</a></div></div></div>'
+
+  it('strips pps-series-post-details block from excerpt', () => {
+    const excerpt = `${seriesPrefix}<p>Actual post excerpt text here.</p>`
+    const result = excerptToDescription(excerpt)
+    expect(result).not.toContain('pps-series')
+    expect(result).not.toContain('This entry is part')
+    expect(result).toContain('Actual post excerpt text here.')
+  })
+
+  it('strips all HTML tags after removing series block', () => {
+    const excerpt = `${seriesPrefix}<p>Plain text excerpt.</p>`
+    const result = excerptToDescription(excerpt)
+    expect(result).toBe('Plain text excerpt.')
+  })
+
+  it('truncates to 160 characters', () => {
+    const longText = 'A'.repeat(200)
+    const result = excerptToDescription(`<p>${longText}</p>`)
+    expect(result.length).toBe(160)
+  })
+
+  it('returns undefined for empty or missing excerpt', () => {
+    expect(excerptToDescription('')).toBeUndefined()
+    expect(excerptToDescription(undefined)).toBeUndefined()
+  })
+
+  it('works on excerpts without a series block', () => {
+    const excerpt = '<p>Normal excerpt with no series info.</p>'
+    expect(excerptToDescription(excerpt)).toBe('Normal excerpt with no series info.')
   })
 })

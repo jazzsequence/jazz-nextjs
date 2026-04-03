@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { fetchPost, fetchMenuItems, WPNotFoundError, WPForbiddenError } from '@/lib/wordpress/client';
 import type { WPPost } from '@/lib/wordpress/types';
-import { decodeHtmlEntities } from '@/lib/utils/html';
+import { decodeHtmlEntities, excerptToDescription } from '@/lib/utils/html';
 import PostContent from '@/components/PostContent';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
@@ -28,9 +28,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
       isr: { revalidate: 3600, tags: ['posts'] },
     });
     const title = decodeHtmlEntities(post.title.rendered);
-    const description = post.excerpt?.rendered
-      ? post.excerpt.rendered.replace(/<[^>]+>/g, '').trim().slice(0, 160)
-      : undefined;
+    const description = excerptToDescription(post.excerpt?.rendered);
     const featuredImage = post._embedded?.['wp:featuredmedia']?.[0];
 
     return {

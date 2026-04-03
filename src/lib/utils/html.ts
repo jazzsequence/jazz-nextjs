@@ -46,3 +46,28 @@ export function decodeHtmlEntities(str: string): string {
     .replace(/&hellip;/g, '…')
     .replace(/&nbsp;/g, '\u00a0')
 }
+
+/**
+ * Convert a WordPress excerpt to a plain-text OG description.
+ *
+ * Strips the Organize Series plugin's "This entry is part X of Y in the series Z"
+ * block (`.pps-series-post-details`) before removing all remaining HTML tags,
+ * then trims and truncates to 160 characters.
+ *
+ * The series block is prepended to excerpts by the plugin's filter on
+ * `the_excerpt`, so it appears in the REST API `excerpt.rendered` field.
+ * It must be removed before the excerpt is used as an OG meta description.
+ */
+export function excerptToDescription(excerpt: string | undefined | null): string | undefined {
+  if (!excerpt) return undefined
+
+  const text = excerpt
+    // Remove the pps-series-post-details block (Organize Series plugin)
+    .replace(/<div[^>]*class="[^"]*pps-series-post-details[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/g, '')
+    // Strip remaining HTML tags
+    .replace(/<[^>]+>/g, '')
+    .trim()
+    .slice(0, 160)
+
+  return text || undefined
+}

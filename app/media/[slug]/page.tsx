@@ -1,7 +1,7 @@
 import { fetchPost, fetchMenuItems, WPNotFoundError, WPForbiddenError } from '@/lib/wordpress/client'
 import type { WPMedia } from '@/lib/wordpress/types'
 import { resolveMediaEmbed } from '@/lib/utils/media'
-import { decodeHtmlEntities } from '@/lib/utils/html'
+import { decodeHtmlEntities, excerptToDescription } from '@/lib/utils/html'
 import Navigation from '@/components/Navigation'
 import Footer from '@/components/Footer'
 import { notFound, forbidden } from 'next/navigation'
@@ -25,9 +25,7 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
       isr: { revalidate: 3600, tags: ['media'] },
     })
     const title = decodeHtmlEntities(item.title.rendered)
-    const description = item.excerpt?.rendered
-      ? item.excerpt.rendered.replace(/<[^>]+>/g, '').trim().slice(0, 160)
-      : undefined
+    const description = excerptToDescription(item.excerpt?.rendered)
     const thumbnail = item._embedded?.['wp:featuredmedia']?.[0]?.source_url
 
     return {
