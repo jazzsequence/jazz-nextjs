@@ -33,7 +33,8 @@
     "test:e2e:standalone": "BASE_URL=http://localhost:3000 npm run test:e2e",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "revalidate": "bash scripts/revalidate.sh"
+    "revalidate": "bash scripts/revalidate.sh",
+    "postinstall": "node scripts/patch-cache-handler.mjs"
   },
   "dependencies": {
     "@fontsource/space-grotesk": "^5.2.10",
