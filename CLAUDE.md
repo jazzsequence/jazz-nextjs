@@ -231,9 +231,8 @@ Key facts:
 - `/search` — search results page (revalidate=0, always fresh; filter tabs: All/Posts/Media)
 - `/style-guide` — style guide page
 
-**Remaining work** (priority order):
-- **#3** Border flicker tweaks — flicker ratio too dramatic, goes fully dark. Should stutter/dim, not blackout.
-- **#4** Add `dependabot.yml` — manage npm and GitHub Actions dependency versions.
+**Remaining work**:
+- Homepage OG image — investigate dynamically generated screenshot as `og:image` (Next.js `opengraph-image` route / `ImageResponse`)
 - Homepage OG image — investigate dynamically generated screenshot as `og:image` (Next.js `opengraph-image` route / `ImageResponse`)
 
 ---
