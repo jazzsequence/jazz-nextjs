@@ -330,4 +330,4 @@ expect(error.name).toBe('WPAPIError')
 
 ## Last Updated
 
-2026-03-27
+2026-04-03

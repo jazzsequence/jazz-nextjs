@@ -187,4 +187,4 @@ If using a Pantheon platform domain (`*.pantheonsite.io`), skip steps 15–17.
 
 ---
 
-*Last updated: 2026-03-24*
+*Last updated: 2026-04-03*

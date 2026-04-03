@@ -150,4 +150,4 @@ Check Next.js logs: `terminus node:logs:build:list jazz-nextjs15.live`
 - Plugin is fire-and-forget — no sensitive data returned to WordPress
 
 ## Last Updated
-2026-03-20
+2026-04-03

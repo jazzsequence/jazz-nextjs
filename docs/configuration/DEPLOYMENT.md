@@ -332,5 +332,9 @@ See [Pantheon GitHub Application docs](https://docs.pantheon.io/github-applicati
 - [Test and Live Environments](https://docs.pantheon.io/nextjs/test-and-live-env)
 - [Pantheon Documentation Repository](https://github.com/pantheon-systems/documentation) (reference implementation)
 
+## OG Image URL Configuration
+
+OG image URLs are set as absolute URLs via `OG_IMAGE_URL` in `src/lib/utils/og.ts` using `NEXT_PUBLIC_SITE_URL ?? https://next.jazzsequence.com`, preventing `metadataBase` domain mismatch.
+
 ## Last Updated
-2026-03-27
+2026-04-03
