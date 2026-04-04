@@ -61,13 +61,14 @@ export function decodeHtmlEntities(str: string): string {
 export function excerptToDescription(excerpt: string | undefined | null): string | undefined {
   if (!excerpt) return undefined
 
-  const text = excerpt
-    // Remove the pps-series-post-details block (Organize Series plugin)
-    .replace(/<div[^>]*class="[^"]*pps-series-post-details[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/g, '')
-    // Strip remaining HTML tags
-    .replace(/<[^>]+>/g, '')
-    .trim()
-    .slice(0, 160)
+  const text = decodeHtmlEntities(
+    excerpt
+      // Remove the pps-series-post-details block (Organize Series plugin)
+      .replace(/<div[^>]*class="[^"]*pps-series-post-details[^"]*"[^>]*>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/g, '')
+      // Strip remaining HTML tags
+      .replace(/<[^>]+>/g, '')
+      .trim()
+  )
 
   return text || undefined
 }

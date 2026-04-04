@@ -176,10 +176,10 @@ describe('excerptToDescription', () => {
     expect(result).toBe('Plain text excerpt.')
   })
 
-  it('truncates to 160 characters', () => {
-    const longText = 'A'.repeat(200)
+  it('does not truncate — lets WordPress handle excerpt length', () => {
+    const longText = 'A'.repeat(400)
     const result = excerptToDescription(`<p>${longText}</p>`)
-    expect(result.length).toBe(160)
+    expect(result?.length).toBe(400)
   })
 
   it('returns undefined for empty or missing excerpt', () => {
@@ -190,5 +190,13 @@ describe('excerptToDescription', () => {
   it('works on excerpts without a series block', () => {
     const excerpt = '<p>Normal excerpt with no series info.</p>'
     expect(excerptToDescription(excerpt)).toBe('Normal excerpt with no series info.')
+  })
+
+  it('decodes HTML entities in the excerpt', () => {
+    const excerpt = '<p>They&#8217;re moving the entire agency off of WordPress &amp; onto AI.</p>'
+    const result = excerptToDescription(excerpt)
+    expect(result).toBe('They\u2019re moving the entire agency off of WordPress & onto AI.')
+    expect(result).not.toContain('&#8217;')
+    expect(result).not.toContain('&amp;')
   })
 })
