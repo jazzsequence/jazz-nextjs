@@ -233,7 +233,8 @@ Key facts:
 - `/style-guide` — style guide page
 
 **Remaining work**:
-- Homepage OG image — investigate dynamically generated screenshot as `og:image` (Next.js `opengraph-image` route / `ImageResponse`)
+- `scripts/patch-cache-handler.mjs` — postinstall workaround for missing `./middleware` export in `@pantheon-systems/nextjs-cache-handler` v0.4.0. Remove when Pantheon fixes https://github.com/pantheon-systems/nextjs-cache-handler/issues/28
+- PAPC on jazzsequence.com WordPress — for richer Surrogate-Key granularity (post IDs, term IDs) beyond route-based tags (future enhancement)
 
 ---
 
