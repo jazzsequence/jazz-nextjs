@@ -255,12 +255,14 @@ jobs:
 
       - name: Deploy Playwright report to GitHub Pages
         if: always()
+        continue-on-error: true  # Never fail CI over report publishing
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./playwright-report
           destination_dir: reports/${{ github.run_id }}
           keep_files: true
+          force_push: true  # Avoid non-fast-forward failures when parallel runs race
 
       - name: Report status
         if: always()
