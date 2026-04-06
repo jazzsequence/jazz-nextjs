@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Tailwind 4 wraps hover: and group-hover: utilities in @media (hover: hover),
+   which silently disables them on touch devices and some hybrid/dev environments.
+   Override to restore Tailwind 3 behaviour: apply hover styles unconditionally. */
+@variant hover (&:hover);
+
 /* Custom theme — mirrors tailwind.config.js values which is now removed.
    @theme variables become CSS custom properties AND Tailwind utility classes. */
 @theme {
