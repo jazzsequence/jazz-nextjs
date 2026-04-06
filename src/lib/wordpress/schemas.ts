@@ -34,7 +34,7 @@ export const WPFeaturedMediaSchema = z.object({
   media_details: z.object({
     width: z.coerce.number().nullable(), // Coerce strings to numbers (WordPress inconsistency)
     height: z.coerce.number().nullable(), // Coerce strings to numbers (WordPress inconsistency)
-    sizes: z.record(z.object({
+    sizes: z.record(z.string(), z.object({
       source_url: z.string(),
       width: z.coerce.number(), // Coerce strings to numbers (WordPress inconsistency)
       height: z.coerce.number(), // Coerce strings to numbers (WordPress inconsistency)
@@ -78,7 +78,7 @@ export const WPBaseContentSchema = z.object({
   ping_status: z.enum(['open', 'closed']),
   template: z.string(),
   // WordPress sometimes returns meta as empty array instead of object
-  meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).transform(val =>
+  meta: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]).transform(val =>
     Array.isArray(val) ? {} as Record<string, unknown> : val
   ) as unknown as z.ZodType<Record<string, unknown>>,
   _embedded: WPEmbeddedSchema,
@@ -146,7 +146,7 @@ export const WPMediaSchema = WPBaseContentSchema.extend({
   author: z.number().optional(),
   comment_status: z.enum(['open', 'closed']).optional(),
   ping_status: z.enum(['open', 'closed']).optional(),
-  meta: z.union([z.record(z.unknown()), z.array(z.unknown())]).transform(val =>
+  meta: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]).transform(val =>
     Array.isArray(val) ? {} as Record<string, unknown> : val
   ).optional() as unknown as z.ZodType<Record<string, unknown> | undefined>,
   media_url: z.string().optional(),
@@ -175,7 +175,7 @@ export const WPMovieSchema = WPBaseContentSchema.extend({
   genre: z.array(z.number()),
   actor: z.array(z.number()),
   collection: z.array(z.number()),
-  meta: z.record(z.any()),
+  meta: z.record(z.string(), z.any()),
 }).passthrough() // Allow unknown fields from WordPress plugins
 
 // Address schema
@@ -205,7 +205,7 @@ export const WPCategorySchema = z.object({
   slug: z.string(),
   taxonomy: z.literal('category'),
   parent: z.number(),
-  meta: z.union([z.record(z.any()), z.array(z.any())]),
+  meta: z.union([z.record(z.string(), z.any()), z.array(z.any())]),
 }).passthrough()
 
 // Tag schema — meta is [] (empty array) for terms with no metadata; accept both
@@ -217,7 +217,7 @@ export const WPTagSchema = z.object({
   name: z.string(),
   slug: z.string(),
   taxonomy: z.literal('post_tag'),
-  meta: z.union([z.record(z.any()), z.array(z.any())]),
+  meta: z.union([z.record(z.string(), z.any()), z.array(z.any())]),
 }).passthrough()
 
 // Series schema — meta is [] for terms with no metadata; passthrough for _links etc.
@@ -229,7 +229,7 @@ export const WPSeriesSchema = z.object({
   name: z.string(),
   slug: z.string(),
   taxonomy: z.literal('series'),
-  meta: z.union([z.record(z.any()), z.array(z.any())]),
+  meta: z.union([z.record(z.string(), z.any()), z.array(z.any())]),
 }).passthrough()
 
 // API error schema
@@ -290,10 +290,10 @@ export const WPMenuSchema = z.object({
   slug: z.string(),
   description: z.string(),
   count: z.number().nullable().optional(),
-  meta: z.union([z.record(z.unknown()), z.array(z.unknown())]),
+  meta: z.union([z.record(z.string(), z.unknown()), z.array(z.unknown())]),
   locations: z.array(z.string()),
   auto_add: z.boolean().optional(),
-  _links: z.record(z.unknown()).optional(),
+  _links: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const WPMenusSchema = z.array(WPMenuSchema)
@@ -314,7 +314,7 @@ export const WPMenuItemSchema = z.object({
   classes: z.array(z.string()),
   xfn: z.array(z.string()),
   invalid: z.boolean(),
-  meta: z.record(z.unknown()),
+  meta: z.record(z.string(), z.unknown()),
   menus: z.number(),
   _links: z.object({
     self: z.array(z.object({ href: z.string() })).optional(),
