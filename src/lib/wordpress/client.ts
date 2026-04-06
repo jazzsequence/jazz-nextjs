@@ -338,7 +338,7 @@ async function fetchAndValidate<T extends z.ZodTypeAny>(
     if (process.env.NODE_ENV !== 'production') {
       console.error('[Zod Validation Error]', {
         url,
-        errors: result.error.errors.map(err => ({
+        errors: result.error.issues.map(err => ({
           path: err.path.join('.'),
           message: err.message,
           code: err.code,
@@ -381,7 +381,7 @@ async function fetchAndValidateWithResponse<T extends z.ZodTypeAny>(
     if (process.env.NODE_ENV !== 'production') {
       console.error('[Zod Validation Error]', {
         url,
-        errors: result.error.errors.map(err => ({
+        errors: result.error.issues.map(err => ({
           path: err.path.join('.'),
           message: err.message,
           code: err.code,
@@ -466,29 +466,29 @@ interface PostTypeConfig<T> {
 const POST_CONFIG: PostTypeConfig<WPPost> = {
   endpoint: 'posts',
   displayName: 'Post',
-  schema: WPPostSchema,
-  arraySchema: WPPostsSchema,
+  schema: WPPostSchema as z.ZodType<WPPost>,
+  arraySchema: WPPostsSchema as z.ZodType<WPPost[]>,
 }
 
 const PAGE_CONFIG: PostTypeConfig<WPPage> = {
   endpoint: 'pages',
   displayName: 'Page',
-  schema: WPPageSchema,
-  arraySchema: WPPagesSchema,
+  schema: WPPageSchema as z.ZodType<WPPage>,
+  arraySchema: WPPagesSchema as z.ZodType<WPPage[]>,
 }
 
 const GAME_CONFIG: PostTypeConfig<WPGame> = {
   endpoint: 'gc_game',
   displayName: 'Game',
-  schema: WPGameSchema,
-  arraySchema: WPGamesSchema,
+  schema: WPGameSchema as z.ZodType<WPGame>,
+  arraySchema: WPGamesSchema as z.ZodType<WPGame[]>,
 }
 
 const RECIPE_CONFIG: PostTypeConfig<WPRecipe> = {
   endpoint: 'rb_recipe',
   displayName: 'Recipe',
-  schema: WPRecipeSchema,
-  arraySchema: WPRecipesSchema,
+  schema: WPRecipeSchema as z.ZodType<WPRecipe>,
+  arraySchema: WPRecipesSchema as z.ZodType<WPRecipe[]>,
 }
 
 const MEDIA_CONFIG: PostTypeConfig<WPMedia> = {
@@ -501,22 +501,22 @@ const MEDIA_CONFIG: PostTypeConfig<WPMedia> = {
 const ARTIST_CONFIG: PostTypeConfig<WPArtist> = {
   endpoint: 'plague-artist',
   displayName: 'Artist',
-  schema: WPArtistSchema,
-  arraySchema: WPArtistsSchema,
+  schema: WPArtistSchema as z.ZodType<WPArtist>,
+  arraySchema: WPArtistsSchema as z.ZodType<WPArtist[]>,
 }
 
 const MOVIE_CONFIG: PostTypeConfig<WPMovie> = {
   endpoint: 'movie',
   displayName: 'Movie',
-  schema: WPMovieSchema,
-  arraySchema: WPMoviesSchema,
+  schema: WPMovieSchema as z.ZodType<WPMovie>,
+  arraySchema: WPMoviesSchema as z.ZodType<WPMovie[]>,
 }
 
 const ADDRESS_CONFIG: PostTypeConfig<WPAddress> = {
   endpoint: 'ab_address',
   displayName: 'Address',
-  schema: WPAddressSchema,
-  arraySchema: WPAddressesSchema,
+  schema: WPAddressSchema as z.ZodType<WPAddress>,
+  arraySchema: WPAddressesSchema as z.ZodType<WPAddress[]>,
 }
 
 // Union type for all post type configs
