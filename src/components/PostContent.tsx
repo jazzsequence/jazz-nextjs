@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 import parse, { domToReact } from 'html-react-parser';
 import type { HTMLReactParserOptions, Element } from 'html-react-parser';
 import type { DOMNode } from 'html-react-parser';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
 import { decodeHtmlEntities, normalizeWordPressUrl, stripWordPressSize } from '@/lib/utils/html';
 import FeaturedImage from './FeaturedImage';
 import PostBodyImage from './PostBodyImage';
@@ -408,27 +408,79 @@ export default function PostContent({ post }: PostContentProps) {
 
   const sanitized = post.content.rendered
     ? rewriteInternalLinks(
-        DOMPurify.sanitize(post.content.rendered, {
-          // Allow iframes for embeds (Spotify, YouTube, etc.)
+        sanitizeHtml(post.content.rendered, {
           // Content comes from our own WordPress instance — trusted source.
-          ADD_TAGS: [
+          // This config mirrors the previous DOMPurify setup: standard HTML
+          // allowlist plus iframes for embeds and SVG filter elements for wp-duotone.
+          allowedTags: [
+            // Block elements
+            'address', 'article', 'aside', 'blockquote', 'dd', 'details', 'dialog',
+            'div', 'dl', 'dt', 'figcaption', 'figure', 'footer', 'header', 'hgroup',
+            'hr', 'li', 'main', 'nav', 'ol', 'p', 'pre', 'section', 'summary', 'ul',
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+            // Inline elements
+            'a', 'abbr', 'b', 'bdi', 'bdo', 'br', 'caption', 'cite', 'code',
+            'col', 'colgroup', 'data', 'del', 'dfn', 'em', 'i', 'ins', 'kbd',
+            'mark', 'q', 'rp', 'rt', 'ruby', 's', 'samp', 'small', 'span',
+            'strong', 'sub', 'sup', 'table', 'tbody', 'td', 'tfoot', 'th',
+            'thead', 'time', 'tr', 'u', 'var', 'wbr',
+            // Media
+            'audio', 'img', 'picture', 'source', 'track', 'video',
+            // Embeds
             'iframe',
+            // SVG (inline SVGs and wp-duotone filters)
+            'svg', 'defs', 'g', 'path', 'polygon', 'polyline', 'rect', 'circle',
+            'ellipse', 'line', 'text', 'use', 'clipPath', 'mask',
+            'linearGradient', 'radialGradient', 'stop',
             // SVG filter elements for wp-duotone
-            'filter',
-            'feColorMatrix',
-            'feBlend',
-            'feFlood',
-            'feComposite',
-            'feComponentTransfer',
-            'feFuncR', 'feFuncG', 'feFuncB', 'feFuncA',
+            'filter', 'feColorMatrix', 'feBlend', 'feFlood', 'feComposite',
+            'feComponentTransfer', 'feFuncR', 'feFuncG', 'feFuncB', 'feFuncA',
           ],
-          ADD_ATTR: [
-            // iframe embed attributes
-            'allow', 'allowfullscreen', 'frameborder', 'scrolling', 'loading',
-            // SVG filter attributes
-            'type', 'values', 'in', 'in2', 'result', 'mode',
-            'flood-color', 'flood-opacity', 'operator',
-          ],
+          // sanitize-html's TS types don't model regex AllowedAttributes even
+          // though the runtime supports them — cast to silence the error.
+          allowedAttributes: {
+            '*': ['class', 'id', 'style', /^data-/, /^aria-/, 'role', 'tabindex', 'lang', 'dir'] as sanitizeHtml.AllowedAttribute[],
+            a: ['href', 'name', 'target', 'rel'],
+            img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading', 'decoding'],
+            iframe: ['src', 'allow', 'allowfullscreen', 'frameborder', 'scrolling', 'loading', 'title', 'width', 'height', 'name'],
+            audio: ['src', 'controls', 'autoplay', 'loop', 'muted', 'preload'],
+            video: ['src', 'controls', 'autoplay', 'loop', 'muted', 'preload', 'poster', 'width', 'height', 'playsinline'],
+            source: ['src', 'srcset', 'type', 'media', 'sizes'],
+            track: ['src', 'kind', 'srclang', 'label', 'default'],
+            th: ['scope', 'colspan', 'rowspan'],
+            td: ['colspan', 'rowspan'],
+            col: ['span'],
+            colgroup: ['span'],
+            // SVG structural attributes
+            svg: ['xmlns', 'viewBox', 'width', 'height', 'preserveAspectRatio', 'fill', 'stroke', 'stroke-width'],
+            path: ['d', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'fill-rule', 'clip-rule'],
+            circle: ['cx', 'cy', 'r', 'fill', 'stroke'],
+            rect: ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke'],
+            line: ['x1', 'y1', 'x2', 'y2', 'stroke'],
+            polygon: ['points', 'fill', 'stroke'],
+            polyline: ['points', 'fill', 'stroke'],
+            ellipse: ['cx', 'cy', 'rx', 'ry', 'fill', 'stroke'],
+            g: ['fill', 'stroke', 'transform'],
+            use: ['href', 'x', 'y', 'width', 'height'],
+            clipPath: ['clipPathUnits'],
+            mask: ['maskUnits', 'maskContentUnits', 'x', 'y', 'width', 'height'],
+            linearGradient: ['id', 'x1', 'y1', 'x2', 'y2', 'gradientUnits', 'gradientTransform'],
+            radialGradient: ['id', 'cx', 'cy', 'r', 'fx', 'fy', 'gradientUnits'],
+            stop: ['offset', 'stop-color', 'stop-opacity'],
+            // SVG filter attributes for wp-duotone
+            filter: ['id', 'x', 'y', 'width', 'height', 'color-interpolation-filters'],
+            feColorMatrix: ['type', 'values', 'in', 'result'],
+            feBlend: ['in', 'in2', 'result', 'mode'],
+            feFlood: ['flood-color', 'flood-opacity', 'result'],
+            feComposite: ['in', 'in2', 'result', 'operator', 'k1', 'k2', 'k3', 'k4'],
+            feComponentTransfer: ['in', 'result'],
+            feFuncR: ['type', 'values', 'slope', 'intercept', 'amplitude', 'exponent', 'offset'],
+            feFuncG: ['type', 'values', 'slope', 'intercept', 'amplitude', 'exponent', 'offset'],
+            feFuncB: ['type', 'values', 'slope', 'intercept', 'amplitude', 'exponent', 'offset'],
+            feFuncA: ['type', 'values', 'slope', 'intercept', 'amplitude', 'exponent', 'offset'],
+          },
+          allowedSchemes: ['http', 'https', 'mailto', 'tel'],
+          allowedSchemesAppliedToAttributes: ['href', 'src', 'action'],
         })
       )
     : ''
