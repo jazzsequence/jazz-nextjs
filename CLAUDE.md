@@ -183,7 +183,7 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - **Testing**: Vitest 4.0.18, Playwright 1.58.2
 - **Styling**: Tailwind CSS 3.4
 - **Validation**: Zod schemas with `.passthrough()` for plugin fields
-- **CDN cache invalidation**: `proxy.ts` at project root emits `Surrogate-Key` response headers using `createSurrogateKeyMiddleware` from `@pantheon-systems/nextjs-cache-handler`. NOTE: v0.4.0 of this package does not expose `./middleware` in its exports map — `scripts/patch-cache-handler.mjs` postinstall patches this. This is a known workaround pending a proper fix.
+- **CDN cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.6.0+ manages edge cache clearing internally. The `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping in GCS and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. The previous `proxy.ts` Surrogate-Key middleware and `scripts/patch-cache-handler.mjs` postinstall patch have been removed as part of the v0.6.0 migration.
 
 ### Design Patterns
 - Domain-Driven Design with bounded contexts
@@ -233,8 +233,7 @@ Key facts:
 - `/style-guide` — style guide page
 
 **Remaining work**:
-- `scripts/patch-cache-handler.mjs` — postinstall workaround for missing `./middleware` export in `@pantheon-systems/nextjs-cache-handler` v0.4.0. Remove when Pantheon fixes https://github.com/pantheon-systems/nextjs-cache-handler/issues/28
-- PAPC on jazzsequence.com WordPress — for richer Surrogate-Key granularity (post IDs, term IDs) beyond route-based tags (future enhancement)
+- PAPC on jazzsequence.com WordPress — for richer tag granularity (post IDs, term IDs) as input to the cache handler's tag-based invalidation (future enhancement)
 
 ---
 

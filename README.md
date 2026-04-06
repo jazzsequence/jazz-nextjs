@@ -23,7 +23,7 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - E2E tests with Playwright against live Pantheon environments
   - Automated Playwright report deployment to GitHub Pages
 - **Deployment**: Optimized for Pantheon's Next.js hosting platform
-- **Surrogate-Key response headers**: `proxy.ts` emits `Surrogate-Key` headers via `createSurrogateKeyMiddleware` from `@pantheon-systems/nextjs-cache-handler` for targeted GCDN cache invalidation
+- **Edge cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.6.0+ handles GCDN cache clearing internally — the `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`
 
 ### Implemented Routes
 
