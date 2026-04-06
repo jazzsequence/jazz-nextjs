@@ -138,13 +138,12 @@ jobs:
               continue
             fi
 
-            # On first attempt, log the raw response to confirm API shape and SHA format.
-            # This helps diagnose mismatches between github.event.pull_request.head.sha
-            # and whatever commit field Pantheon exposes in the build list.
-            if [ $ATTEMPT -eq 1 ]; then
-              echo "--- API response (attempt 1, for diagnostics) ---"
+            # Log raw API response only when GitHub Actions debug logging is enabled.
+            # Enable via: re-run with debug, or set ACTIONS_RUNNER_DEBUG secret to true.
+            if [ "${RUNNER_DEBUG:-0}" = "1" ] && [ $ATTEMPT -eq 1 ]; then
+              echo "--- DEBUG: build list API response (attempt 1) ---"
               echo "$BUILDS_RESPONSE" | jq '.'
-              echo "-------------------------------------------------"
+              echo "--------------------------------------------------"
             fi
 
             # Find build matching this commit SHA
