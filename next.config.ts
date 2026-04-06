@@ -19,8 +19,9 @@ const nextConfig: NextConfig = {
   //
   // TTL is one year (31536000s) — on-demand invalidation via /api/revalidate
   // webhooks handles content freshness; TTL is just the safety-net expiry.
-  // High TTL is safe because the GCDN purges by Surrogate-Key on every content
-  // change, same as Pantheon Advanced Page Cache does for WordPress sites.
+  // High TTL is safe because @pantheon-systems/nextjs-cache-handler's GcsCacheHandler
+  // maintains a tag-to-key mapping in GCS and calls the Pantheon outbound proxy
+  // directly on revalidateTag() / revalidatePath() to clear matching GCDN entries.
   //
   // Excludes: API routes, Next.js internals, the search page (revalidate=0),
   // and the opengraph-image route (force-dynamic).
