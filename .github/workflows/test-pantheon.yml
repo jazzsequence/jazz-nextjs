@@ -58,12 +58,17 @@ jobs:
             PR_NUM=${{ github.event.pull_request.number }}
             ENV_NAME="pr-${PR_NUM}"
             BASE_URL="https://pr-${PR_NUM}-${PANTHEON_SITE_NAME}.pantheonsite.io"
+            # For PRs, github.sha is GitHub's synthetic merge commit — Pantheon never
+            # sees it. The branch head SHA is what Pantheon actually checks out and builds.
+            COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
           else
             ENV_NAME="dev"
             BASE_URL="https://dev-${PANTHEON_SITE_NAME}.pantheonsite.io"
+            COMMIT_SHA="${{ github.sha }}"
           fi
           echo "env_name=${ENV_NAME}" >> $GITHUB_OUTPUT
           echo "base_url=${BASE_URL}" >> $GITHUB_OUTPUT
+          echo "commit_sha=${COMMIT_SHA}" >> $GITHUB_OUTPUT
 
       - name: Setup PHP (required for Terminus)
         uses: shivammathur/setup-php@v2
@@ -101,8 +106,12 @@ jobs:
 
           echo "✓ Authenticated with Pantheon API"
 
-          # Get current commit SHA
-          COMMIT_SHA="${{ github.sha }}"
+          # Commit SHA resolved in the Determine environment step.
+          # For PRs: github.event.pull_request.head.sha (branch head — what Pantheon builds)
+          # For pushes: github.sha (the pushed commit)
+          # NOTE: github.sha on pull_request events is GitHub's synthetic merge commit,
+          # which Pantheon never sees. Using it here was the original bug.
+          COMMIT_SHA="${{ steps.env.outputs.commit_sha }}"
           echo "Looking for build matching commit: ${COMMIT_SHA:0:7}"
 
           # Monitor Pantheon workflow status via Terminus CLI
@@ -127,6 +136,15 @@ jobs:
               echo "This may indicate the build hasn't started yet, retrying..."
               sleep $SLEEP_TIME
               continue
+            fi
+
+            # On first attempt, log the raw response to confirm API shape and SHA format.
+            # This helps diagnose mismatches between github.event.pull_request.head.sha
+            # and whatever commit field Pantheon exposes in the build list.
+            if [ $ATTEMPT -eq 1 ]; then
+              echo "--- API response (attempt 1, for diagnostics) ---"
+              echo "$BUILDS_RESPONSE" | jq '.'
+              echo "-------------------------------------------------"
             fi
 
             # Find build matching this commit SHA
