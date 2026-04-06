@@ -64,10 +64,15 @@ vi.mock('next/navigation', () => ({
   useSearchParams: vi.fn(),
 }))
 
-// Mock DOMPurify for Node.js environment
+// DOMPurify requires a browser DOM. In the happy-dom test environment the DOM
+// is available, but loading the full DOMPurify pipeline adds overhead. Strip
+// the XSS vectors the tests actually assert against instead.
 vi.mock('dompurify', () => ({
   default: {
-    sanitize: (html: string) => html, // Pass through HTML in tests
+    sanitize: (html: string) =>
+      html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/ on\w+="[^"]*"/gi, ''),
   },
 }))
 

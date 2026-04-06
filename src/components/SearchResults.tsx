@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import DOMPurify from 'isomorphic-dompurify'
+import { stripHtml } from '@/lib/utils/html'
 import PostCard from './PostCard'
 import type { WPPost } from '@/lib/wordpress/types'
 
@@ -134,7 +134,7 @@ function SearchResultCard({
   priority?: boolean
 }) {
   const rawExcerpt = post.excerpt.rendered
-    ? DOMPurify.sanitize(post.excerpt.rendered, { ALLOWED_TAGS: [] }).trim()
+    ? stripHtml(post.excerpt.rendered)
     : ''
 
   return (

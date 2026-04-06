@@ -48,6 +48,17 @@ export function decodeHtmlEntities(str: string): string {
 }
 
 /**
+ * Strip all HTML tags from a string, returning plain text.
+ *
+ * Used for rendering excerpts in card components where only plain text is
+ * needed. The output is rendered as a React text node (not dangerouslySetInnerHTML),
+ * so React's automatic escaping handles XSS protection.
+ */
+export function stripHtml(html: string): string {
+  return html.replace(/<[^>]+>/g, '').trim()
+}
+
+/**
  * Convert a WordPress excerpt to a plain-text OG description.
  *
  * Strips the Organize Series plugin's "This entry is part X of Y in the series Z"

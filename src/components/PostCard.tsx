@@ -1,8 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import DOMPurify from 'isomorphic-dompurify';
-import { decodeHtmlEntities, normalizeWordPressUrl } from '@/lib/utils/html';
+import { decodeHtmlEntities, normalizeWordPressUrl, stripHtml } from '@/lib/utils/html';
 import type { WPPost } from '@/lib/wordpress/types';
 
 interface PostCardProps {
@@ -19,7 +18,7 @@ export default function PostCard({ post, priority = false, excerptContent }: Pos
   const formattedDate = format(new Date(post.date), 'MMMM d, yyyy');
 
   const sanitizedExcerpt = post.excerpt.rendered
-    ? DOMPurify.sanitize(post.excerpt.rendered, { ALLOWED_TAGS: [] }).trim()
+    ? stripHtml(post.excerpt.rendered)
     : '';
 
   return (
