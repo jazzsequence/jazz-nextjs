@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import DOMPurify from 'isomorphic-dompurify';
+import DOMPurify from 'dompurify';
 import { matchAudiences, type Audience, type EndpointData } from '@/lib/audience-matcher';
 
 interface GreetingVariant {
