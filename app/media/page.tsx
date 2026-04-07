@@ -62,7 +62,7 @@ function MediaCard({ item }: { item: WPMedia }) {
     </>
   )
 
-  const cardClass = "group no-underline block bg-brand-surface border border-brand-border rounded-xl overflow-hidden hover:border-brand-cyan transition-colors"
+  const cardClass = "neon-border-hover-subtle group no-underline block bg-brand-surface border border-brand-border rounded-xl overflow-hidden transition-colors"
 
   if (isExternal && embed?.originalUrl) {
     return (
