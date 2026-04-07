@@ -110,6 +110,9 @@ npm run start:test
 
 **Location**: `eslint.config.mjs`
 
+**Stack**: ESLint 9.x + `eslint-config-next@16.2.2` using native flat config (no FlatCompat wrapper).
+Note: ESLint 10.x is not yet supported by `eslint-plugin-react@7.x`.
+
 **Rules**:
 - No `any` types (use `unknown` instead)
 - All React hooks properly configured
@@ -121,6 +124,16 @@ npm run start:test
 - `playwright-report/**`
 - `node_modules/**`
 - `.next/**`
+
+## Tailwind CSS Configuration
+
+Tailwind 4.2 — config lives in CSS, not a JS file.
+
+**Theme**: Defined in `app/globals.css` `@theme` block — brand colors (`--color-brand-*`) and font families (`--font-mono/sans/heading`).
+
+**PostCSS plugin**: `@tailwindcss/postcss` (in `postcss.config.mjs`).
+
+**Hover behavior**: `@variant hover (&:hover)` in `app/globals.css` restores Tailwind 3 unconditional hover (Tailwind 4 default wraps hover utilities in `@media (hover: hover)`).
 
 ## TypeScript Configuration
 

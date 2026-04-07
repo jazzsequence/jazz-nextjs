@@ -177,12 +177,13 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 ## Project Architecture
 
 ### Tech Stack
-- **Framework**: Next.js 16.1.6 (Turbopack)
+- **Framework**: Next.js 16.2.2 (Turbopack)
 - **React**: 19.2.4
 - **WordPress**: Headless CMS (jazzsequence.com)
 - **Testing**: Vitest 4.0.18, Playwright 1.58.2
-- **Styling**: Tailwind CSS 4.2 (config via `@theme` in `app/globals.css`; no `tailwind.config.js`)
-- **Validation**: Zod schemas with `.passthrough()` for plugin fields
+- **Styling**: Tailwind CSS 4.2 (config via `@theme` in `app/globals.css`; `@variant hover (&:hover)` restores unconditional hover behavior; no `tailwind.config.js`)
+- **Validation**: Zod 4 schemas with `.passthrough()` for plugin fields; `z.record()` requires explicit key schema; `ZodError.issues` (not `.errors`)
+- **HTML Sanitization**: `sanitize-html` (PostContent, server-side); `dompurify` (GreetingClient, client-side); `stripHtml()` util (PostCard/SearchResults excerpts)
 - **CDN cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.6.0+ manages edge cache clearing internally. The `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping in GCS and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. The previous `proxy.ts` Surrogate-Key middleware and `scripts/patch-cache-handler.mjs` postinstall patch have been removed as part of the v0.6.0 migration.
 
 ### Design Patterns

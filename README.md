@@ -17,7 +17,7 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - Automatic ISR cache tag generation for Next.js
   - Custom error classes with detailed context
 - **Type Safety**: Full TypeScript implementation with runtime Zod schema validation
-- **HTML Sanitization**: DOMPurify integration for safe WordPress content rendering
+- **HTML Sanitization**: Context-aware sanitization — `sanitize-html` (server components), `dompurify` (client components), `stripHtml()` (plain-text excerpts)
 - **Testing**: Comprehensive unit and E2E test coverage
   - Unit tests with Vitest + happy-dom
   - E2E tests with Playwright against live Pantheon environments
@@ -247,12 +247,12 @@ jazz-nextjs/
 
 ### WordPress Integration
 - **Generic API Client** - Ultra-DRY `fetchPosts(postType)` API for all content types
-- **Zod 3.24** - Runtime schema validation with custom error classes
+- **Zod 4** - Runtime schema validation with custom error classes
 - **Retry Logic** - Exponential backoff with jitter (3 retries max, 1s → 2s → 4s)
 - **Rate Limiting** - Token bucket algorithm (10 req/sec sustained, 20 burst)
-- **DOMPurify** - HTML sanitization for WordPress content
-- **html-react-parser** - Safe HTML parsing
-- **@pantheon-systems/nextjs-cache-handler** - Persistent ISR caching
+- **sanitize-html** / **dompurify** - HTML sanitization (server / client respectively)
+- **html-react-parser 6** - Safe HTML parsing
+- **@pantheon-systems/nextjs-cache-handler 0.6** - Persistent ISR caching with built-in edge cache clearing
 
 ### Testing
 - **Vitest 4** with happy-dom - Unit and integration testing
@@ -261,10 +261,10 @@ jazz-nextjs/
 - **Testing Library** - React component testing
 
 ### Build & Dev Tools
-- **Tailwind CSS 3.4** - Styling framework
+- **Tailwind CSS 4.2** - Styling framework (config via `@theme` in `app/globals.css`)
 - **framer-motion** - Layout and filter animations (games grid)
 - **Sharp** - Image optimization
-- **ESLint 9** - Code linting with flat config
+- **ESLint 9** / **eslint-config-next 16** - Code linting with native flat config
 
 ## Deployment
 

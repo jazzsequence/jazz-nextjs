@@ -105,14 +105,15 @@ If any command fails, fix the issues before committing. Never:
 
 Recent dependency decisions:
 - **Node.js**: Upgraded to 24.13.0 to match Pantheon (from 22.6.0)
-- **Next.js**: Upgraded to 16.1.6 with Turbopack build (from 15.5.7)
+- **Next.js**: Upgraded to 16.2.2 with Turbopack build (from 15.5.7)
 - **React**: Upgraded to 19.2.4 (from 18.3.1)
-- **Pantheon Cache Handler**: Added 0.4.0 for persistent caching
-- **ESLint**: Migrated from `next lint` to ESLint CLI with flat config
-- **Tailwind CSS**: Using v3.4 (stable) - v4 has ESM compatibility issues
+- **Pantheon Cache Handler**: Upgraded to 0.6.0; `proxy.ts` and postinstall patch removed — handler manages edge cache clearing internally
+- **ESLint**: Migrated to `eslint-config-next@16.2.2` with native flat config (no FlatCompat wrapper); ESLint 9.x (10.x not yet supported by `eslint-plugin-react`)
+- **Tailwind CSS**: Upgraded to v4.2 — config moved from `tailwind.config.js` to `@theme` block in `app/globals.css`; PostCSS plugin is now `@tailwindcss/postcss`
 - **Test Environment**: Switched from jsdom to happy-dom for better ESM compatibility and performance
-- **isomorphic-dompurify**: Retained as a production dependency for server-side HTML sanitization
-- **TypeScript**: Use `unknown` instead of `any` for type safety
+- **isomorphic-dompurify**: Removed — replaced with `sanitize-html` (PostContent server-side), `dompurify` (GreetingClient client-side), and `stripHtml()` utility (PostCard, SearchResults plain-text excerpts)
+- **Zod**: Upgraded to v4 — `ZodError.errors` → `.issues`; `z.record()` requires explicit key schema; `.passthrough()` inference includes index signature
+- **TypeScript**: Upgraded to v6 — Use `unknown` instead of `any` for type safety
 - **Package Type**: Set to `"module"` for ESM support
 
 When dependencies are updated:
