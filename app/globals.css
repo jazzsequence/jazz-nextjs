@@ -1,6 +1,32 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* Tailwind 4 wraps hover: and group-hover: utilities in @media (hover: hover),
+   which silently disables them on touch devices and some hybrid/dev environments.
+   Override to restore Tailwind 3 behaviour: apply hover styles unconditionally. */
+@variant hover (&:hover);
+
+/* Custom theme — mirrors tailwind.config.js values which is now removed.
+   @theme variables become CSS custom properties AND Tailwind utility classes. */
+@theme {
+  /* Brand color palette */
+  --color-brand-bg:           #0d0d1a;
+  --color-brand-surface:      #13132b;
+  --color-brand-surface-high: #1c1c3a;
+  --color-brand-border:       #2a2a4a;
+  --color-brand-border-bright:#3d3d6b;
+  --color-brand-text:         #f0eeff;
+  --color-brand-text-sub:     #c4c0e0;
+  --color-brand-muted:        #a09abb;
+  --color-brand-cyan:         #00e5cc;
+  --color-brand-magenta:      #ff2d78;
+  --color-brand-purple:       #9d5cff;
+  --color-brand-header:       #0a0a18;
+
+  /* Font families */
+  --font-mono:    "Victor Mono", monospace;
+  --font-sans:    "Space Grotesk", system-ui, sans-serif;
+  --font-heading: "Geist Sans", system-ui, sans-serif;
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
    Design tokens

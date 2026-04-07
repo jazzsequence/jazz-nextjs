@@ -6,7 +6,7 @@
  * come from these tokens. Do not use arbitrary values in components.
  *
  * CSS custom properties are defined in app/globals.css.
- * Tailwind mappings are in tailwind.config.js (brand.* colors, font-* families).
+ * Tailwind theme (brand.* colors, font-* families) is defined in app/globals.css @theme.
  */
 
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'

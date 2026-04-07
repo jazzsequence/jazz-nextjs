@@ -9,7 +9,7 @@
  * Victor Mono is loaded explicitly in opengraph-image.tsx and passed to ImageResponse.
  */
 
-// Brand colors matching tailwind.config.js and globals.css tokens exactly
+// Brand colors matching the @theme block in app/globals.css
 export const OG_COLORS = {
   // Body gradient (matches globals.css body background, slightly stronger for OG)
   gradientTop: '#260d1b',    // dark magenta-dusk — pushed slightly for OG readability

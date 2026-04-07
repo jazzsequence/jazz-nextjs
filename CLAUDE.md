@@ -181,7 +181,7 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - **React**: 19.2.4
 - **WordPress**: Headless CMS (jazzsequence.com)
 - **Testing**: Vitest 4.0.18, Playwright 1.58.2
-- **Styling**: Tailwind CSS 3.4
+- **Styling**: Tailwind CSS 4.2 (config via `@theme` in `app/globals.css`; no `tailwind.config.js`)
 - **Validation**: Zod schemas with `.passthrough()` for plugin fields
 - **CDN cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.6.0+ manages edge cache clearing internally. The `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping in GCS and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. The previous `proxy.ts` Surrogate-Key middleware and `scripts/patch-cache-handler.mjs` postinstall patch have been removed as part of the v0.6.0 migration.
 
