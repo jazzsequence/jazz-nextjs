@@ -233,8 +233,6 @@ Key facts:
 - `/search` — search results page (revalidate=0, always fresh; filter tabs: All/Posts/Media)
 - `/style-guide` — style guide page
 
-**Remaining work**:
-- PAPC on jazzsequence.com WordPress — for richer tag granularity (post IDs, term IDs) as input to the cache handler's tag-based invalidation (future enhancement)
 
 ---
 
