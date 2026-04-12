@@ -40,195 +40,20 @@ BEFORE committing, you MUST spawn a reviewer agent and get approval:
 Agent({
   subagent_type: "reviewer",
   model: "sonnet",
-  description: "Pre-commit behavioral review",
-  prompt: `Review my uncommitted changes for compliance with AGENTS.md and CLAUDE.md rules.
+  description: "Pre-commit review",
+  prompt: `You are reviewing staged changes for a pre-commit approval decision.
 
-CRITICAL: I am about to commit. Review my work and provide APPROVE or REJECT.
+FIRST: Read the project checklist:
+Read({ file_path: "docs/REVIEWER_CHECKLIST.md" })
 
-Check for violations of:
+Work through every item in that checklist in order.
+Report each item explicitly with ✅ / ❌ / ⏭️ — no silent skips.
 
-CRITICAL REQUIREMENTS TO CHECK:
+Then either APPROVE (write the reviewer-approved flag as instructed in the checklist)
+or REJECT (list every failing item with its number and required fix).
 
-**STEP 0: CHECK FOR QUEUED USER MESSAGES**
-Before proceeding with any validation:
-- Look for <system-reminder> tags indicating user sent messages while you were working
-- If queued messages exist:
-  - STOP immediately - respond with: "⚠️ PAUSED - User messages queued"
-  - Summarize the queued messages
-  - Tell main agent to address those messages before proceeding
-  - DO NOT APPROVE until messages are addressed
-
-TDD METHODOLOGY:
-1. Were tests written BEFORE implementation code?
-2. Do all unit tests pass (npm test -- --run)?
-3. Is lint clean (npm run lint)?
-4. Does build succeed (npm run build)?
-5. **Do E2E tests pass (npm run test:e2e)?** ← MANDATORY
-6. Are tests and implementation in separate commits?
-
-**CRITICAL: All 5 commands must pass before commit:**
-```bash
-npm test -- --run          # Unit tests
-npm run lint               # Linter
-npm run build              # Build validation
-npm run test:e2e           # E2E tests (catches routing conflicts)
-```
-
-The pre-commit hook enforces all of these automatically.
-
-FILE ORGANIZATION:
-6. Are test files in /tests directory (not /src)?
-7. Are source files in /src directory?
-8. Are docs in /docs directory?
-9. NO files created in root folder (except config files)?
-
-DOCUMENTATION UPDATES:
-10. Were ALL docs in docs/ checked for staleness relative to this change?
-    - docs/CONTENT_UPDATES.md — revalidation strategy, ISR, WordPress plugin
-    - docs/configuration/DEPLOYMENT.md — environment URLs, build process
-    - docs/TESTING.md — test infrastructure, test counts
-    - docs/AI_USAGE.md — model version, tooling
-    - docs/REVIEWER_WORKFLOW.md — enforcement model
-    - docs/workflows/tdd-workflow.md — TDD process
-    - docs/API_CLIENT_DESIGN.md — WordPress API client patterns
-    - If a feature references something documented in docs/, that doc MUST be updated.
-    - "Relevant" means ANY doc that could be misread after this change. When in doubt, update.
-11. Was CLAUDE.md updated for workflow/config changes?
-12. Was AGENTS.md updated for agent-related changes?
-13. Was README.md updated for architecture changes?
-14. NO new documentation created unless requested?
-
-CODE QUALITY:
-15. DRY principle followed (no code duplication)?
-16. Files kept under 500 lines?
-17. Prefer editing existing files over creating new ones?
-18. Read files before editing them?
-
-SECURITY:
-19. No secrets or .env files committed?
-20. No credentials in source code?
-
-DEPENDENCIES & LICENSING:
-21. Check license compatibility for new dependencies
-22. No GPL/AGPL licenses (unless explicitly approved)
-23. Verify package.json changes don't introduce restrictive licenses
-24a. REGISTRY CHECK — HARD BLOCK if violated:
-    If package.json or package-lock.json changed, check ALL resolved URLs in package-lock.json:
-      grep "resolved" package-lock.json | grep -v "registry.npmjs.org"
-    Any non-public registry (e.g. npm.fontawesome.com, npm.pkg.github.com, private.registry.io)
-    will cause E401 on Pantheon and other CI environments that have no pre-configured credentials.
-    REJECT if any new dependency resolves from a non-public registry unless a corresponding
-    environment secret/token is confirmed to exist in CI.
-
-GIT PRACTICES:
-24. COMMIT SUBJECT LINE — first `-m` value must be ≤72 characters (GitHub truncates beyond this).
-    Additional `-m` body lines have no length restriction.
-    Count characters before writing: "feat(component): description of change" = check length.
-    If the subject is too long, shorten the description or use a broader scope label.
-
-25. COMMIT SIZE — HARD BLOCK if violated:
-    - Count files staged: git diff --cached --name-only | wc -l
-    - Count insertions: from git diff --cached --stat
-    - REJECT if more than 5 files staged
-    - REJECT if more than 500 lines inserted
-    - A single logical change should be a single small commit.
-    - New component + its test file = 2 files, acceptable.
-    - Component + tests + stories + CSS + e2e = 5+ files, MUST be split.
-26. Incremental commits (not one massive commit)?
-27. Co-author: "Claude <claude@anthropic.com>" (NOT claude-flow)?
-28. Commit messages clear and descriptive?
-29. NEVER amend commits (always create new commits instead)?
-
-E2E TEST COVERAGE:
-30. For user-facing changes (app/, components/), are E2E tests included?
-    - New pages/components → E2E tests required
-    - Modified pages/components → Update E2E tests
-    - Check: Are there E2E test changes in tests/e2e/ for UI changes?
-    - Backend-only changes → E2E tests optional
-
-ACCESSIBILITY (WCAG 2.1 AA):
-31. Do any UI changes affect pages covered by tests/e2e/a11y.spec.ts?
-    - The a11y spec is run as part of npm run test:e2e — failures are blocking
-    - New pages added to the design system must be added to a11y.spec.ts
-    - All color choices must meet WCAG 2.1 AA contrast ratios (4.5:1 normal text, 3:1 large text)
-    - Interactive elements must have accessible names (aria-label, htmlFor, etc.)
-
-DESIGN SYSTEM COMPLIANCE:
-32. Do visual/component changes conform to the design system?
-    - Colors must use brand.* Tailwind tokens or --color-* CSS variables. No arbitrary hex values.
-    - Fonts must use font-mono (Victor Mono), font-heading (Geist Sans), or font-sans (Space Grotesk). No other fonts.
-    - H2 headings = Victor Mono (font-mono). All other headings = Geist (font-heading). Body = Space Grotesk (font-sans).
-    - Gradients must match the canonical values from app/globals.css or the style guide (/style-guide).
-    - New components must have a Storybook story in src/components/**/*.stories.tsx.
-    - Stories are the canonical reference — if a component looks different from its story, the component is wrong.
-
-STORYBOOK:
-33. For any new or modified UI component:
-    - Does a story exist? If not, create one before committing.
-    - Run: npx storybook build (must succeed)
-    - Stories must pass the @storybook/addon-a11y check (a11y: 'error' in preview.ts)
-
-LIGHTHOUSE & PERFORMANCE (use Chrome DevTools MCP for visual changes):
-34. For significant UI changes on key pages, use the Chrome DevTools MCP to run:
-    - mcp__chrome-devtools__lighthouse_audit → accessibility must be ≥ 90, best-practices ≥ 90
-    - mcp__chrome-devtools__performance_start_trace → stop → analyze_insight for Core Web Vitals
-      - LCP (Largest Contentful Paint) target: < 2.5s
-      - CLS (Cumulative Layout Shift) target: < 0.1
-    - mcp__chrome-devtools__take_screenshot to visually verify against /style-guide reference
-    - This is required for changes to: PostCard, PostContent, Navigation, Footer, GreetingClient
-
-FILES TO REVIEW:
-- Run npm test -- --run (verify all tests pass)
-- Run npm run lint (verify lint clean)
-- Run npm run build (verify build succeeds)
-- Run npm run test:e2e (verify E2E tests pass) ← MANDATORY, run LAST
-- Run npx storybook build (verify Storybook builds) ← required for component changes
-- Check git status (modified/new files)
-- Review all file changes
-- Verify documentation updates
-- Check package.json for license compatibility if dependencies changed
-- Check if user-facing changes (app/, src/components/) have E2E tests
-- Check if new components have Storybook stories
-
-**CRITICAL SEQUENCING RULE:**
-Run all 4 commands sequentially. Do NOT use background tasks.
-Do NOT give a verdict until you have seen the output of ALL 4 commands.
-If E2E tests are still running, WAIT. A verdict without E2E results is invalid.
-
-**CRITICAL — E2E VALIDATION:**
-After running npm run test:e2e, look for the Playwright summary line:
-  "X passed" with NO failures = pass
-  "X failed" or "X flaky" in the summary = REJECT immediately
-Do NOT trust "✅ E2E tests passed" hook output — that was historically unreliable.
-Read the actual Playwright output for pass/fail counts.
-
-DELIVERABLE:
-Provide clear APPROVE or REJECT decision with specific findings for ALL categories.
-
-If REJECT: List violations and required fixes. Do NOT write the approval flag.
-
-If APPROVE:
-1. Confirm all rules followed, commit is safe
-2. Get the current Unix timestamp — run this Bash command:
-   date +%s
-3. Write the approval flag using the Write tool — do this explicitly:
-   Write({
-     file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-     content: "<timestamp from step 2>"
-   })
-4. Tell the user clearly: "✅ APPROVED — I have written the reviewer-approved flag.
-   The main agent may now stage and commit."
-
-CRITICAL: YOU write the approval flag on APPROVE using the Write tool above.
-The main agent MUST NOT write reviewer-approved. Only the reviewer agent may write it.
-The integrity of the two-factor review system depends on this separation.
-
-TRANSPARENCY: At every step, surface what you are doing to the user — which tests
-you ran, what you found, whether you approved or rejected, and that you wrote (or
-did not write) the approval flag. The user monitors the chat to verify the review
-is real; your visibility into the process is what makes this trustworthy.
-
-CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only checks that you wrote approval.`
+CRITICAL: Tests and lint are run by YOU — the pre-commit hook only validates that
+you wrote the approval flag.`
 }))
 ```
 
@@ -256,12 +81,8 @@ CRITICAL: Tests and lint are run by YOU, not by pre-commit hook. Hook only check
 - Fast execution since agent did heavy lifting
 
 **The reviewer agent will check:**
-- ✅ TDD methodology (tests-first, separate commits, all pass)
-- ✅ File organization (/src, /tests, /docs, no root files)
-- ✅ Documentation updates (CRITICAL - always update docs!)
-- ✅ Code quality (DRY, file size, prefer editing)
-- ✅ Security (no secrets, no credentials)
-- ✅ Git practices (incremental commits, co-author)
+See `docs/REVIEWER_CHECKLIST.md` for the full checklist the reviewer works through.
+Section A items run on every commit. Section B items are conditional (skipped with ⏭️ when not applicable).
 
 **CRITICAL WORKFLOW:**
 1. Make changes (edit files, write code)
