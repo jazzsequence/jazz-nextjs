@@ -181,4 +181,31 @@ describe('SearchResults', () => {
       expect(skipLink.closest('a')).toHaveAttribute('href', '#search-results')
     })
   })
+
+  describe('excerpt sanitization', () => {
+    it('decodes HTML entities in excerpt (e.g. &#8217; → curly apostrophe)', () => {
+      const results = [
+        makePost({ excerpt: { rendered: "<p>It&#8217;s about jazz.</p>" } }),
+      ]
+      const { container } = render(
+        <SearchResults {...defaultProps} results={results} query="jazz" />
+      )
+      expect(container.textContent).toContain('It\u2019s about jazz')
+      expect(container.textContent).not.toContain('&#8217;')
+    })
+
+    it('strips Organize Series block from excerpt', () => {
+      const results = [
+        makePost({
+          excerpt: {
+            rendered:
+              '<div class="pps-series-post-details"><div class="pps-series-details"><div class="pps-series-title">This entry is part 2 of 4 in the series Jazz History</div></div></div><p>Real excerpt here.</p>',
+          },
+        }),
+      ]
+      render(<SearchResults {...defaultProps} results={results} query="jazz" />)
+      expect(screen.queryByText(/this entry is part/i)).not.toBeInTheDocument()
+      expect(screen.getByText(/Real excerpt here/)).toBeInTheDocument()
+    })
+  })
 })

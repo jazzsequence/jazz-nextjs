@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { stripHtml } from '@/lib/utils/html'
+import { excerptToDescription } from '@/lib/utils/html'
 import PostCard from './PostCard'
 import type { WPPost } from '@/lib/wordpress/types'
 
@@ -133,9 +133,7 @@ function SearchResultCard({
   query: string
   priority?: boolean
 }) {
-  const rawExcerpt = post.excerpt.rendered
-    ? stripHtml(post.excerpt.rendered)
-    : ''
+  const rawExcerpt = excerptToDescription(post.excerpt.rendered) ?? ''
 
   return (
     <div className="relative">

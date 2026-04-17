@@ -1,8 +1,14 @@
 import { test, expect } from '@playwright/test'
 
+// Serialize games tests: 4 workers simultaneously hitting /games on a cold Turbopack
+// start triggers parallel compilations that collectively exceed the 30s navigation
+// timeout. Serial mode ensures the first test compiles the route; the rest reuse it.
+test.describe.configure({ mode: 'serial' })
+
 test.describe('Games Page', () => {
   test('should display the games page heading', async ({ page }) => {
-    await page.goto('/games')
+    // Extra timeout on first navigation — Turbopack compiles /games on first access
+    await page.goto('/games', { timeout: 90000 })
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1')).toContainText('Games')

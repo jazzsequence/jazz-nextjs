@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { format } from 'date-fns';
-import { decodeHtmlEntities, normalizeWordPressUrl, stripHtml } from '@/lib/utils/html';
+import { decodeHtmlEntities, excerptToDescription, normalizeWordPressUrl } from '@/lib/utils/html';
 import type { WPPost } from '@/lib/wordpress/types';
 
 interface PostCardProps {
@@ -17,9 +17,7 @@ export default function PostCard({ post, priority = false, excerptContent }: Pos
   const hasImage = post.featured_media > 0 && featuredMedia;
   const formattedDate = format(new Date(post.date), 'MMMM d, yyyy');
 
-  const sanitizedExcerpt = post.excerpt.rendered
-    ? stripHtml(post.excerpt.rendered)
-    : '';
+  const sanitizedExcerpt = excerptToDescription(post.excerpt.rendered) ?? '';
 
   return (
     <article className="neon-border-hover-subtle bg-brand-surface border border-brand-border rounded-xl overflow-hidden group transition-colors">

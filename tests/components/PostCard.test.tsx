@@ -154,4 +154,27 @@ describe('PostCard', () => {
     expect(screen.getByRole('heading', { name: /I\u2019ll tell you/i })).toBeInTheDocument()
     expect(screen.queryByText(/&#8217;/)).not.toBeInTheDocument()
   })
+
+  it('decodes HTML entities in excerpt (e.g. &#8217; → curly apostrophe)', () => {
+    const postWithEntities = {
+      ...mockPost,
+      excerpt: { rendered: "<p>It&#8217;s a great post.</p>" },
+    }
+    render(<PostCard post={postWithEntities} />)
+    expect(screen.getByText(/It\u2019s a great post/)).toBeInTheDocument()
+    expect(screen.queryByText(/&#8217;/)).not.toBeInTheDocument()
+  })
+
+  it('strips Organize Series block from excerpt', () => {
+    const postInSeries = {
+      ...mockPost,
+      excerpt: {
+        rendered:
+          '<div class="pps-series-post-details"><div class="pps-series-details"><div class="pps-series-title">This entry is part 3 of 5 in the series My Series</div></div></div><p>The actual excerpt text.</p>',
+      },
+    }
+    render(<PostCard post={postInSeries} />)
+    expect(screen.queryByText(/this entry is part/i)).not.toBeInTheDocument()
+    expect(screen.getByText(/The actual excerpt text/)).toBeInTheDocument()
+  })
 });
