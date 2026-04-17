@@ -109,6 +109,9 @@ test.describe('Revalidation API', () => {
     const body = await response.json()
     expect(body.success).toBe(true)
     expect(body.paths).toContain('/posts/teh-s3quence-016')
+    // Homepage must be explicitly revalidated on post publish — tag-based lookup
+    // alone is unreliable if the GCS mapping for '/' was wiped by a prior revalidation.
+    expect(body.paths).toContain('/')
     expect(body.tags).toContain('posts')
     expect(body.tags).toContain('post-teh-s3quence-016')
   })

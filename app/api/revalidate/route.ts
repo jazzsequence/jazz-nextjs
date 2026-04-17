@@ -39,7 +39,10 @@ function resolveTargets(
   switch (post_type) {
     case 'post':
       return {
-        paths: [`/posts/${post_slug}`],
+        // '/' is explicit so the homepage gets a direct revalidatePath() call.
+        // revalidateTag('posts') alone is unreliable if the GCS tag→key mapping
+        // for '/' was wiped by a prior full revalidation and never repopulated.
+        paths: [`/posts/${post_slug}`, '/'],
         tags: ['posts', `post-${post_slug}`],
       }
     case 'page':
