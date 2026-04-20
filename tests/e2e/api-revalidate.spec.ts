@@ -103,6 +103,7 @@ test.describe('Revalidation API', () => {
     const response = await request.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: { post_type: 'post', post_slug: 'teh-s3quence-016' },
+      timeout: 30_000,
     })
 
     expect(response.status()).toBe(200)
@@ -120,6 +121,7 @@ test.describe('Revalidation API', () => {
     const response = await request.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: { post_type: 'page', post_slug: 'about' },
+      timeout: 30_000,
     })
 
     expect(response.status()).toBe(200)
@@ -133,6 +135,7 @@ test.describe('Revalidation API', () => {
     const response = await request.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: { post_type: 'gc_game', post_slug: 'twilight-imperium' },
+      timeout: 30_000,
     })
 
     expect(response.status()).toBe(200)
