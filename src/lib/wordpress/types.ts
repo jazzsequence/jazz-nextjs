@@ -288,6 +288,23 @@ export interface WPMenuItem {
   }
 }
 
+// Comment
+export interface WPComment {
+  id: number
+  post: number
+  parent: number
+  author: number
+  author_name: string
+  author_url: string
+  date: string
+  date_gmt: string
+  content: WPRendered
+  link: string
+  status: 'approved' | 'hold' | 'spam' | 'trash'
+  type: string
+  author_avatar_urls: WPAvatar
+}
+
 // API Response wrapper types
 export type WPAPIListResponse<T> = T[]
 
