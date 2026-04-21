@@ -4,8 +4,10 @@ import type { WPPost } from '@/lib/wordpress/types';
 import { decodeHtmlEntities, excerptToDescription } from '@/lib/utils/html';
 import { OG_IMAGE_URL } from '@/lib/utils/og';
 import PostContent from '@/components/PostContent';
+import CommentSection from '@/components/CommentSection';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { fetchComments } from '@/lib/wordpress/comments';
 import { notFound, forbidden } from 'next/navigation';
 
 export const revalidate = 3600;
@@ -77,11 +79,18 @@ export default async function PostPage({ params }: PostPageProps) {
     const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined;
     const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
+    const commentsRes = post.value.comment_status === 'open'
+      ? await fetchComments(post.value.id).catch(() => [])
+      : []
+
     return (
       <>
         <Navigation menuItems={menuItemsData} error={menuError} />
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <PostContent post={post.value} />
+          {post.value.comment_status === 'open' && (
+            <CommentSection postId={post.value.id} initialComments={commentsRes} />
+          )}
         </main>
         <Footer />
       </>
