@@ -16,19 +16,27 @@ test.describe('Comment Section', () => {
     await expect(section).toBeVisible();
   });
 
-  test('should display existing approved comments', async ({ page }) => {
+  test('should display existing comments (count > 0)', async ({ page }) => {
     await page.goto(POST_WITH_COMMENTS);
 
-    // At least one comment should be visible — the heading count will reflect it
-    const heading = page.getByRole('heading', { name: /\d+ comment/i });
+    // The heading must show a numeric count — not "No comments yet"
+    const heading = page.getByRole('heading', { name: /\d+ comments?/i });
     await expect(heading).toBeVisible();
+  });
+
+  test('should render individual comment articles', async ({ page }) => {
+    await page.goto(POST_WITH_COMMENTS);
+
+    // At least one comment article should be in the DOM
+    const commentArticles = page.locator('section[aria-labelledby="comments-heading"] article');
+    await expect(commentArticles.first()).toBeVisible();
   });
 
   test('should display "Leave a Reply" form', async ({ page }) => {
     await page.goto(POST_WITH_COMMENTS);
     await expect(page.getByRole('heading', { name: /leave a reply/i })).toBeVisible();
-    await expect(page.getByLabelText(/name/i)).toBeVisible();
-    await expect(page.getByLabelText(/email/i)).toBeVisible();
+    await expect(page.getByLabel(/name/i)).toBeVisible();
+    await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByRole('button', { name: /post comment/i })).toBeVisible();
   });
 
