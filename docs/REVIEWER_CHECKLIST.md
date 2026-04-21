@@ -129,6 +129,14 @@ If the condition does not apply, output `⏭️ N: [condition not met]`.
 
 30. New pages or components have corresponding E2E tests in `tests/e2e/`
 31. Modified pages or components have updated E2E tests if behaviour changed
+32. **E2E tests assert actual content, not just container existence** — for any feature
+    that fetches external data (comments, posts, media, menus, etc.):
+    - Tests must assert the *presence of the data itself*, not just the wrapper element
+    - Assertions must **fail when the data is empty** — tests that pass whether a list
+      has 0 or 100 items are vanity tests and must be rejected
+    - Example: a comments test must assert `\d+ comments?` (fails on "No comments yet")
+      AND assert that at least one `article` element exists inside the section
+    - If you cannot verify that the test would fail with empty/broken data, REJECT it
 
 ### Accessibility
 **Condition:** UI changes staged (components, pages, CSS)
