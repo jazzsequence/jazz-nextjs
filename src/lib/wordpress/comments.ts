@@ -19,7 +19,6 @@ function sanitizeComment(comment: WPComment): WPComment {
 export async function fetchComments(postId: number): Promise<WPComment[]> {
   const url = new URL(`${WP_API_URL}/comments`)
   url.searchParams.set('post', String(postId))
-  url.searchParams.set('status', 'approved')
   url.searchParams.set('per_page', '100')
   url.searchParams.set('orderby', 'date')
   url.searchParams.set('order', 'asc')

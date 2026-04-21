@@ -73,7 +73,7 @@ describe('GET /api/comments', () => {
     const res = await GET(getRequest(42))
     expect(res.status).toBe(200)
     expect(capturedUrl).toContain('post=42')
-    expect(capturedUrl).toContain('status=approved')
+    expect(capturedUrl).not.toContain('status=')
   })
 
   it('returns the comments array', async () => {
