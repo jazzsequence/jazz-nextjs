@@ -4,8 +4,10 @@ import type { WPPost } from '@/lib/wordpress/types';
 import { decodeHtmlEntities, excerptToDescription } from '@/lib/utils/html';
 import { OG_IMAGE_URL } from '@/lib/utils/og';
 import PostContent from '@/components/PostContent';
+import CommentSection from '@/components/CommentSection';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import type { WPComment } from '@/lib/wordpress/types';
 import { notFound, forbidden } from 'next/navigation';
 
 export const revalidate = 3600;
@@ -77,11 +79,21 @@ export default async function PostPage({ params }: PostPageProps) {
     const menuItemsData = menuItems.status === 'fulfilled' ? menuItems.value : undefined;
     const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
+    const commentsRes = post.value.comment_status === 'open'
+      ? await fetch(
+          `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/api/comments?postId=${post.value.id}`,
+          { next: { revalidate: 60, tags: [`comments-${post.value.id}`] } }
+        ).then(r => r.ok ? r.json() as Promise<WPComment[]> : []).catch(() => [])
+      : []
+
     return (
       <>
         <Navigation menuItems={menuItemsData} error={menuError} />
         <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <PostContent post={post.value} />
+          {post.value.comment_status === 'open' && (
+            <CommentSection postId={post.value.id} initialComments={commentsRes} />
+          )}
         </main>
         <Footer />
       </>
