@@ -141,33 +141,33 @@ If the condition does not apply, output `⏭️ N: [condition not met]`.
 ### Accessibility
 **Condition:** UI changes staged (components, pages, CSS)
 
-32. Any new pages are added to `tests/e2e/a11y.spec.ts`
-33. Colour choices meet WCAG 2.1 AA contrast ratios (4.5:1 normal text, 3:1 large text)
-34. Interactive elements have accessible names (`aria-label`, `htmlFor`, etc.)
+33. Any new pages are added to `tests/e2e/a11y.spec.ts`
+34. Colour choices meet WCAG 2.1 AA contrast ratios (4.5:1 normal text, 3:1 large text)
+35. Interactive elements have accessible names (`aria-label`, `htmlFor`, etc.)
 
 ### Design system compliance
 **Condition:** visual or component changes staged
 
-35. Colours use `brand.*` Tailwind tokens or `--color-*` CSS variables — no arbitrary hex
-36. Fonts use `font-mono` (Victor Mono), `font-heading` (Geist Sans), or `font-sans` (Space Grotesk) only
-37. Heading hierarchy: H2 → `font-mono`, all other headings → `font-heading`, body → `font-sans`
-38. Gradients match canonical values from `app/globals.css` or `/style-guide`
+36. Colours use `brand.*` Tailwind tokens or `--color-*` CSS variables — no arbitrary hex
+37. Fonts use `font-mono` (Victor Mono), `font-heading` (Geist Sans), or `font-sans` (Space Grotesk) only
+38. Heading hierarchy: H2 → `font-mono`, all other headings → `font-heading`, body → `font-sans`
+39. Gradients match canonical values from `app/globals.css` or `/style-guide`
 
 ### Storybook
 **Condition:** new or modified files under `src/components/`
 
-39. A Storybook story exists for any new component (create before committing if missing)
-40. `npx storybook build` succeeds
-41. Stories pass `@storybook/addon-a11y` check
+40. A Storybook story exists for any new component (create before committing if missing)
+41. `npx storybook build` succeeds
+42. Stories pass `@storybook/addon-a11y` check
 
 ### Lighthouse & performance
 **Condition:** significant UI changes to `PostCard`, `PostContent`, `Navigation`, `Footer`, or `GreetingClient`
 
-42. `mcp__chrome-devtools__lighthouse_audit` — accessibility ≥ 90, best-practices ≥ 90
-43. `mcp__chrome-devtools__performance_start_trace` → stop → `analyze_insight` for Core Web Vitals:
+43. `mcp__chrome-devtools__lighthouse_audit` — accessibility ≥ 90, best-practices ≥ 90
+44. `mcp__chrome-devtools__performance_start_trace` → stop → `analyze_insight` for Core Web Vitals:
     - LCP < 2.5s
     - CLS < 0.1
-44. `mcp__chrome-devtools__take_screenshot` to visually verify against `/style-guide`
+45. `mcp__chrome-devtools__take_screenshot` to visually verify against `/style-guide`
 
 ---
 
