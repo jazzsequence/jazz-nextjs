@@ -1,25 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import sanitizeHtml from 'sanitize-html'
-import type { WPComment } from '@/lib/wordpress/types'
+import { fetchComments } from '@/lib/wordpress/comments'
 
 const WP_API_URL = process.env.WORDPRESS_API_URL ?? 'https://jazzsequence.com/wp-json/wp/v2'
 const WP_COMMENTS_URL = `${WP_API_URL}/comments`
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-}
-
-function sanitizeComment(comment: WPComment): WPComment {
-  return {
-    ...comment,
-    content: {
-      ...comment.content,
-      rendered: sanitizeHtml(comment.content.rendered, {
-        allowedTags: sanitizeHtml.defaults.allowedTags,
-        allowedAttributes: { a: ['href', 'rel'], '*': ['class'] },
-      }),
-    },
-  }
 }
 
 export async function GET(request: NextRequest) {
@@ -35,31 +21,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'postId must be a positive integer' }, { status: 400 })
   }
 
-  const url = new URL(WP_COMMENTS_URL)
-  url.searchParams.set('post', String(postId))
-  url.searchParams.set('status', 'approved')
-  url.searchParams.set('per_page', '100')
-  url.searchParams.set('orderby', 'date')
-  url.searchParams.set('order', 'asc')
-
   try {
-    const res = await fetch(url.toString(), {
-      next: { revalidate: 60, tags: [`comments-${postId}`] },
-    })
-
-    if (res.status === 404) {
-      return NextResponse.json([])
-    }
-
-    if (!res.ok) {
-      console.error('[comments] WordPress GET error:', res.status)
-      return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 502 })
-    }
-
-    const comments: WPComment[] = await res.json()
-    return NextResponse.json(comments.map(sanitizeComment))
+    const comments = await fetchComments(postId)
+    return NextResponse.json(comments)
   } catch (error) {
-    console.error('[comments] WordPress unreachable:', error)
+    console.error('[comments] error:', error)
     return NextResponse.json({ error: 'Failed to fetch comments' }, { status: 502 })
   }
 }

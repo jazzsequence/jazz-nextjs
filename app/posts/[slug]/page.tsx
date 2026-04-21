@@ -7,7 +7,7 @@ import PostContent from '@/components/PostContent';
 import CommentSection from '@/components/CommentSection';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import type { WPComment } from '@/lib/wordpress/types';
+import { fetchComments } from '@/lib/wordpress/comments';
 import { notFound, forbidden } from 'next/navigation';
 
 export const revalidate = 3600;
@@ -80,10 +80,7 @@ export default async function PostPage({ params }: PostPageProps) {
     const menuError = menuItems.status === 'rejected' ? 'Failed to fetch menu items' : undefined;
 
     const commentsRes = post.value.comment_status === 'open'
-      ? await fetch(
-          `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/api/comments?postId=${post.value.id}`,
-          { next: { revalidate: 60, tags: [`comments-${post.value.id}`] } }
-        ).then(r => r.ok ? r.json() as Promise<WPComment[]> : []).catch(() => [])
+      ? await fetchComments(post.value.id).catch(() => [])
       : []
 
     return (
