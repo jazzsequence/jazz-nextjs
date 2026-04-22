@@ -253,3 +253,58 @@ describe('CommentSection — accessibility', () => {
     expect(section).toBeInTheDocument()
   })
 })
+
+// ── Author styling ─────────────────────────────────────────────────────────────
+
+describe('CommentSection — author styling', () => {
+  const authorComment = makeComment({ id: 1, author: 2, author_name: 'Chris Reynolds', author_url: 'https://jazzsequence.com' })
+  const guestComment  = makeComment({ id: 2, author: 0, author_name: 'Alice', author_url: 'https://alice.example.com' })
+
+  it('shows "Author" badge on matching authorId comment', () => {
+    render(<CommentSection postId={42} initialComments={[authorComment]} authorId={2} />)
+    expect(screen.getByText('Author')).toBeInTheDocument()
+  })
+
+  it('does not show "Author" badge when authorId does not match', () => {
+    render(<CommentSection postId={42} initialComments={[guestComment]} authorId={2} />)
+    expect(screen.queryByText('Author')).not.toBeInTheDocument()
+  })
+
+  it('does not show "Author" badge when authorId is not provided', () => {
+    render(<CommentSection postId={42} initialComments={[authorComment]} />)
+    expect(screen.queryByText('Author')).not.toBeInTheDocument()
+  })
+
+  it('does not show author URL next to author name even when author_url is set', () => {
+    render(<CommentSection postId={42} initialComments={[authorComment]} authorId={2} />)
+    expect(screen.queryByText(/jazzsequence\.com/)).not.toBeInTheDocument()
+  })
+})
+
+// ── Commenter URL display ──────────────────────────────────────────────────────
+
+describe('CommentSection — commenter URL', () => {
+  const guestWithUrl = makeComment({ id: 1, author: 0, author_name: 'Alice', author_url: 'https://www.alice.example.com' })
+  const guestNoUrl   = makeComment({ id: 2, author: 0, author_name: 'Bob',   author_url: '' })
+
+  it('shows formatted domain next to name when commenter provides a URL', () => {
+    render(<CommentSection postId={42} initialComments={[guestWithUrl]} />)
+    expect(screen.getByText(/alice\.example\.com/)).toBeInTheDocument()
+  })
+
+  it('strips www. from displayed domain', () => {
+    render(<CommentSection postId={42} initialComments={[guestWithUrl]} />)
+    expect(screen.queryByText(/www\./)).not.toBeInTheDocument()
+  })
+
+  it('does not show a URL when commenter provides none', () => {
+    render(<CommentSection postId={42} initialComments={[guestNoUrl]} />)
+    expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('domain link has rel=nofollow', () => {
+    render(<CommentSection postId={42} initialComments={[guestWithUrl]} />)
+    const link = screen.getByRole('link')
+    expect(link).toHaveAttribute('rel', expect.stringContaining('nofollow'))
+  })
+})

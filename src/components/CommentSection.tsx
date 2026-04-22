@@ -8,10 +8,21 @@ type FormState = 'idle' | 'submitting' | 'success' | 'error'
 interface CommentSectionProps {
   postId: number
   initialComments?: WPComment[]
+  /** WordPress user ID of the post author — their comments get distinct styling */
+  authorId?: number
   /** Override form state — used in Storybook */
   initialState?: FormState
   /** Override error message — used with initialState='error' in Storybook */
   initialError?: string
+}
+
+function formatAuthorUrl(url: string): string {
+  try {
+    const { hostname } = new URL(url)
+    return hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
 }
 
 function formatDate(dateString: string) {
@@ -56,19 +67,38 @@ function buildCommentTree(comments: WPComment[]): CommentNode[] {
   return roots
 }
 
-function CommentItem({ comment, depth = 0 }: { comment: CommentNode; depth?: number }) {
+function CommentItem({ comment, depth = 0, authorId }: { comment: CommentNode; depth?: number; authorId?: number }) {
+  const isAuthor = authorId !== undefined && authorId > 0 && comment.author === authorId
+
   return (
     <div>
-      <article className="flex gap-4">
+      <article className={`flex gap-4 ${isAuthor ? 'pl-4 border-l-[3px] border-brand-purple bg-brand-surface-high rounded-r-lg py-3 pr-3' : ''}`}>
         <AuthorAvatar
           name={comment.author_name}
           avatarUrl={comment.author_avatar_urls['48']}
         />
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
-            <span className="font-heading font-semibold text-brand-cyan text-sm">
+            <span className={`font-heading font-semibold text-sm ${isAuthor ? 'text-brand-text' : 'text-brand-cyan'}`}>
               {comment.author_name}
             </span>
+            {!isAuthor && comment.author_url && (
+              <span className="text-xs font-mono text-brand-muted">
+                (<a
+                  href={comment.author_url}
+                  rel="nofollow noopener noreferrer"
+                  target="_blank"
+                  className="text-brand-muted no-underline hover:underline"
+                >
+                  {formatAuthorUrl(comment.author_url)}
+                </a>)
+              </span>
+            )}
+            {isAuthor && (
+              <span className="text-xs font-heading font-bold text-brand-bg bg-brand-purple px-1.5 py-0.5 rounded">
+                Author
+              </span>
+            )}
             <time dateTime={comment.date_gmt} className="text-xs text-brand-muted">
               {formatDate(comment.date)}
             </time>
@@ -88,7 +118,7 @@ function CommentItem({ comment, depth = 0 }: { comment: CommentNode; depth?: num
           'ml-4 pl-3 border-l border-brand-border-bright'
         }`}>
           {comment.replies.map((reply) => (
-            <CommentItem key={reply.id} comment={reply} depth={depth + 1} />
+            <CommentItem key={reply.id} comment={reply} depth={depth + 1} authorId={authorId} />
           ))}
         </div>
       )}
@@ -162,20 +192,20 @@ function CommentForm({
       </div>
 
       {state === 'error' && (
-        <div role="alert" className="rounded-lg border border-brand-magenta bg-brand-surface p-4 text-brand-magenta text-sm">
+        <div role="alert" className="rounded-lg border border-brand-purple bg-brand-surface p-4 text-brand-purple text-sm">
           {errorMessage}
         </div>
       )}
 
       <p className="text-xs text-brand-muted">
-        Fields marked <span className="text-brand-magenta" aria-hidden="true">*</span>
+        Fields marked <span className="text-brand-purple" aria-hidden="true">*</span>
         {' '}<span className="sr-only">with an asterisk</span> are required.
         Your email address will not be published.
       </p>
 
       <div>
         <label htmlFor="comment-name" className="block text-sm font-medium text-brand-text mb-1">
-          Name <span className="text-brand-magenta" aria-hidden="true">*</span>
+          Name <span className="text-brand-purple" aria-hidden="true">*</span>
         </label>
         <input
           id="comment-name"
@@ -190,7 +220,7 @@ function CommentForm({
 
       <div>
         <label htmlFor="comment-email" className="block text-sm font-medium text-brand-text mb-1">
-          Email <span className="text-brand-magenta" aria-hidden="true">*</span>
+          Email <span className="text-brand-purple" aria-hidden="true">*</span>
         </label>
         <input
           id="comment-email"
@@ -205,7 +235,7 @@ function CommentForm({
 
       <div>
         <label htmlFor="comment-content" className="block text-sm font-medium text-brand-text mb-1">
-          Comment <span className="text-brand-magenta" aria-hidden="true">*</span>
+          Comment <span className="text-brand-purple" aria-hidden="true">*</span>
         </label>
         <textarea
           id="comment-content"
@@ -220,7 +250,7 @@ function CommentForm({
       <button
         type="submit"
         disabled={state === 'submitting'}
-        className="w-full rounded-lg bg-brand-cyan px-6 py-3 font-heading font-bold text-brand-bg transition-colors hover:bg-brand-magenta disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-lg bg-brand-cyan px-6 py-3 font-heading font-bold text-brand-bg transition-colors hover:bg-brand-purple disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {state === 'submitting' ? 'Posting…' : 'Post Comment'}
       </button>
@@ -232,6 +262,7 @@ function CommentForm({
 export default function CommentSection({
   postId,
   initialComments = [],
+  authorId,
   initialState,
   initialError,
 }: CommentSectionProps) {
@@ -247,7 +278,7 @@ export default function CommentSection({
         {count > 0 && (
           <div className="space-y-8">
             {buildCommentTree(initialComments).map((comment) => (
-              <CommentItem key={comment.id} comment={comment} />
+              <CommentItem key={comment.id} comment={comment} authorId={authorId} />
             ))}
           </div>
         )}

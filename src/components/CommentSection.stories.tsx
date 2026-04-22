@@ -77,7 +77,7 @@ const MOCK_COMMENTS: WPComment[] = [
     id: 4,
     post: 42,
     parent: 1,
-    author: 1,
+    author: 2,
     author_name: 'Chris Reynolds',
     author_url: 'https://jazzsequence.com',
     date: '2026-03-16T11:30:00',
@@ -134,7 +134,7 @@ const MOCK_COMMENTS: WPComment[] = [
     id: 8,
     post: 42,
     parent: 7,
-    author: 1,
+    author: 2,
     author_name: 'Chris Reynolds',
     author_url: 'https://jazzsequence.com',
     date: '2026-03-16T16:00:00',
@@ -191,6 +191,7 @@ const meta: Meta<typeof CommentSection> = {
   },
   args: {
     postId: 42,
+    authorId: 2,
   },
 }
 
