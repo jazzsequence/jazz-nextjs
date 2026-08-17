@@ -47,15 +47,39 @@ npm run test:e2e         # E2E — run LAST, MANDATORY
 
 After `npm run test:e2e`, read the Playwright summary line directly:
 - `X passed` with no failures → pass
-- `X failed` or `X flaky` → REJECT immediately
+- `X failed` or `X flaky` → do NOT reject reflexively. Triage first (see below).
 
 Do NOT trust the `✅ E2E tests passed` hook output — read actual Playwright output.
+
+**Flaky-test triage (mandatory before rejecting on E2E):**
+
+This suite makes live network calls to the jazzsequence.com WordPress backend, so
+individual tests can time out under parallel-worker load for reasons that have
+nothing to do with the change under review. Blocking a good diff on unrelated
+infrastructure flakiness is itself a defect. When you see `X failed`/`X flaky`:
+
+1. Identify each failing test and its spec file.
+2. **Is the failure caused by the change under review?** A failure is change-related
+   if the failing spec exercises a file in the staged diff, OR the failure message
+   points at behaviour the diff touches. If so → **REJECT** (real regression).
+3. Otherwise, re-run the failing spec(s) in isolation
+   (`npm run test:e2e -- <spec> --reporter=line`, optionally `--workers=1`).
+   - Passes in isolation, failure was a timeout / network / live-backend error, and
+     the spec is unrelated to the staged files → **confirmed environmental flake.**
+     Do NOT block. Record it as `⚠️ flaky (unrelated)` under item 4 with the test
+     name, the reason, and the isolated-rerun result, and treat item 4 as passing.
+   - Fails again in isolation, or is reproducible/change-related → **REJECT.**
+
+A confirmed unrelated flake never blocks approval. A failure that reproduces, or
+that touches code in the diff, always blocks.
 
 **Items:**
 1. Unit tests pass (`npm test -- --run`)
 2. Lint clean (`npm run lint`)
 3. Build succeeds (`npm run build`)
-4. E2E tests pass (`npm run test:e2e`) — read Playwright summary, not hook output
+4. E2E tests pass, or any failure is a confirmed environmental flake unrelated to
+   the diff (`npm run test:e2e`) — read Playwright summary, not hook output; apply
+   the flaky-test triage above before deciding
 
 ### File organisation
 

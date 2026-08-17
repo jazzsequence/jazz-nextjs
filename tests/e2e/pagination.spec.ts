@@ -199,4 +199,24 @@ test.describe('Pagination Component', () => {
       expect(page.url()).toContain('/page/2');
     }
   });
+
+  test('does not cause horizontal overflow on mobile (/media regression)', async ({ page }) => {
+    // Regression: the pagination nav was a single non-wrapping flex row, so
+    // Previous + page numbers + Next overflowed a ~375px mobile viewport and
+    // produced a horizontal scrollbar on /media. The nav must wrap instead.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto('/media');
+    await page.waitForLoadState('domcontentloaded');
+
+    // Pagination must be present for this page to exercise the regression.
+    const pagination = page.locator('nav[aria-label="Pagination"]');
+    await expect(pagination).toBeVisible();
+
+    // The document must not be wider than the viewport (allow 1px for rounding).
+    const overflow = await page.evaluate(() => {
+      const el = document.documentElement;
+      return el.scrollWidth - el.clientWidth;
+    });
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
 });

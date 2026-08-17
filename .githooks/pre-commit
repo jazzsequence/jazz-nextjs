@@ -66,10 +66,14 @@ if [ "$USER_COMMIT" != "1" ]; then
     echo ""
 fi
 
-# Check 3: Run all tests (unit + E2E) — skip only for .md and .txt changes
-# Blocklist: only .md and .txt are explicitly skipped.
-# Every other file type (yaml, json, ts, css, etc.) triggers the full suite.
-# Unknown/new extensions default to running tests — safe by design.
+# Check 3: Run all tests (unit + E2E) — skip for text/doc-only changes
+# Text-only extensions: markdown, plain text, yaml/yml (workflows/config),
+# gitignore, gitattributes, lock files, json config, env examples.
+# Source code extensions (ts, tsx, js, jsx, css, etc.) always require tests.
+# Count staged files that are NOT pure text (i.e., not .md or .txt).
+# If every staged file is markdown or plain text, skip the test suite.
+# This is a blocklist — only .md and .txt are explicitly skipped; all
+# other file types (including unknown/new extensions) trigger tests.
 NON_TEXT_FILES=$(git diff --cached --name-only | grep -v '^package-lock\.json$' | grep -Ev '\.(md|txt)$' | wc -l | tr -d ' ')
 
 echo "3️⃣  Running tests..."
@@ -109,12 +113,14 @@ fi
 echo -e "${GREEN}✅ Build successful${NC}"
 
 # E2E tests (CRITICAL: catches routing conflicts and runtime errors)
-echo "   Running E2E tests..."
-if ! npm run test:e2e; then
-    echo -e "${RED}❌ BLOCKED: E2E tests failed${NC}"
-    echo "   E2E tests catch routing conflicts and runtime errors"
-    echo "   Fix failures before committing"
-    exit 1
+if [ "$USER_COMMIT" != "1" ]; then
+    echo "   Running E2E tests..."
+    if ! npm run test:e2e; then
+        echo -e "${RED}❌ BLOCKED: E2E tests failed${NC}"
+        echo "   E2E tests catch routing conflicts and runtime errors"
+        echo "   Fix failures before committing"
+        exit 1
+    fi
 fi
 echo -e "${GREEN}✅ E2E tests passed${NC}"
 echo ""

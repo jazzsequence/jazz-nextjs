@@ -65,7 +65,7 @@ const Pagination = ({ currentPage, totalPages, basePath }: PaginationProps) => {
   const disabledLink = 'pointer-events-none opacity-40 bg-brand-surface-high border-brand-border text-brand-muted';
 
   return (
-    <nav aria-label="Pagination" className="flex justify-center items-center gap-2 my-10">
+    <nav aria-label="Pagination" className="flex flex-wrap justify-center items-center gap-2 my-10">
       {/* Previous */}
       <Link
         href={isFirstPage ? '#' : getPageUrl(currentPage - 1)}

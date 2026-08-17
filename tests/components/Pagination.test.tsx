@@ -164,6 +164,15 @@ describe('Pagination', () => {
       const page1Link = container.querySelector('a[aria-label="Go to page 1"]');
       expect(page1Link?.className).not.toContain('bg-white');
     });
+
+    it('allows the nav to wrap so it never overflows narrow (mobile) viewports', () => {
+      // Previous + page numbers + Next in a single non-wrapping flex row exceeds
+      // ~375px on mobile, causing a horizontal scrollbar. flex-wrap lets the row
+      // break onto multiple lines instead of overflowing.
+      render(<Pagination currentPage={2} totalPages={5} basePath="/posts" />);
+      const nav = screen.getByRole('navigation');
+      expect(nav.className).toContain('flex-wrap');
+    });
   });
 
   describe('Edge Cases', () => {
