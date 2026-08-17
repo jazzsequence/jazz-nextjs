@@ -146,9 +146,9 @@ When dependencies are updated:
 See [TESTING.md](TESTING.md) for complete testing guide.
 
 **Quick reference**:
-- Test framework: Vitest 4.0.18 with happy-dom
-- E2E testing: Playwright 1.58.2
-- API mocking: MSW 2.12.10
+- Test framework: Vitest 4.1.10 with happy-dom
+- E2E testing: Playwright 1.62.1
+- API mocking: MSW 2.15.0
 - Always write tests before implementation (TDD)
 - All tests must pass before commit
 - Test standalone builds with `npm run start:test` before deploying

@@ -14,7 +14,7 @@ We follow **TDD London School** (mockist approach):
 
 ### Unit & Integration Tests (Vitest)
 
-**Framework**: Vitest 4.0.18 with happy-dom
+**Framework**: Vitest 4.1.10 with happy-dom
 
 **Configuration**: `config/vitest.config.ts`
 
@@ -26,7 +26,7 @@ We follow **TDD London School** (mockist approach):
 
 ### End-to-End Tests (Playwright)
 
-**Framework**: Playwright 1.58.2
+**Framework**: Playwright 1.62.1
 
 **Configuration**: `config/playwright.config.ts`
 
