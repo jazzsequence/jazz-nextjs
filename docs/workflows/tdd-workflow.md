@@ -63,7 +63,7 @@ npm test -- --coverage
 
 ### Unit & Integration Tests
 
-**Framework**: Vitest 4.0.18 with happy-dom
+**Framework**: Vitest 4.1.10 with happy-dom
 
 **Configuration**: `config/vitest.config.ts`
 
@@ -75,7 +75,7 @@ npm test -- --coverage
 
 ### End-to-End Tests
 
-**Framework**: Playwright 1.58.2
+**Framework**: Playwright 1.62.1
 
 **Configuration**: `config/playwright.config.ts`
 

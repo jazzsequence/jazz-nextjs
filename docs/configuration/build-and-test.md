@@ -110,8 +110,13 @@ npm run start:test
 
 **Location**: `eslint.config.mjs`
 
-**Stack**: ESLint 9.x + `eslint-config-next@16.2.2` using native flat config (no FlatCompat wrapper).
-Note: ESLint 10.x is not yet supported by `eslint-plugin-react@7.x`.
+**Stack**: ESLint 9.39.5 + `eslint-config-next@16.3.1` using native flat config (no FlatCompat wrapper).
+
+ESLint is pinned to `^9` deliberately. ESLint 10 removed `context.getFilename()`, which
+`eslint-plugin-react` (pulled in transitively by `eslint-config-next`) still calls, so
+`npm run lint` crashes on ESLint 10 with
+`TypeError: Error while loading rule 'react/display-name'`. Re-check whether the Next
+lint toolchain supports ESLint 10 before unpinning.
 
 **Rules**:
 - No `any` types (use `unknown` instead)
@@ -127,7 +132,7 @@ Note: ESLint 10.x is not yet supported by `eslint-plugin-react@7.x`.
 
 ## Tailwind CSS Configuration
 
-Tailwind 4.2 — config lives in CSS, not a JS file.
+Tailwind 4.3 — config lives in CSS, not a JS file.
 
 **Theme**: Defined in `app/globals.css` `@theme` block — brand colors (`--color-brand-*`) and font families (`--font-mono/sans/heading`).
 
