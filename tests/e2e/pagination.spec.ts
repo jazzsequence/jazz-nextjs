@@ -200,23 +200,43 @@ test.describe('Pagination Component', () => {
     }
   });
 
-  test('does not cause horizontal overflow on mobile (/media regression)', async ({ page }) => {
-    // Regression: the pagination nav was a single non-wrapping flex row, so
-    // Previous + page numbers + Next overflowed a ~375px mobile viewport and
-    // produced a horizontal scrollbar on /media. The nav must wrap instead.
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/media');
-    await page.waitForLoadState('domcontentloaded');
+  // Regression (/media horizontal scrollbar on mobile). Two distinct defects,
+  // each guarded below at 320px (iPhone SE / small Android) and 375px:
+  //
+  //  1. Document overflow — the pagination nav was a single non-wrapping flex
+  //     row (Previous + numbers + Next ~520px), so the whole document scrolled
+  //     sideways. Guarded by the documentElement scrollWidth check. `flex-wrap`
+  //     on the nav fixes this.
+  //  2. Number-row overflow — even with the nav wrapping, the inner page-number
+  //     row stayed a rigid ~320px unit that renders wider than the padded
+  //     content column on sub-360px screens (buttons clipped at the screen
+  //     edge). Guarded by asserting the number row is no wider than the
+  //     viewport. `flex-wrap` on the number row fixes this.
+  for (const width of [320, 375]) {
+    test(`does not overflow horizontally on /media at ${width}px (mobile regression)`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 812 });
+      await page.goto('/media');
+      await page.waitForLoadState('domcontentloaded');
 
-    // Pagination must be present for this page to exercise the regression.
-    const pagination = page.locator('nav[aria-label="Pagination"]');
-    await expect(pagination).toBeVisible();
+      // Pagination must be present for this page to exercise the regression.
+      const pagination = page.locator('nav[aria-label="Pagination"]');
+      await expect(pagination).toBeVisible();
 
-    // The document must not be wider than the viewport (allow 1px for rounding).
-    const overflow = await page.evaluate(() => {
-      const el = document.documentElement;
-      return el.scrollWidth - el.clientWidth;
+      const metrics = await page.evaluate(() => {
+        const de = document.documentElement;
+        const nav = document.querySelector('nav[aria-label="Pagination"]');
+        const numberRow = nav?.querySelector('div') ?? null;
+        return {
+          docOverflow: de.scrollWidth - de.clientWidth,
+          viewportWidth: de.clientWidth,
+          numberRowWidth: numberRow ? numberRow.scrollWidth : 0,
+        };
+      });
+
+      // (1) The document must not scroll sideways (allow 1px for rounding).
+      expect(metrics.docOverflow).toBeLessThanOrEqual(1);
+      // (2) The page-number row must not render wider than the screen.
+      expect(metrics.numberRowWidth).toBeLessThanOrEqual(metrics.viewportWidth);
     });
-    expect(overflow).toBeLessThanOrEqual(1);
-  });
+  }
 });
