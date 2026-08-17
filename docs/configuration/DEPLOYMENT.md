@@ -84,6 +84,35 @@ const nextConfig = {
 - Automatic CDN cache invalidation on content updates
 - Smart build deploys: page caches refresh, data caches preserved
 
+**v0.9.0 behavior change**: `revalidateTag()` no longer deletes the cache entries it
+revalidates. It marks them stale via the shared `tagsManifest` (matching Next's own
+`FileSystemCache.revalidateTag`), so the last-good value stays servable while Next
+revalidates in the background.
+
+This matters for high-cardinality tags. Before 0.9.0, revalidating `posts` — which is
+attached to the homepage, every archive, and every post — triggered a synchronous
+delete-sweep that held the webhook connection open past the client timeout, failing
+three `/api/revalidate` E2E tests against Dev. Confirmed fixed on the PR-78 environment.
+
+**Next.js version pin**: `next` is pinned to exactly `16.2.7` (no caret). 16.3.1 fails
+the Pantheon buildpack at "Finalizing page optimization" with
+`ENOENT: .next/next-server.js.nft.json`, the file-tracing manifest that
+`output: 'standalone'` requires. It does **not** reproduce locally — only in Pantheon's
+Linux buildpack under Turbopack, so a green local build is not sufficient evidence.
+Re-validate on a PR environment before unpinning rather than assuming it is still broken.
+To read the real build log (GitHub Actions only reports `BUILD_FAILURE`):
+
+```bash
+terminus auth:login --email=<you>@pantheon.io
+SESSION=$(cat ~/.terminus/cache/session | python3 -c "import json,sys; print(json.load(sys.stdin)['session'])")
+# List builds to get the build ID:
+curl -s -H "X-Pantheon-Session: $SESSION" \
+  "https://terminus.pantheon.io/api/sites/$SITE_UUID/environment/$ENV/build/list?limit=5"
+# Fetch the log — note this path is site-level, NOT environment-scoped:
+curl -s -H "X-Pantheon-Session: $SESSION" \
+  "https://terminus.pantheon.io/api/sites/$SITE_UUID/build/$BUILD_ID/log"
+```
+
 **References**:
 - [Release Notes](https://docs.pantheon.io/release-notes/2026/02/nextjs-cache-handler)
 - [GitHub Repository](https://github.com/pantheon-systems/nextjs-cache-handler)
