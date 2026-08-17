@@ -173,6 +173,18 @@ describe('Pagination', () => {
       const nav = screen.getByRole('navigation');
       expect(nav.className).toContain('flex-wrap');
     });
+
+    it('allows the page-number row itself to wrap on very narrow viewports', () => {
+      // The inner page-number group is a rigid flex row: at 7 pages it is ~320px
+      // wide and, even with the outer nav wrapping, overflows sub-360px devices
+      // (small Androids, iPhone SE/mini). It must wrap too so the group can never
+      // exceed the viewport.
+      const { container } = render(
+        <Pagination currentPage={4} totalPages={7} basePath="/media" />
+      );
+      const numberRow = container.querySelector('nav > div');
+      expect(numberRow?.className).toContain('flex-wrap');
+    });
   });
 
   describe('Edge Cases', () => {

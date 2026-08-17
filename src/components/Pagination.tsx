@@ -77,7 +77,7 @@ const Pagination = ({ currentPage, totalPages, basePath }: PaginationProps) => {
       </Link>
 
       {/* Page numbers */}
-      <div className="flex gap-1">
+      <div className="flex flex-wrap justify-center gap-1">
         {pages.map((page, index) => {
           if (page === 'ellipsis') {
             return (
