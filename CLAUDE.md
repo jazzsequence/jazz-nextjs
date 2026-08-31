@@ -180,13 +180,15 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - **Framework**: Next.js 16.2.7 (Turbopack) — pinned exactly, see the version-pin note below
 - **React**: 19.2.8
 - **WordPress**: Headless CMS (jazzsequence.com)
-- **Testing**: Vitest 4.1.10, Playwright 1.62.1
+- **Testing**: Vitest 4.1.11, Playwright 1.62.1
 - **Styling**: Tailwind CSS 4.3 (config via `@theme` in `app/globals.css`; `@variant hover (&:hover)` restores unconditional hover behavior; no `tailwind.config.js`)
 - **Validation**: Zod 4 schemas with `.passthrough()` for plugin fields; `z.record()` requires explicit key schema; `ZodError.issues` (not `.errors`)
 - **HTML Sanitization**: `sanitize-html` (PostContent, server-side); `dompurify` (GreetingClient, client-side); `stripHtml()` util (PostCard/SearchResults excerpts)
-- **CDN cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.9.0 manages edge cache clearing internally. The `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping in GCS and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. The previous `proxy.ts` Surrogate-Key middleware and `scripts/patch-cache-handler.mjs` postinstall patch have been removed as part of the v0.6.0 migration.
+- **CDN cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.11.0 manages edge cache clearing internally. The `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping in GCS and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. The previous `proxy.ts` Surrogate-Key middleware and `scripts/patch-cache-handler.mjs` postinstall patch have been removed as part of the v0.6.0 migration.
   - **As of v0.9.0**, `revalidateTag()` no longer *deletes* the cache entries it revalidates — it marks them stale via the shared `tagsManifest` (matching Next's own `FileSystemCache.revalidateTag`), so the last-good value stays servable while Next revalidates in the background. This is why high-cardinality tags are now fast: revalidating `posts` (homepage + every archive + every post) previously triggered a synchronous delete-sweep that held the webhook connection open past the client timeout and failed three `/api/revalidate` E2E tests. Confirmed fixed on the PR-78 Pantheon environment.
 - **Next.js is pinned to exactly `16.2.7`** (no caret). 16.3.1 fails Pantheon's buildpack at "Finalizing page optimization" with `ENOENT: .next/next-server.js.nft.json`, which `output: 'standalone'` requires. It does **not** reproduce locally — only in Pantheon's Linux buildpack under Turbopack. Re-validate on a PR environment before unpinning; do not assume it is still broken.
+  - **Re-validated 2026-08-31 on 16.3.3** (Dependabot PR #88, pr-88 build `1fe23cd4`): still fails, byte-identical `ENOENT` on `next-server.js.nft.json`. Pin held.
+  - 16.2.7 has open advisories that are **fixed in 16.2.11 — the same minor line**, so a patch bump is the likely remediation and does not require 16.3.x. See the "Next.js version pin" section in `@docs/configuration/DEPLOYMENT.md` for the current assessment.
 
 ### Design Patterns
 - Domain-Driven Design with bounded contexts

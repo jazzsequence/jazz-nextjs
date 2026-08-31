@@ -100,6 +100,50 @@ the Pantheon buildpack at "Finalizing page optimization" with
 `output: 'standalone'` requires. It does **not** reproduce locally — only in Pantheon's
 Linux buildpack under Turbopack, so a green local build is not sufficient evidence.
 Re-validate on a PR environment before unpinning rather than assuming it is still broken.
+
+**Re-validation log**:
+
+| Date | Version | Result |
+|---|---|---|
+| 2026-08-17 | 16.3.1 | FAIL — pr-78 build `6c1e9cf6`, `ENOENT next-server.js.nft.json` |
+| 2026-08-31 | 16.3.3 | FAIL — pr-88 build `1fe23cd4`, byte-identical `ENOENT` |
+| — | 16.2.12 | **Untested** — see below; try this first |
+| — | 16.3.4 | Untested — shipped 2026-08-31; re-enables AVIF image optimization, which 16.3.3 had disabled |
+
+**Security status of the pin** (as of 2026-08-31 — re-check before acting, advisories move):
+
+`next` 16.2.7 has **nine open advisories: 4 HIGH + 5 MODERATE**. The HIGH four are
+middleware/proxy bypass, DoS in Server Actions, SSRF in Server Actions on custom
+servers, and SSRF in rewrites. Cache confusion is MODERATE, not HIGH.
+
+**All nine are patched in `16.2.11`** (`firstPatchedVersion` per the GitHub advisory
+database) — the *same minor line* as the working pin. So the low-risk remediation is a
+patch bump `16.2.7` → `16.2.12`, which stays on 16.2.x and never touches the 16.3.x line
+that has now failed the buildpack twice. That bump is untested against the buildpack and
+should go through a PR environment first, but it is a far smaller step than 16.3.4.
+
+Two CRITICAL RCEs are named in the 16.3.3 release notes (Windows-hosted servers; the
+Image Optimization API with AVIF). Their advisories are not published in the global
+database, so their affected ranges could not be confirmed — it is **unknown** whether
+they reach 16.2.x. What is known: 16.2.12's release notes contain no security fixes, so
+neither has been backported to the 16.2.x line as of 16.2.12. Treat that as a genuinely
+open question, not as a reason to jump straight to 16.3.x.
+
+**`npm audit` is misleading here.** Even at 16.2.12 it still reports `next` as HIGH with
+the merged range `9.3.4-canary.0 - 16.3.0-preview.10`. That is *not* a surviving Next.js
+advisory: at 16.2.12 the finding's `via` array is `["postcss", "sharp"]` — `next` is
+flagged **transitively** through its own bundled dependencies, with zero direct Next.js
+advisories left. (At 16.2.7 the same array holds all nine Next.js advisories *plus* those
+two.) npm's `range` field spans every `next` version affected by anything, direct or
+transitive, so it cannot tell you whether the Next.js advisories themselves are fixed.
+The finding at 16.2.12 is real — it just isn't about Next.js. Read the `via` array, or
+check `firstPatchedVersion` on the individual advisories:
+
+```bash
+gh api graphql -f query='{securityVulnerabilities(package:"next",ecosystem:NPM,first:30)
+  {nodes{severity vulnerableVersionRange firstPatchedVersion{identifier}}}}'
+```
+
 To read the real build log (GitHub Actions only reports `BUILD_FAILURE`):
 
 ```bash
