@@ -314,16 +314,20 @@ job rather than at the failing step.
 - `PANTHEON_MACHINE_TOKEN` - Machine token, passed to the `pantheon-wait-for-build` action
   - Generate at: https://dashboard.pantheon.io/users/#account/tokens
   - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
-- `REVALIDATE_SECRET` - shared secret for `/api/revalidate`. **E2E fails without it**, and
-  fails confusingly: `tests/e2e/api-revalidate.spec.ts` falls back to `'test-secret'`, so a
-  missing secret presents as a wave of 401s that look like an auth regression rather than a
-  configuration gap.
-- `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD` - **not used by the E2E step.** They are
-  consumed by the Next.js *server runtime* (`src/lib/wordpress/client.ts`,
-  `src/lib/wordpress/greeting.ts`, `app/api/contact/route.ts`) for WordPress basic auth. On
-  a deployed environment that runtime is on Pantheon, so it reads them from Pantheon
-  dashboard env vars, not from GitHub secrets — see "WordPress Application Passwords" below.
-  They appear in the workflow's E2E `env:` block but are inert there.
+- `REVALIDATE_SECRET` - shared secret for `/api/revalidate`. **The whole E2E run fails
+  without it.** `tests/e2e/api-revalidate.spec.ts` throws at collection time with a named
+  error when `CI` is set and the secret is missing or empty, so the run aborts before any
+  test executes — 0 tests, exit 1, and a GitHub annotation naming the secret. That is
+  deliberate: it previously fell back to `'test-secret'`, which turned a missing secret
+  into ~10 401 failures that read as an auth regression. The fallback is kept for local
+  runs, where `webServer.env` uses the same value so client and server agree.
+- `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD` - **not GitHub secrets for this
+  workflow.** They are consumed by the Next.js *server runtime*
+  (`src/lib/wordpress/client.ts`, `src/lib/wordpress/greeting.ts`,
+  `app/api/contact/route.ts`) for WordPress basic auth. On a deployed environment that
+  runtime is on Pantheon, so it reads them from Pantheon dashboard env vars — see
+  "WordPress Application Passwords" below. They were previously passed to the E2E step
+  where they did nothing, and have been removed; do not re-add them.
 
 Other workflows use their own secrets — `slack-notify-deploy.yml` needs
 `SLACK_DEPLOYBOT_TOKEN` (see `@docs/architecture/SLACK_NOTIFICATIONS.md`), and it and

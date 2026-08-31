@@ -47,15 +47,6 @@ export default defineConfig({
     },
   },
 
-  /* Load test environment variables */
-  ...(process.env.NODE_ENV !== 'production' && {
-    env: {
-      REVALIDATE_SECRET: process.env.REVALIDATE_SECRET || 'test-secret',
-      WORDPRESS_USERNAME: process.env.WORDPRESS_USERNAME,
-      WORDPRESS_APP_PASSWORD: process.env.WORDPRESS_APP_PASSWORD,
-    },
-  }),
-
   /* Configure projects for major browsers */
   projects: process.env.TEST_ALL_BROWSERS ? [
     // All browsers: Use TEST_ALL_BROWSERS=1 for comprehensive testing (e.g., nightly tests)

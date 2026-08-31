@@ -124,10 +124,12 @@ jobs:
         continue-on-error: true
         run: npm run test:e2e
         env:
+          # WORDPRESS_USERNAME / WORDPRESS_APP_PASSWORD are deliberately NOT set here.
+          # No spec reads them, and against a deployed BASE_URL no local server starts,
+          # so the Next.js runtime that does use them is on Pantheon and sources them
+          # from Pantheon env vars. Do not re-add them.
           BASE_URL: ${{ steps.env.outputs.base_url }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
-          WORDPRESS_USERNAME: ${{ secrets.WORDPRESS_USERNAME }}
-          WORDPRESS_APP_PASSWORD: ${{ secrets.WORDPRESS_APP_PASSWORD }}
           CI: true
 
       - name: Upload test results
