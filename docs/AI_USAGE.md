@@ -159,12 +159,11 @@ See [TESTING.md](TESTING.md) for complete testing guide.
 GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests against deployed Pantheon environments:
 - **On push to main**: Tests run against `dev-jazz-nextjs15.pantheonsite.io`
 - **On pull requests**: Tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
-- **Wait strategy**: HTTP polling (30 attempts × 20s) to wait for Pantheon deployment
-- **Cache clearing**: Automatically clears Pantheon CDN cache after deployment via Terminus
-- **Test types**: Unit tests (`npm test`) and E2E tests (`npm run test:e2e`)
+- **Wait strategy**: `jazzsequence/pantheon-wait-for-build@v1` reports build/deploy status, then an HTTP 200 check (12 attempts, 5s apart) before E2E
+- **Test types**: Lint (`npm run lint`), unit tests (`npm test`), and E2E tests (`npm run test:e2e`) — all three gate the workflow
 - **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
 
-**Required GitHub Secret**: `PANTHEON_MACHINE_TOKEN` for Terminus authentication
+**Required GitHub Secret**: `PANTHEON_MACHINE_TOKEN`, passed to the `pantheon-wait-for-build` action
 
 ## Last Updated
 2026-04-03

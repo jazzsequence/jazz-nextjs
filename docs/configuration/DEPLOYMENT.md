@@ -224,29 +224,34 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 - Pull request opened/updated → tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
 
 **Workflow steps**:
-1. Checkout code and setup Node.js
-2. Install dependencies with `npm ci`
-3. Determine target environment (dev or PR-specific)
-4. Wait for Pantheon deployment (HTTP polling for up to 10 minutes)
-5. **Setup PHP** (required for Terminus)
-6. **Install and authenticate Terminus** (via `pantheon-systems/terminus-github-actions@v1`)
-7. **Clear Pantheon CDN cache** (`terminus env:clear-cache`)
-8. Run unit tests: `npm test -- --run`
+1. Checkout code and setup Node.js (version from `.nvmrc`)
+2. Restore npm cache, then install dependencies with `npm ci`
+3. **Run lint**: `npm run lint` — placed before the deployment wait so its output is
+   visible in ~1 minute rather than after a ~10 minute build, and so it still reports
+   when the Pantheon build fails
+4. Determine target environment (dev or PR-specific)
+5. Wait for Pantheon build and deployment (`jazzsequence/pantheon-wait-for-build@v1`)
+6. Run unit tests: `npm test -- --run`
+7. Install Playwright browsers (chromium)
+8. Verify the Pantheon site responds with HTTP 200
 9. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
-10. Report test results in GitHub Actions summary
+10. Upload the Playwright report and publish it to GitHub Pages
+11. Report results in the GitHub Actions summary
+12. Fail the workflow if lint, unit tests, or E2E did not succeed
+
+**Gating**: lint, unit tests, and E2E each use `continue-on-error: true` so that one
+failure does not hide the others. The final step re-reads their `.outcome` values and
+exits non-zero if any failed — so the workflow does go red, but only at the end of the
+job rather than at the failing step.
 
 **Deployment detection**:
-- Polls site URL every 20 seconds (max 30 attempts)
-- Checks for HTTP 200 status AND content markers ("Jazz Next.js", "Next.js", "__next")
-- Fails if deployment not detected within timeout
-
-**Automated cache clearing**:
-- After deployment detected, automatically clears Pantheon CDN cache
-- Ensures fresh content is served before running tests
-- Eliminates manual cache clearing after deployments
+- Build and deploy status come from the `pantheon-wait-for-build` action
+- A follow-up accessibility check polls the environment URL for HTTP 200
+  (12 attempts, 5s apart) before E2E runs
+- Fails if the site is not reachable within that window
 
 **Required GitHub Secret**:
-- `PANTHEON_MACHINE_TOKEN` - Machine token for Terminus authentication
+- `PANTHEON_MACHINE_TOKEN` - Machine token, passed to the `pantheon-wait-for-build` action
   - Generate at: https://dashboard.pantheon.io/users/#account/tokens
   - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
 

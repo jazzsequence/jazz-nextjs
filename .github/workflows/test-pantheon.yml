@@ -51,6 +51,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Runs before the Pantheon build wait so lint output is visible in ~1 minute
+      # instead of after a ~10 minute deploy, and so it still reports when the build
+      # fails. Note continue-on-error means the run only goes red at the final gate
+      # step, not here. Catches dependency bumps that break the lint toolchain
+      # (e.g. an ESLint major that breaks eslint-plugin-react), which the
+      # deployed-site tests cannot detect.
+      - name: Run lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint
+
       - name: Determine environment
         id: env
         run: |
@@ -152,11 +163,12 @@ jobs:
           echo "**Deployment:** ${{ steps.wait.outputs.deployment_ready == 'true' && '✅ Ready' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "#### Test Suites" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lint (ESLint):** ${{ steps.lint.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Unit Tests (Vitest):** ${{ steps.unit-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "- **E2E Tests (Playwright):** ${{ steps.e2e-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📊 [View Playwright Report](${REPORT_URL}) for detailed test results" >> $GITHUB_STEP_SUMMARY
 
-      - name: Fail workflow if any tests failed
-        if: steps.unit-tests.outcome != 'success' || steps.e2e-tests.outcome != 'success'
+      - name: Fail workflow if any checks failed
+        if: steps.lint.outcome != 'success' || steps.unit-tests.outcome != 'success' || steps.e2e-tests.outcome != 'success'
         run: exit 1
