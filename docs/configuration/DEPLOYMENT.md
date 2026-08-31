@@ -294,10 +294,24 @@ job rather than at the failing step.
   (12 attempts, 5s apart) before E2E runs
 - Fails if the site is not reachable within that window
 
-**Required GitHub Secret**:
+**GitHub Secrets used by this workflow**:
 - `PANTHEON_MACHINE_TOKEN` - Machine token, passed to the `pantheon-wait-for-build` action
   - Generate at: https://dashboard.pantheon.io/users/#account/tokens
   - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
+- `REVALIDATE_SECRET` - shared secret for `/api/revalidate`. **E2E fails without it**, and
+  fails confusingly: `tests/e2e/api-revalidate.spec.ts` falls back to `'test-secret'`, so a
+  missing secret presents as a wave of 401s that look like an auth regression rather than a
+  configuration gap.
+- `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD` - **not used by the E2E step.** They are
+  consumed by the Next.js *server runtime* (`src/lib/wordpress/client.ts`,
+  `src/lib/wordpress/greeting.ts`, `app/api/contact/route.ts`) for WordPress basic auth. On
+  a deployed environment that runtime is on Pantheon, so it reads them from Pantheon
+  dashboard env vars, not from GitHub secrets — see "WordPress Application Passwords" below.
+  They appear in the workflow's E2E `env:` block but are inert there.
+
+Other workflows use their own secrets — `slack-notify-deploy.yml` needs
+`SLACK_DEPLOYBOT_TOKEN` (see `@docs/architecture/SLACK_NOTIFICATIONS.md`), and it and
+`promote-pantheon.yml` reuse `PANTHEON_MACHINE_TOKEN`.
 
 See `.github/workflows/test-pantheon.yml` for full implementation.
 

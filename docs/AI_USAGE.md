@@ -146,7 +146,7 @@ When dependencies are updated:
 See [TESTING.md](TESTING.md) for complete testing guide.
 
 **Quick reference**:
-- Test framework: Vitest 4.1.10 with happy-dom
+- Test framework: Vitest 4.1.11 with happy-dom
 - E2E testing: Playwright 1.62.1
 - API mocking: MSW 2.15.0
 - Always write tests before implementation (TDD)
@@ -163,7 +163,7 @@ GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests again
 - **Test types**: Lint (`npm run lint`), unit tests (`npm test`), and E2E tests (`npm run test:e2e`) — all three gate the workflow
 - **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
 
-**Required GitHub Secret**: `PANTHEON_MACHINE_TOKEN`, passed to the `pantheon-wait-for-build` action
+**Required GitHub Secrets**: `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action) and `REVALIDATE_SECRET` (E2E fails without it). `WORDPRESS_USERNAME` / `WORDPRESS_APP_PASSWORD` appear in the workflow's E2E `env:` block but are inert there — they are server-runtime vars, supplied by Pantheon on deployed environments. See `@docs/configuration/DEPLOYMENT.md`.
 
 ## Last Updated
 2026-04-03
