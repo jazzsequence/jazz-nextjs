@@ -240,7 +240,7 @@ jazz-nextjs/
 ## Technology Stack
 
 ### Core
-- **Next.js 16.2.7** - React framework with App Router and Turbopack (pinned exactly; see `docs/configuration/DEPLOYMENT.md`)
+- **Next.js 16.2.12** - React framework with App Router and Turbopack (pinned exactly; see `docs/configuration/DEPLOYMENT.md`)
 - **React 19.2.8** - UI library
 - **TypeScript 5** - Type safety
 - **Node.js 24.13.0** - Runtime (matches Pantheon, managed via `.nvmrc`)

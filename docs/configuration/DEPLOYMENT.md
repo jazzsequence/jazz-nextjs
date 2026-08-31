@@ -94,12 +94,13 @@ attached to the homepage, every archive, and every post — triggered a synchron
 delete-sweep that held the webhook connection open past the client timeout, failing
 three `/api/revalidate` E2E tests against Dev. Confirmed fixed on the PR-78 environment.
 
-**Next.js version pin**: `next` is pinned to exactly `16.2.7` (no caret). 16.3.1 fails
-the Pantheon buildpack at "Finalizing page optimization" with
+**Next.js version pin**: `next` is pinned to exactly `16.2.12` (no caret). The 16.3.x
+line fails the Pantheon buildpack at "Finalizing page optimization" with
 `ENOENT: .next/next-server.js.nft.json`, the file-tracing manifest that
 `output: 'standalone'` requires. It does **not** reproduce locally — only in Pantheon's
 Linux buildpack under Turbopack, so a green local build is not sufficient evidence.
-Re-validate on a PR environment before unpinning rather than assuming it is still broken.
+Re-validate on a PR environment before moving to 16.3.x rather than assuming it is still
+broken. The pin stays exact so npm cannot re-resolve into 16.3.x on its own.
 
 **Re-validation log**:
 
@@ -107,20 +108,18 @@ Re-validate on a PR environment before unpinning rather than assuming it is stil
 |---|---|---|
 | 2026-08-17 | 16.3.1 | FAIL — pr-78 build `6c1e9cf6`, `ENOENT next-server.js.nft.json` |
 | 2026-08-31 | 16.3.3 | FAIL — pr-88 build `1fe23cd4`, byte-identical `ENOENT` |
-| — | 16.2.12 | **Untested** — see below; try this first |
+| 2026-08-31 | 16.2.12 | **Adopted** — current pin; lint/unit/build/E2E green locally. Buildpack confirmation pending on pr-90 |
 | — | 16.3.4 | Untested — shipped 2026-08-31; re-enables AVIF image optimization, which 16.3.3 had disabled |
 
 **Security status of the pin** (as of 2026-08-31 — re-check before acting, advisories move):
 
-`next` 16.2.7 has **nine open advisories: 4 HIGH + 5 MODERATE**. The HIGH four are
-middleware/proxy bypass, DoS in Server Actions, SSRF in Server Actions on custom
-servers, and SSRF in rewrites. Cache confusion is MODERATE, not HIGH.
-
-**All nine are patched in `16.2.11`** (`firstPatchedVersion` per the GitHub advisory
-database) — the *same minor line* as the working pin. So the low-risk remediation is a
-patch bump `16.2.7` → `16.2.12`, which stays on 16.2.x and never touches the 16.3.x line
-that has now failed the buildpack twice. That bump is untested against the buildpack and
-should go through a PR environment first, but it is a far smaller step than 16.3.4.
+**Resolved by the move to 16.2.12.** 16.2.7 carried nine open advisories (4 HIGH:
+middleware/proxy bypass, DoS in Server Actions, SSRF in Server Actions on custom servers,
+SSRF in rewrites; 5 MODERATE, including cache confusion). All nine list
+`firstPatchedVersion: 16.2.11` in the GitHub advisory database — the *same minor line* —
+so a patch bump cleared them without touching the 16.3.x line that has failed the
+buildpack twice. `npm audit` still reports a `next` finding, but not for any Next.js
+advisory — see below.
 
 Two CRITICAL RCEs are named in the 16.3.3 release notes (Windows-hosted servers; the
 Image Optimization API with AVIF). Their advisories are not published in the global
@@ -129,15 +128,32 @@ they reach 16.2.x. What is known: 16.2.12's release notes contain no security fi
 neither has been backported to the 16.2.x line as of 16.2.12. Treat that as a genuinely
 open question, not as a reason to jump straight to 16.3.x.
 
-**`npm audit` is misleading here.** Even at 16.2.12 it still reports `next` as HIGH with
-the merged range `9.3.4-canary.0 - 16.3.0-preview.10`. That is *not* a surviving Next.js
-advisory: at 16.2.12 the finding's `via` array is `["postcss", "sharp"]` — `next` is
-flagged **transitively** through its own bundled dependencies, with zero direct Next.js
-advisories left. (At 16.2.7 the same array holds all nine Next.js advisories *plus* those
-two.) npm's `range` field spans every `next` version affected by anything, direct or
-transitive, so it cannot tell you whether the Next.js advisories themselves are fixed.
-The finding at 16.2.12 is real — it just isn't about Next.js. Read the `via` array, or
-check `firstPatchedVersion` on the individual advisories:
+**Don't read `npm audit`'s summary as a verdict on `next`.** It reports one severity and
+one `range` per package, merged across every advisory that touches it — direct *and*
+transitive. Two ways that misleads:
+
+- **`range` is not a fix boundary.** It spans every version affected by anything, so a
+  version that fixes all of the package's own advisories can still appear inside it. At
+  16.2.7 the merged range read `9.3.4-canary.0 - 16.3.0-preview.10`, which invites the
+  conclusion that the fix lives in 16.3.x. It does not — it is 16.2.11.
+- **The finding may not be about `next` at all.** This repo is flagged HIGH on `next`
+  right now, with `via: ["postcss","sharp"]` and **zero direct Next.js advisories**. The
+  top-level `postcss` (8.5.26) and `sharp` (0.35.4) are both patched; the finding comes
+  from copies `next` vendors inside its own tree — `next/node_modules/postcss@8.4.31` and
+  `next/node_modules/sharp@0.34.5` — which this repo does not override. `next` pins
+  `postcss` exactly (`8.4.31`) and constrains `sharp` to `^0.34.5`; neither top-level
+  version satisfies those ranges, so npm nests a second copy of each. An npm `overrides`
+  block *could* force them, but overriding a vendored exact pin risks a buildpack that
+  has already failed twice without reproducing locally — so the finding is **accepted,
+  not unfixable**. Revisit if those advisories become exploitable in this app's usage.
+  Check each finding's `nodes` array, not just `via`, to see which copy is implicated.
+- **`fixAvailable` can point somewhere dangerous.** For this finding npm reports
+  `next@16.3.4` — precisely the line the pin exists to avoid. **Do not run
+  `npm audit fix` here**; it would break the Pantheon build.
+
+Read the `via` array — advisory objects are direct, bare strings are transitive — check
+`nodes` to locate the offending copy, and check `firstPatchedVersion` on the individual
+advisories rather than trusting `fixAvailable`:
 
 ```bash
 gh api graphql -f query='{securityVulnerabilities(package:"next",ecosystem:NPM,first:30)
