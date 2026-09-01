@@ -397,6 +397,69 @@ Merging to `test` or `live` triggers a Pantheon environment deployment. This is 
 
 If asked to "deploy" without specifying an environment, clarify before acting.
 
+### Ignored Dependency Updates — Review Protocol
+
+`.github/dependabot.yml` has an `ignore` block. Every entry there is a **deferred
+upgrade, not a decision to stay behind**. Dependabot goes silent on an ignored range,
+so nothing will remind you — that silence is the whole risk.
+
+`.github/dependabot.yml` is **canonical** for each blocker and lift condition — the
+comments live next to the entry they explain. This table is a summary; if it disagrees
+with the config, the config wins.
+
+| Package | Ignored | Blocker (detail in dependabot.yml) | Lift test |
+|---|---|---|---|
+| `next` | `16.3.x` | Pantheon buildpack ENOENT on the file-tracing manifest | PR environment build — read the **Pantheon** build log, not the CI status |
+| `typescript` | `7.x` | Next build worker crash | `npm run build`, then a PR environment |
+| `eslint` | `10.x` | `eslint-plugin-react` incompatible | `npm run lint` — must exit 0 |
+
+**A `versions:` ignore also suppresses security-update PRs.** This is not documented by
+GitHub, and `update-types:` does *not* behave this way — see
+`ignored_versions` in dependabot-core's `config/ignore_condition.rb`, which returns
+`versions` unconditionally when `security_updates_only` is true. So Dependabot will not
+open a PR even for a CVE fix inside an ignored range.
+
+**Dependabot alerts are the signal that survives this.** Alerts are generated from the
+dependency graph and are unaffected by `dependabot.yml`. They must stay enabled for this
+protocol to work — if alerts are ever turned off, these ignores become genuinely blind.
+
+**When to re-test — do it at any of these, don't wait for a calendar:**
+
+1. **Every time you work the Dependabot queue.** Before reporting the queue clear, check
+   whether a newer version of each ignored package now exists, and whether its blocker
+   still reproduces. A cleared queue with three stale ignores is not clear.
+2. **When the upstream cause moves.** An `eslint-config-next` bump is the likely carrier
+   of the ESLint 10 fix; a Next minor may carry TypeScript 7 support.
+3. **Whenever a Dependabot alert names an ignored package.** Check the repo's Security
+   tab, since no PR will be opened. Then the ignore is actively costing exposure and
+   needs a decision, not a deferral. Via API:
+   ```bash
+   gh api "repos/OWNER/REPO/dependabot/alerts?state=open" \
+     --jq '.[] | "\(.security_advisory.severity) \(.dependency.package.name) patched:\(.security_vulnerability.first_patched_version.identifier)"'
+   ```
+   This needs a token with `dependabot_alerts: read`; a PAT without it returns
+   `Resource not accessible by personal access token`, which is a scope error and **not**
+   evidence that there are no alerts. "Dependabot alerts are disabled for this
+   repository" is the message that means the feature itself is off.
+
+**How to re-test properly:**
+
+- `npm view <pkg> versions --json` — is there a newer version in or past the ignored range?
+- Apply it on a branch and run the lift test in the table. Local green is **not**
+  sufficient for `next` or `typescript` — both failures only appear in Pantheon's
+  buildpack. See "Next.js version pin" in `@docs/configuration/DEPLOYMENT.md`.
+- If it works: remove the `ignore` entry, update the pin, update DEPLOYMENT.md's
+  re-validation log.
+- If it still fails: add a dated row to that log with the build ID and the actual error
+  string. "Still broken" without evidence is how a stale assumption survives for years.
+
+**Never widen an `ignore`** to silence noise. Each entry is scoped to only the known-bad
+line so the next line still surfaces — `next` 16.4.x, TypeScript 8, ESLint 11 all still
+open PRs by design. Widening to `semver-major` would hide the fix along with the problem.
+
+**Never add an `ignore`** without the user's agreement, plus a blocker and a lift
+condition in the comment. An unexplained ignore is indistinguishable from neglect.
+
 ### 5. Documentation Maintenance - Keep Docs Updated
 
 **When making changes, ALWAYS update relevant documentation:**

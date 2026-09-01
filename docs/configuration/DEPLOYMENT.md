@@ -102,6 +102,12 @@ Linux buildpack under Turbopack, so a green local build is not sufficient eviden
 Re-validate on a PR environment before moving to 16.3.x rather than assuming it is still
 broken. The pin stays exact so npm cannot re-resolve into 16.3.x on its own.
 
+**Dependabot**: `16.3.x` is in the `ignore` block of `.github/dependabot.yml`, so it no
+longer opens PRs — including **security** PRs, since a `versions:` ignore suppresses
+those too. Dependabot alerts still fire and are the signal to watch. The review protocol
+that keeps this from going stale is "Ignored Dependency Updates" in `@AGENTS.md`; remove
+the ignore entry when a lift succeeds.
+
 **Re-validation log**:
 
 | Date | Version | Result |

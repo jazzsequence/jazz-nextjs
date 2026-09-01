@@ -8,6 +8,49 @@ updates:
       interval: "weekly"
       day: "monday"
     open-pull-requests-limit: 10
+    # Blocked updates. Each entry is scoped to ONLY the known-bad line so the next
+    # line still surfaces — e.g. next 16.4.x will open a PR even though 16.3.x is
+    # ignored. Every entry MUST carry its blocker and lift condition.
+    #
+    # These are NOT permanent. See "Ignored Dependency Updates — Review Protocol" in
+    # AGENTS.md — an ignore with no review is how a project silently falls years behind.
+    #
+    # IMPORTANT: a `versions:` ignore ALSO suppresses Dependabot security-update PRs
+    # inside that range (undocumented by GitHub; `update-types:` does not behave this
+    # way). Dependabot ALERTS are unaffected and are the signal that survives — they
+    # must stay enabled.
+    ignore:
+      # BLOCKER: 16.3.x fails Pantheon's buildpack at "Finalizing page optimization"
+      #   with ENOENT .next/next-server.js.nft.json, which output:'standalone'
+      #   requires. Confirmed on 16.3.1 (build 6c1e9cf6) and 16.3.3 (build 1fe23cd4).
+      #   Does not reproduce locally — only in Pantheon's Linux buildpack under
+      #   Turbopack, so a green local build proves nothing.
+      # LIFT WHEN: a PR environment builds green on a 16.3.x release. Test 16.3.4+
+      #   (16.3.4 re-enabled AVIF image optimization that 16.3.3 disabled).
+      # NOTE: 16.4.x is deliberately NOT ignored and will still open a PR.
+      # SECURITY: 16.2.x currently has no open advisories, but two CRITICAL RCEs named
+      #   in the 16.3.3 notes have unconfirmed 16.2.x backport status. If either is
+      #   fixed only in 16.3.x, no PR will appear here — watch Dependabot alerts.
+      - dependency-name: "next"
+        versions: ["16.3.x"]
+
+      # BLOCKER: TypeScript 7 (the native Go port) crashes Next's build worker with
+      #   'The "id" argument must be of type string. Received undefined'
+      #   (Pantheon build aab7f9b2). Next 16.2.x's TS integration does not support it.
+      # LIFT WHEN: Next.js declares TypeScript 7 support. Retest on a PR environment.
+      - dependency-name: "typescript"
+        versions: ["7.x"]
+
+      # BLOCKER: ESLint 10 breaks eslint-plugin-react — 'TypeError: Error while
+      #   loading rule react/display-name: contextOrFilename.getFilename is not a
+      #   function'. The plugin is a transitive dep of eslint-config-next, so this is
+      #   not ours to patch.
+      # LIFT WHEN: eslint-plugin-react supports ESLint 10's rule-context API, which
+      #   usually arrives via an eslint-config-next release. Verify with
+      #   `npm run lint` after bumping.
+      - dependency-name: "eslint"
+        versions: ["10.x"]
+
     groups:
       # Group minor/patch updates to reduce PR noise
       production-dependencies:
