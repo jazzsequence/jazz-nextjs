@@ -145,8 +145,25 @@ transitive. Two ways that misleads:
   version satisfies those ranges, so npm nests a second copy of each. An npm `overrides`
   block *could* force them, but overriding a vendored exact pin risks a buildpack that
   has already failed twice without reproducing locally — so the finding is **accepted,
-  not unfixable**. Revisit if those advisories become exploitable in this app's usage.
-  Check each finding's `nodes` array, not just `via`, to see which copy is implicated.
+  not unfixable**. Check each finding's `nodes` array, not just `via`, to see which copy
+  is implicated.
+  - Why it is safe to accept — one argument per cause, since the finding has two:
+    - **`sharp`** — libvips image-decode bugs, so they need an untrusted image to reach
+      the optimizer. `next.config.ts` pins `images.remotePatterns` to
+      `https://sfo2.digitaloceanspaces.com/cdn.jazzsequence/**` and
+      `https://jazzsequence.com/wp-content/uploads/**`, both first-party, so a remote
+      `/_next/image?url=` for any other host is rejected. **This covers remote URLs
+      only**: `localPatterns` is unset, and Next's `hasLocalMatch()` returns true for
+      every local path — query string included — when it is undefined. What closes that
+      gap today is that nothing local serves attacker-supplied bytes: every `app/api/*`
+      handler returns `NextResponse.json`, and `public/` holds five checked-in SVGs with
+      `dangerouslyAllowSVG` off. Revisit if the remote allowlist widens to a host we do
+      not control, **or** if any local route starts returning fetched or user-supplied
+      bytes.
+    - **`postcss`** — two HIGH advisories (GHSA-6g55-p6wh-862q, GHSA-r28c-9q8g-f849),
+      both via an attacker-controlled `sourceMappingURL` in a CSS comment — arbitrary
+      file read in the first case, arbitrary `.map` disclosure in the second. The vendored copy runs at build time over CSS from this repo only
+      (Tailwind plus `app/globals.css`). Revisit if CSS ever originates outside the repo.
 - **`fixAvailable` can point somewhere dangerous.** For this finding npm reports
   `next@16.3.4` — precisely the line the pin exists to avoid. **Do not run
   `npm audit fix` here**; it would break the Pantheon build.

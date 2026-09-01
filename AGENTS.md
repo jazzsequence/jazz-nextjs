@@ -299,9 +299,11 @@ npm run test:e2e      # E2E tests must pass
 
 **Never commit code without:**
 - ✅ Tests written first
-- ✅ All tests passing (738 unit tests across 62 files)
+- ✅ All tests passing (`npm test -- --run`)
 - ✅ ESLint clean
-- ✅ E2E tests passing (157 E2E tests across 17 files)
+- ✅ E2E tests passing (`npm run test:e2e`)
+
+Counts are deliberately not recorded here — they go stale on every test-adding commit.
 
 See: `/docs/TESTING.md` for full TDD methodology
 
