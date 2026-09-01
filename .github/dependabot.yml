@@ -22,15 +22,22 @@ updates:
     ignore:
       # BLOCKER: 16.3.x fails Pantheon's buildpack at "Finalizing page optimization"
       #   with ENOENT .next/next-server.js.nft.json, which output:'standalone'
-      #   requires. Confirmed on 16.3.1 (build 6c1e9cf6) and 16.3.3 (build 1fe23cd4).
+      #   requires. Confirmed identically on 16.3.1 (build 6c1e9cf6), 16.3.3
+      #   (1fe23cd4) and 16.3.4 (1fe6a733) — three releases, same error.
       #   Does not reproduce locally — only in Pantheon's Linux buildpack under
       #   Turbopack, so a green local build proves nothing.
-      # LIFT WHEN: a PR environment builds green on a 16.3.x release. Test 16.3.4+
-      #   (16.3.4 re-enabled AVIF image optimization that 16.3.3 disabled).
+      # LIFT WHEN: a PR environment builds green on a 16.3.x release. Given three
+      #   identical failures, 16.4.x is the likelier candidate — but as of 2026-09-01
+      #   only 16.4.0-canary.* exists, so there is nothing stable to test yet.
       # NOTE: 16.4.x is deliberately NOT ignored and will still open a PR.
-      # SECURITY: 16.2.x currently has no open advisories, but two CRITICAL RCEs named
-      #   in the 16.3.3 notes have unconfirmed 16.2.x backport status. If either is
-      #   fixed only in 16.3.x, no PR will appear here — watch Dependabot alerts.
+      # SECURITY: `next` vendors its own postcss@8.4.31 and sharp@0.34.5, which carry
+      #   three open HIGH Dependabot alerts. Dependabot's only remedy is bumping `next`
+      #   into 16.3.x (it opened PR #94 proposing 16.3.4 for exactly this), so no PR
+      #   will appear here for them. That does NOT make them unfixable: an npm
+      #   `overrides` block collapses the vendored copies onto the patched top-level
+      #   versions and is verified to pass the full local gate — it just is not yet
+      #   validated on the Pantheon buildpack. See "Security status of the pin" in
+      #   docs/configuration/DEPLOYMENT.md.
       - dependency-name: "next"
         versions: ["16.3.x"]
 
