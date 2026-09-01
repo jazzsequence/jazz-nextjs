@@ -23,7 +23,7 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
   - E2E tests with Playwright against live Pantheon environments
   - Automated Playwright report deployment to GitHub Pages
 - **Deployment**: Optimized for Pantheon's Next.js hosting platform
-- **Edge cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.9.0 handles GCDN cache clearing internally — the `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. As of v0.9.0, `revalidateTag()` marks entries stale via the shared `tagsManifest` rather than deleting them, so the last-good value stays servable while Next revalidates in the background
+- **Edge cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.11.0 handles GCDN cache clearing internally — the `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. As of v0.9.0, `revalidateTag()` marks entries stale via the shared `tagsManifest` rather than deleting them, so the last-good value stays servable while Next revalidates in the background
 
 ### Implemented Routes
 
@@ -240,7 +240,7 @@ jazz-nextjs/
 ## Technology Stack
 
 ### Core
-- **Next.js 16.2.7** - React framework with App Router and Turbopack (pinned exactly; see `docs/configuration/DEPLOYMENT.md`)
+- **Next.js 16.2.12** - React framework with App Router and Turbopack (pinned exactly; see `docs/configuration/DEPLOYMENT.md`)
 - **React 19.2.8** - UI library
 - **TypeScript 5** - Type safety
 - **Node.js 24.13.0** - Runtime (matches Pantheon, managed via `.nvmrc`)
@@ -252,7 +252,7 @@ jazz-nextjs/
 - **Rate Limiting** - Token bucket algorithm (10 req/sec sustained, 20 burst)
 - **sanitize-html** / **dompurify** - HTML sanitization (server / client respectively)
 - **html-react-parser 6** - Safe HTML parsing
-- **@pantheon-systems/nextjs-cache-handler 0.9** - Persistent ISR caching with built-in edge cache clearing
+- **@pantheon-systems/nextjs-cache-handler 0.11** - Persistent ISR caching with built-in edge cache clearing
 
 ### Testing
 - **Vitest 4** with happy-dom - Unit and integration testing

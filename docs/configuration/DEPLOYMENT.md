@@ -94,12 +94,72 @@ attached to the homepage, every archive, and every post — triggered a synchron
 delete-sweep that held the webhook connection open past the client timeout, failing
 three `/api/revalidate` E2E tests against Dev. Confirmed fixed on the PR-78 environment.
 
-**Next.js version pin**: `next` is pinned to exactly `16.2.7` (no caret). 16.3.1 fails
-the Pantheon buildpack at "Finalizing page optimization" with
+**Next.js version pin**: `next` is pinned to exactly `16.2.12` (no caret). The 16.3.x
+line fails the Pantheon buildpack at "Finalizing page optimization" with
 `ENOENT: .next/next-server.js.nft.json`, the file-tracing manifest that
 `output: 'standalone'` requires. It does **not** reproduce locally — only in Pantheon's
 Linux buildpack under Turbopack, so a green local build is not sufficient evidence.
-Re-validate on a PR environment before unpinning rather than assuming it is still broken.
+Re-validate on a PR environment before moving to 16.3.x rather than assuming it is still
+broken. The pin stays exact so npm cannot re-resolve into 16.3.x on its own.
+
+**Re-validation log**:
+
+| Date | Version | Result |
+|---|---|---|
+| 2026-08-17 | 16.3.1 | FAIL — pr-78 build `6c1e9cf6`, `ENOENT next-server.js.nft.json` |
+| 2026-08-31 | 16.3.3 | FAIL — pr-88 build `1fe23cd4`, byte-identical `ENOENT` |
+| 2026-08-31 | 16.2.12 | **Adopted** — current pin; lint/unit/build/E2E green locally. Buildpack confirmation pending on pr-90 |
+| — | 16.3.4 | Untested — shipped 2026-08-31; re-enables AVIF image optimization, which 16.3.3 had disabled |
+
+**Security status of the pin** (as of 2026-08-31 — re-check before acting, advisories move):
+
+**Resolved by the move to 16.2.12.** 16.2.7 carried nine open advisories (4 HIGH:
+middleware/proxy bypass, DoS in Server Actions, SSRF in Server Actions on custom servers,
+SSRF in rewrites; 5 MODERATE, including cache confusion). All nine list
+`firstPatchedVersion: 16.2.11` in the GitHub advisory database — the *same minor line* —
+so a patch bump cleared them without touching the 16.3.x line that has failed the
+buildpack twice. `npm audit` still reports a `next` finding, but not for any Next.js
+advisory — see below.
+
+Two CRITICAL RCEs are named in the 16.3.3 release notes (Windows-hosted servers; the
+Image Optimization API with AVIF). Their advisories are not published in the global
+database, so their affected ranges could not be confirmed — it is **unknown** whether
+they reach 16.2.x. What is known: 16.2.12's release notes contain no security fixes, so
+neither has been backported to the 16.2.x line as of 16.2.12. Treat that as a genuinely
+open question, not as a reason to jump straight to 16.3.x.
+
+**Don't read `npm audit`'s summary as a verdict on `next`.** It reports one severity and
+one `range` per package, merged across every advisory that touches it — direct *and*
+transitive. Two ways that misleads:
+
+- **`range` is not a fix boundary.** It spans every version affected by anything, so a
+  version that fixes all of the package's own advisories can still appear inside it. At
+  16.2.7 the merged range read `9.3.4-canary.0 - 16.3.0-preview.10`, which invites the
+  conclusion that the fix lives in 16.3.x. It does not — it is 16.2.11.
+- **The finding may not be about `next` at all.** This repo is flagged HIGH on `next`
+  right now, with `via: ["postcss","sharp"]` and **zero direct Next.js advisories**. The
+  top-level `postcss` (8.5.26) and `sharp` (0.35.4) are both patched; the finding comes
+  from copies `next` vendors inside its own tree — `next/node_modules/postcss@8.4.31` and
+  `next/node_modules/sharp@0.34.5` — which this repo does not override. `next` pins
+  `postcss` exactly (`8.4.31`) and constrains `sharp` to `^0.34.5`; neither top-level
+  version satisfies those ranges, so npm nests a second copy of each. An npm `overrides`
+  block *could* force them, but overriding a vendored exact pin risks a buildpack that
+  has already failed twice without reproducing locally — so the finding is **accepted,
+  not unfixable**. Revisit if those advisories become exploitable in this app's usage.
+  Check each finding's `nodes` array, not just `via`, to see which copy is implicated.
+- **`fixAvailable` can point somewhere dangerous.** For this finding npm reports
+  `next@16.3.4` — precisely the line the pin exists to avoid. **Do not run
+  `npm audit fix` here**; it would break the Pantheon build.
+
+Read the `via` array — advisory objects are direct, bare strings are transitive — check
+`nodes` to locate the offending copy, and check `firstPatchedVersion` on the individual
+advisories rather than trusting `fixAvailable`:
+
+```bash
+gh api graphql -f query='{securityVulnerabilities(package:"next",ecosystem:NPM,first:30)
+  {nodes{severity vulnerableVersionRange firstPatchedVersion{identifier}}}}'
+```
+
 To read the real build log (GitHub Actions only reports `BUILD_FAILURE`):
 
 ```bash
@@ -224,31 +284,54 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 - Pull request opened/updated → tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
 
 **Workflow steps**:
-1. Checkout code and setup Node.js
-2. Install dependencies with `npm ci`
-3. Determine target environment (dev or PR-specific)
-4. Wait for Pantheon deployment (HTTP polling for up to 10 minutes)
-5. **Setup PHP** (required for Terminus)
-6. **Install and authenticate Terminus** (via `pantheon-systems/terminus-github-actions@v1`)
-7. **Clear Pantheon CDN cache** (`terminus env:clear-cache`)
-8. Run unit tests: `npm test -- --run`
+1. Checkout code and setup Node.js (version from `.nvmrc`)
+2. Restore npm cache, then install dependencies with `npm ci`
+3. **Run lint**: `npm run lint` — placed before the deployment wait so its output is
+   visible in ~1 minute rather than after a ~10 minute build, and so it still reports
+   when the Pantheon build fails
+4. Determine target environment (dev or PR-specific)
+5. Wait for Pantheon build and deployment (`jazzsequence/pantheon-wait-for-build@v1`)
+6. Run unit tests: `npm test -- --run`
+7. Install Playwright browsers (chromium)
+8. Verify the Pantheon site responds with HTTP 200
 9. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
-10. Report test results in GitHub Actions summary
+10. Upload the Playwright report and publish it to GitHub Pages
+11. Report results in the GitHub Actions summary
+12. Fail the workflow if lint, unit tests, or E2E did not succeed
+
+**Gating**: lint, unit tests, and E2E each use `continue-on-error: true` so that one
+failure does not hide the others. The final step re-reads their `.outcome` values and
+exits non-zero if any failed — so the workflow does go red, but only at the end of the
+job rather than at the failing step.
 
 **Deployment detection**:
-- Polls site URL every 20 seconds (max 30 attempts)
-- Checks for HTTP 200 status AND content markers ("Jazz Next.js", "Next.js", "__next")
-- Fails if deployment not detected within timeout
+- Build and deploy status come from the `pantheon-wait-for-build` action
+- A follow-up accessibility check polls the environment URL for HTTP 200
+  (12 attempts, 5s apart) before E2E runs
+- Fails if the site is not reachable within that window
 
-**Automated cache clearing**:
-- After deployment detected, automatically clears Pantheon CDN cache
-- Ensures fresh content is served before running tests
-- Eliminates manual cache clearing after deployments
-
-**Required GitHub Secret**:
-- `PANTHEON_MACHINE_TOKEN` - Machine token for Terminus authentication
+**GitHub Secrets used by this workflow**:
+- `PANTHEON_MACHINE_TOKEN` - Machine token, passed to the `pantheon-wait-for-build` action
   - Generate at: https://dashboard.pantheon.io/users/#account/tokens
   - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
+- `REVALIDATE_SECRET` - shared secret for `/api/revalidate`. **The whole E2E run fails
+  without it.** `tests/e2e/api-revalidate.spec.ts` throws at collection time with a named
+  error when `CI` is set and the secret is missing or empty, so the run aborts before any
+  test executes — 0 tests, exit 1, and a GitHub annotation naming the secret. That is
+  deliberate: it previously fell back to `'test-secret'`, which turned a missing secret
+  into ~10 401 failures that read as an auth regression. The fallback is kept for local
+  runs, where `webServer.env` uses the same value so client and server agree.
+- `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD` - **not GitHub secrets for this
+  workflow.** They are consumed by the Next.js *server runtime*
+  (`src/lib/wordpress/client.ts`, `src/lib/wordpress/greeting.ts`,
+  `app/api/contact/route.ts`) for WordPress basic auth. On a deployed environment that
+  runtime is on Pantheon, so it reads them from Pantheon dashboard env vars — see
+  "WordPress Application Passwords" below. They were previously passed to the E2E step
+  where they did nothing, and have been removed; do not re-add them.
+
+Other workflows use their own secrets — `slack-notify-deploy.yml` needs
+`SLACK_DEPLOYBOT_TOKEN` (see `@docs/architecture/SLACK_NOTIFICATIONS.md`), and it and
+`promote-pantheon.yml` reuse `PANTHEON_MACHINE_TOKEN`.
 
 See `.github/workflows/test-pantheon.yml` for full implementation.
 

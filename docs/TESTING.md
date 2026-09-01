@@ -14,7 +14,7 @@ We follow **TDD London School** (mockist approach):
 
 ### Unit & Integration Tests (Vitest)
 
-**Framework**: Vitest 4.1.10 with happy-dom
+**Framework**: Vitest 4.1.11 with happy-dom
 
 **Configuration**: `config/vitest.config.ts`
 

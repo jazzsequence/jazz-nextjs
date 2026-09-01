@@ -110,7 +110,7 @@ npm run start:test
 
 **Location**: `eslint.config.mjs`
 
-**Stack**: ESLint 9.39.5 + `eslint-config-next@16.3.1` using native flat config (no FlatCompat wrapper).
+**Stack**: ESLint 9.39.5 + `eslint-config-next@16.3.4` using native flat config (no FlatCompat wrapper). Both are resolved versions; the declared range in `package.json` is `^16.3.3`.
 
 ESLint is pinned to `^9` deliberately. ESLint 10 removed `context.getFilename()`, which
 `eslint-plugin-react` (pulled in transitively by `eslint-config-next`) still calls, so

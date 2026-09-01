@@ -1,7 +1,23 @@
 import { test, expect } from '@playwright/test'
 
+// Falling back to a dummy secret in CI is worse than failing: every authenticated
+// request would 401 and this file would report ~10 failures that look like an auth
+// regression rather than a missing repository secret.
+function requireRevalidateSecret(): string {
+  const secret = process.env.REVALIDATE_SECRET
+  if (secret) return secret
+  if (process.env.CI) {
+    throw new Error(
+      'REVALIDATE_SECRET is not set. In CI it must come from the repository secret of ' +
+      'the same name — see docs/configuration/DEPLOYMENT.md. Without it every ' +
+      'authenticated /api/revalidate request returns 401.'
+    )
+  }
+  return 'test-secret'
+}
+
 test.describe('Revalidation API', () => {
-  const revalidateSecret = process.env.REVALIDATE_SECRET || 'test-secret'
+  const revalidateSecret = requireRevalidateSecret()
 
   test('should reject requests without secret', async ({ request }) => {
     const response = await request.post('/api/revalidate', {

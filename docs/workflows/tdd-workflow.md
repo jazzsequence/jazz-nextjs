@@ -63,7 +63,7 @@ npm test -- --coverage
 
 ### Unit & Integration Tests
 
-**Framework**: Vitest 4.1.10 with happy-dom
+**Framework**: Vitest 4.1.11 with happy-dom
 
 **Configuration**: `config/vitest.config.ts`
 
