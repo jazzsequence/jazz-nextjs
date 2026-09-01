@@ -278,10 +278,31 @@ curl -s -H "X-Pantheon-Session: $SESSION" \
 - **No manual action required**
 
 #### Pull Request Environments
-- **Trigger**: Open pull request
+- **Trigger**: Open pull request, and each subsequent **normal (fast-forward) push**
 - **URL Pattern**: `pr-<number>-<site>.pantheonsite.io`
 - **Process**: Same as Dev, but creates temporary environment
 - **Cleanup**: Environment deleted when PR closes
+
+**A force-push appears not to trigger a build.** Observed once (2026-09-01, pr-97): after
+rebasing `923ba705` → `acc128a0` and force-pushing, `terminus node:builds:list` still
+showed only `923ba705` more than 14 minutes later. For comparison, the preceding *normal*
+push had a build record ~2 seconds after the workflow started — so this is not latency.
+The environment then keeps serving the old SHA's build while `wait-for-build` polls for a
+commit that has no build, which presents as a hung or failing CI run with no
+Pantheon-side failure to inspect.
+
+`n=1` — no other force-push exists in this repo's history to corroborate it, and the
+mechanism (Pantheon's GitHub app ignoring a rewritten head) is a **hypothesis**, not
+something confirmed with Pantheon.
+
+**Recovery: push a normal commit.** `terminus node:builds:rebuild` looks like the right
+tool but did not work here — three invocations (two plain, one `--commit=<sha>`) all
+returned exit 0 with the "Triggering rebuild" notice, yet **no build was ever created**.
+That is consistent with rebuild acting on Pantheon's last known head, which is still the
+pre-force-push SHA. A docs-only commit is sufficient to trigger a build; verified when
+commit `19402f7` (two `.md` files, zero code) produced build `9649729d`. That build then
+hit `DEPLOYMENT_FAILURE` inside the 2026-09-01 dashboard-outage window — it demonstrates
+the trigger firing, not a clean deploy.
 
 ### Deploying to Test & Live (Branch-Based)
 
@@ -386,6 +407,13 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 10. Upload the Playwright report and publish it to GitHub Pages
 11. Report results in the GitHub Actions summary
 12. Fail the workflow if lint, unit tests, or E2E did not succeed
+
+**Re-running a failed job does not retry the build.** `wait-for-build.sh` selects the
+first build record matching the commit SHA and exits non-zero on any terminal `*FAILURE*`
+status — it never looks past that first match, so it will not pick up a newer build even
+for the same SHA. A successful build must therefore exist *before* the job is re-run;
+re-running against a failed build just re-reads the same dead record in seconds. See
+"Pull Request Environments" above for how to get a fresh build.
 
 **Gating**: lint, unit tests, and E2E each use `continue-on-error: true` so that one
 failure does not hide the others. The final step re-reads their `.outcome` values and
