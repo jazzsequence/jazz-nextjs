@@ -102,24 +102,74 @@ Linux buildpack under Turbopack, so a green local build is not sufficient eviden
 Re-validate on a PR environment before moving to 16.3.x rather than assuming it is still
 broken. The pin stays exact so npm cannot re-resolve into 16.3.x on its own.
 
+**Dependabot**: `16.3.x` is in the `ignore` block of `.github/dependabot.yml`, so it no
+longer opens PRs — including **security** PRs, since a `versions:` ignore suppresses
+those too. Dependabot alerts still fire and are the signal to watch. The review protocol
+that keeps this from going stale is "Ignored Dependency Updates" in `@AGENTS.md`; remove
+the ignore entry when a lift succeeds.
+
 **Re-validation log**:
 
 | Date | Version | Result |
 |---|---|---|
 | 2026-08-17 | 16.3.1 | FAIL — pr-78 build `6c1e9cf6`, `ENOENT next-server.js.nft.json` |
 | 2026-08-31 | 16.3.3 | FAIL — pr-88 build `1fe23cd4`, byte-identical `ENOENT` |
-| 2026-08-31 | 16.2.12 | **Adopted** — current pin; lint/unit/build/E2E green locally. Buildpack confirmation pending on pr-90 |
-| — | 16.3.4 | Untested — shipped 2026-08-31; re-enables AVIF image optimization, which 16.3.3 had disabled |
+| 2026-08-31 | 16.2.12 | **Adopted** — current pin; lint/unit/build/E2E green locally, buildpack confirmed on pr-90 |
+| 2026-09-01 | 16.3.4 | FAIL — pr-94 build `1fe6a733`, byte-identical `ENOENT`. Surfaced by Dependabot security PR #94, which proposed 16.3.4 to fix the vendored `sharp` HIGH |
 
-**Security status of the pin** (as of 2026-08-31 — re-check before acting, advisories move):
+The 16.3.x line has now failed on **16.3.1, 16.3.3 and 16.3.4** with the same error, so
+treat it as broken rather than flaky. The next candidate is 16.4.x — though as of
+2026-09-01 only `16.4.0-canary.*` exists, so there is nothing stable to test yet.
+Note the failure is not visible in GitHub Actions, which reports only
+`BUILD_FAILURE` — and Pantheon's API
+was returning 503 when pr-94 first failed, so the log had to be re-fetched once the
+platform recovered. A CI failure alone is not evidence of *which* failure.
+
+**Security status of the pin** (as of 2026-09-01 — re-check before acting, advisories move):
 
 **Resolved by the move to 16.2.12.** 16.2.7 carried nine open advisories (4 HIGH:
 middleware/proxy bypass, DoS in Server Actions, SSRF in Server Actions on custom servers,
 SSRF in rewrites; 5 MODERATE, including cache confusion). All nine list
 `firstPatchedVersion: 16.2.11` in the GitHub advisory database — the *same minor line* —
 so a patch bump cleared them without touching the 16.3.x line that has failed the
-buildpack twice. `npm audit` still reports a `next` finding, but not for any Next.js
-advisory — see below.
+buildpack three times. `npm audit` still reports a `next` finding, but not for any
+Next.js advisory — see below.
+
+**What remains, and the fix that is available.** Dependabot alerts (enabled 2026-09-01)
+report five open alerts against the copies `next` vendors — `postcss@8.4.31` (two HIGH,
+two MEDIUM) and `sharp@0.34.5` (one HIGH). *Dependabot's* only remedy is bumping `next`
+into 16.3.x —
+it opened security PR #94 proposing 16.3.4 for precisely this, and that build failed with
+the same `ENOENT`.
+
+But Dependabot's remedy is not the only one. An npm `overrides` block collapses the
+vendored copies onto the already-patched top-level versions, **without touching the `next`
+pin**:
+
+```json
+"overrides": { "postcss": "$postcss", "sharp": "$sharp" }
+```
+
+Verified 2026-09-01: both nested copies disappear from the tree and `npm audit` stops
+flagging `next`, `postcss` and `sharp` entirely — total findings 16 → 13, HIGH 8 → 5.
+That is those three packages and nothing else. In Dependabot's units it clears **five
+alerts** (#11, #12 HIGH postcss; #10 HIGH sharp; #3, #17 MEDIUM postcss) — the counts
+differ because `npm audit` groups per package while Dependabot lists per advisory. The
+full local gate passes: lint, 738 unit tests, build, 157 E2E.
+
+**Keep the lockfile in place** when testing this. The change should be a clean ~590-line
+deletion of the nested entries. Deleting `package-lock.json` and re-resolving instead
+floats unrelated packages and produced 30 spurious failures
+(`Cannot assign to read only property 'fetch'`, from a drifted happy-dom) — that is not a
+signal about the override.
+
+**Not yet validated on Pantheon**, which is the part that matters: `sharp` is a native
+binary, and `next@16.2.12` declares `sharp: ^0.34.5`, so 0.35.4 is outside its stated
+range. Runtime image optimization is the risk to watch. Local green is not sufficient
+evidence here — that is the whole lesson of the version pin above. Test on a PR
+environment before adopting.
+
+Until then these five alerts are **untested-but-fixable**, not unfixable.
 
 Two CRITICAL RCEs are named in the 16.3.3 release notes (Windows-hosted servers; the
 Image Optimization API with AVIF). Their advisories are not published in the global
@@ -143,10 +193,11 @@ transitive. Two ways that misleads:
   `next/node_modules/sharp@0.34.5` — which this repo does not override. `next` pins
   `postcss` exactly (`8.4.31`) and constrains `sharp` to `^0.34.5`; neither top-level
   version satisfies those ranges, so npm nests a second copy of each. An npm `overrides`
-  block *could* force them, but overriding a vendored exact pin risks a buildpack that
-  has already failed twice without reproducing locally — so the finding is **accepted,
-  not unfixable**. Revisit if those advisories become exploitable in this app's usage.
-  Check each finding's `nodes` array, not just `via`, to see which copy is implicated.
+  block *could* force them — and as of 2026-09-01 that block is verified to resolve
+  cleanly and pass the full local gate; what remains untested is the Pantheon buildpack,
+  which has now failed three times on 16.3.x without reproducing locally. So the finding
+  is **accepted pending that test, not unfixable**. Check each finding's `nodes` array,
+  not just `via`, to see which copy is implicated.
 - **`fixAvailable` can point somewhere dangerous.** For this finding npm reports
   `next@16.3.4` — precisely the line the pin exists to avoid. **Do not run
   `npm audit fix` here**; it would break the Pantheon build.
