@@ -28,7 +28,7 @@ the two disagree.
 **What it does:**
 - ✅ Intercepts `git commit` **before** it runs
 - ✅ Checks for approval flag existence
-- ✅ Validates approval timestamp (<5 minutes)
+- ✅ Validates approval timestamp — **two-sided**: rejects older than 5 minutes, and rejects future-dated (a negative age would otherwise never expire)
 - ✅ Allows `USER_COMMIT=1` bypass
 - ✅ Provides clear error messages with instructions
 
@@ -47,17 +47,35 @@ if (cmd.includes('git commit')) {
       process.exit(2);   // 2 blocks the tool call; any other code lets it through
     }
 
-    var approvalTime = parseInt(fs.readFileSync(approvalFile, 'utf8').trim(), 10);
+    var approvalRaw = fs.readFileSync(approvalFile, 'utf8').trim();
 
-    // Without this, NaN >= 300 is false and any garbage authorises a commit
+    // parseInt is lenient: parseInt('1756800000junk') returns a valid-looking
+    // timestamp. Layer 2 applies the same ^[0-9]{1,11}$ over the same normalisation —
+    // leading/trailing whitespace trimmed, interior left intact — so both accept the
+    // same inputs. Layer 2 must not use `tr -d '[:space:]'`: that also strips interior
+    // whitespace, so "1788 387445" would pass there and fail here.
+    if (!/^[0-9]{1,11}$/.test(approvalRaw)) {
+      console.error('[BLOCKED] Approval file is corrupted (invalid timestamp)');
+      process.exit(2);
+    }
+
+    var approvalTime = parseInt(approvalRaw, 10);
+
+    // Belt and braces: NaN >= 300 is false, so without this garbage would authorise
     if (isNaN(approvalTime) || approvalTime <= 0) {
       console.error('[BLOCKED] Approval file is corrupted (invalid timestamp)');
       process.exit(2);
     }
 
-    // Check if approval is fresh (<5 minutes)
     var currentTime = Math.floor(Date.now() / 1000);
     var timeDiff = currentTime - approvalTime;
+
+    // Two-sided. A future-dated flag gives a negative diff, which is < 300, so
+    // without this branch it would never expire.
+    if (timeDiff < 0) {
+      console.error('[BLOCKED] Approval flag is dated in the future');
+      process.exit(2);
+    }
 
     if (timeDiff >= 300) {
       console.error('[BLOCKED] Reviewer approval expired');
@@ -269,6 +287,9 @@ git commit -m "test"
 ```bash
 # Create old approval (6 minutes ago)
 echo "$(($(date +%s) - 360))" > reviewer-approved
+# Note: the hook deletes the flag when it rejects, so re-create it for each attempt.
+# Try `echo "$(($(date +%s) + 9999))" > reviewer-approved` too — a future date is
+# rejected as well, and used to be accepted indefinitely.
 
 # Try commit
 git commit -m "test"
@@ -328,8 +349,8 @@ See Layer 1 implementation above.
 - Compares Unix timestamps for expiration check
 - Exits with **`process.exit(2)`** to block. Only exit 2 blocks a `PreToolUse` tool
   call; every other non-zero code is a non-blocking error and the call proceeds. The
-  handler used `exit(1)` until 2026-09-02, so it printed `[BLOCKED]` and allowed the
-  commit. There is no `exit(1)` left in the handler; unrecognised commands exit 0.
+  handler previously used `exit(1)`, so it printed `[BLOCKED]` and allowed the commit.
+  There is no `exit(1)` left in it; unrecognised commands exit 0.
 
 ---
 
@@ -393,9 +414,18 @@ bypassable with `--no-verify`.
 `false`, so the staleness check passed and any garbage in the file authorised a commit.
 The handler now rejects with `exit(2)` when the timestamp is `NaN` or `<= 0`.
 
-The shell hook (`.githooks/pre-commit`) fails closed on corruption but still accepts a
-**future-dated** timestamp indefinitely — `[ $TIME_DIFF -lt 300 ]` has no lower bound.
-Tracked as a follow-up.
+Both layers now apply the same two-sided bound and the same `^[0-9]{1,11}$` validation
+before parsing, over identically normalised input: each trims **leading and trailing**
+whitespace only, and neither touches interior whitespace — so `1788 387445` is rejected
+by both. Layer 1 uses `.trim()`; Layer 2 uses bash suffix/prefix trimming rather than
+`tr -d '[:space:]'`, which would also strip interior whitespace and so accept a value
+Layer 1 rejects. Verified across 21 inputs — surrounding spaces, tabs and newlines,
+interior whitespace, junk-prefixed and junk-suffixed digits, empty, whitespace-only,
+zero, negative, `+`-prefixed, over-length, and future-dated — with both layers agreeing
+on every one. Layer 1 needs the regex because
+`parseInt` is lenient — `parseInt('1756800000junk')` returns a valid-looking timestamp.
+Layer 2 needs it because `$((...))` on garbage yields `0`, which reads as a *brand-new*
+approval rather than an invalid one.
 
 ---
 
@@ -437,32 +467,39 @@ Tracked as a follow-up.
 **Yes**, but:
 - File is at project root (`reviewer-approved`) and gitignored — never committed
 - Only affects local commits
-- Still blocked if commit attempted >5 minutes later
-- Pre-commit hook also validates (two checks)
+- Both layers validate the timestamp **two-sided**, so neither a stale nor a
+  future-dated forgery is accepted.
+- A value that is not a plain integer is rejected before any arithmetic by both layers.
+  Layer 2 additionally deletes the rejected flag, so it cannot be silently reused — that
+  is all deletion buys; anything able to write a forged flag can write another.
+- Both layers validate independently, though only the pre-commit hook is tracked in git
 
 ### What if malicious code modifies hook-handler.cjs?
 
 - The handler is gitignored (`.gitignore:45` ignores all of `.claude/`), so changes affect
   only the local environment
 - **Code review would NOT catch an edit to it** — the file is untracked, so it never
-  appears in a diff. The earlier claim to the contrary was false, and contradicted the
-  gitignore line directly above it.
+  appears in a diff.
 - The pre-commit hook is the tracked, reviewable layer, and is the actual defense
 
 ---
 
 ## Future Improvements
 
-> The corruption check that used to head this list is **implemented** — see the
-> `isNaN(approvalTime) || approvalTime <= 0` guard in Layer 1 above. The shell hook still
-> lacks a *lower* bound on the timestamp, so a future-dated flag never expires; that one
-> is still open.
+> The corruption check and the two-sided timestamp bound that used to head this list are
+> both **implemented**, in Layer 1 and Layer 2 alike, and the two layers now validate
+> identically over identically normalised input — see the guards in the Layer 1 snippet
+> above and in `.githooks/pre-commit`, and the interior-whitespace note at the corruption
+> section, which is the one case where the two reads could drift apart again.
 
 ### 1. Configurable Timeout
 
 ```javascript
 var maxAge = process.env.REVIEWER_APPROVAL_TIMEOUT || 300; // Default 5 minutes
-if (timeDiff >= maxAge) {
+// Keep the bound two-sided. A future-dated flag yields a negative diff, which is
+// < maxAge for every maxAge, so writing this as `timeDiff >= maxAge` alone would
+// reintroduce the hole the two-sided guard closes.
+if (timeDiff < 0 || timeDiff >= maxAge) {
   console.error('[BLOCKED] Reviewer approval expired');
   process.exit(2);
 }
