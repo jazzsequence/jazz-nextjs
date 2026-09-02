@@ -186,18 +186,16 @@ transitive. Two ways that misleads:
   version that fixes all of the package's own advisories can still appear inside it. At
   16.2.7 the merged range read `9.3.4-canary.0 - 16.3.0-preview.10`, which invites the
   conclusion that the fix lives in 16.3.x. It does not — it is 16.2.11.
-- **The finding may not be about `next` at all.** This repo is flagged HIGH on `next`
-  right now, with `via: ["postcss","sharp"]` and **zero direct Next.js advisories**. The
-  top-level `postcss` (8.5.26) and `sharp` (0.35.4) are both patched; the finding comes
-  from copies `next` vendors inside its own tree — `next/node_modules/postcss@8.4.31` and
-  `next/node_modules/sharp@0.34.5` — which this repo does not override. `next` pins
-  `postcss` exactly (`8.4.31`) and constrains `sharp` to `^0.34.5`; neither top-level
-  version satisfies those ranges, so npm nests a second copy of each. An npm `overrides`
-  block *could* force them — and as of 2026-09-01 that block is verified to resolve
-  cleanly and pass the full local gate; what remains untested is the Pantheon buildpack,
-  which has now failed three times on 16.3.x without reproducing locally. So the finding
-  is **accepted pending that test, not unfixable**. Check each finding's `nodes` array,
-  not just `via`, to see which copy is implicated.
+- **The finding may not be about `next` at all.** Worked example from this repo: `next`
+  *was* flagged HIGH, with `via: ["postcss","sharp"]` and **zero direct Next.js
+  advisories**. The top-level `postcss` (8.5.26) and `sharp` (0.35.4) were both patched;
+  the finding *came* from copies `next` vendored inside its own tree —
+  `next/node_modules/postcss@8.4.31` and
+  `next/node_modules/sharp@0.34.5`. `next` pins `postcss` exactly (`8.4.31`) and
+  constrains `sharp` to `^0.34.5`; neither top-level version satisfies those ranges, so
+  npm nested a second copy of each. **This repo now overrides both** — see "Vendored
+  dependency overrides" below. Check each finding's `nodes` array, not just `via`, to see
+  which copy is implicated.
 - **`fixAvailable` can point somewhere dangerous.** For this finding npm reports
   `next@16.3.4` — precisely the line the pin exists to avoid. **Do not run
   `npm audit fix` here**; it would break the Pantheon build.
@@ -210,6 +208,45 @@ advisories rather than trusting `fixAvailable`:
 gh api graphql -f query='{securityVulnerabilities(package:"next",ecosystem:NPM,first:30)
   {nodes{severity vulnerableVersionRange firstPatchedVersion{identifier}}}}'
 ```
+
+**Vendored dependency overrides**: `package.json` carries
+
+```json
+"overrides": { "postcss": "$postcss", "sharp": "$sharp" }
+```
+
+`next` vendored its own `postcss@8.4.31` and `sharp@0.34.5`, which carried five Dependabot
+alerts (2 HIGH + 2 MEDIUM postcss, 1 HIGH sharp). Dependabot's only remedy was bumping
+`next` into 16.3.x, which fails the buildpack — so the override collapses the nested copies
+onto the already-patched top-level versions instead, without touching the pin. The `$name`
+form resolves to *this project's declared range*, so it tracks the direct dependency rather
+than duplicating a version that would silently desynchronize.
+
+Effect: `npm audit` 16 → 13 findings, HIGH 8 → 5, and all five Dependabot alerts clear.
+The lockfile change is a pure deletion of 27 nested entries.
+
+**Re-check this override on every `next` bump.** It is unconditional: if a future `next`
+requires `postcss@9.x` or `sharp@0.36+`, `$postcss`/`$sharp` will silently force the older
+major and can fail in ways that are hard to attribute back to here. Nothing in
+`package.json` signals that coupling.
+
+Risk notes, from validating it:
+- **`sharp` is the override that carries risk** — a native binary, and 0.35.4 is outside
+  `next`'s declared `^0.34.5`. All eleven sharp APIs Next's image optimizer calls
+  (`concurrency`, `timeout`, `resize`, `rotate`, `trim`, `webp`, `avif`, `jpeg`, `png`,
+  `toBuffer`, `metadata`) were smoke-tested green on 0.35.4 / libvips 8.18.6, and
+  `/_next/image?…&w=640` produced a real WebP transcode.
+- **`postcss` is lower risk than the exact pin suggests** — a semver-minor bump inside 8.x,
+  pure JS, no native binary. The CSS pipeline (`@tailwindcss/postcss`, `autoprefixer`)
+  already resolved to top-level 8.5.26; the nested copy was reachable only via Next's own
+  webpack CSS path.
+- **The AVIF path is not covered by E2E.** The optimizer returns WebP even when sent
+  `Accept: image/avif`. AVIF is the surface one of the unconfirmed CRITICAL RCEs above
+  concerns, so it is worth manual checking if that ever becomes relevant.
+- `tests/e2e/images.spec.ts` fetches through `/_next/image`, so the E2E run against a
+  `pr-N` environment does exercise Linux sharp — that run is the real verdict, not local
+  green. Note its assertions are wrapped in `if (imageCount > 0)`, so the spec cannot fail
+  if images ever stop rendering entirely.
 
 To read the real build log (GitHub Actions only reports `BUILD_FAILURE`):
 
@@ -241,10 +278,26 @@ curl -s -H "X-Pantheon-Session: $SESSION" \
 - **No manual action required**
 
 #### Pull Request Environments
-- **Trigger**: Open pull request
+- **Trigger**: Open pull request, and each subsequent push
 - **URL Pattern**: `pr-<number>-<site>.pantheonsite.io`
 - **Process**: Same as Dev, but creates temporary environment
 - **Cleanup**: Environment deleted when PR closes
+
+**If no build appears for a pushed commit, check whether builds are running at all before
+theorising about the commit.** A build record normally appears within seconds of the push
+(~2s on one observed push), so a gap of several minutes is meaningful while a gap of one
+minute is not. Once enough time has passed, compare across environments:
+
+```bash
+# dev, plus any currently-open PR environment
+for ENV in dev pr-<number>; do terminus node:builds:list jazz-nextjs15.$ENV | head -5; done
+```
+
+If `dev` is *also* missing a build for a recent `main` merge, the stall is **not specific
+to your branch or your push** — look for a platform-side problem rather than anything
+about the commit. `terminus node:builds:rebuild` returns exit 0 and produces nothing in
+that state; exit 0 means the request was accepted, never that a build was created, so
+always confirm with `node:builds:list`.
 
 ### Deploying to Test & Live (Branch-Based)
 
@@ -349,6 +402,12 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 10. Upload the Playwright report and publish it to GitHub Pages
 11. Report results in the GitHub Actions summary
 12. Fail the workflow if lint, unit tests, or E2E did not succeed
+
+**Re-running a failed job does not retry the build.** `wait-for-build.sh` selects the
+first build record matching the commit SHA and exits non-zero on any terminal `*FAILURE*`
+status — it never looks past that first match, so it will not pick up a newer build even
+for the same SHA. A successful build must therefore exist *before* the job is re-run;
+re-running against a failed build just re-reads the same dead record in seconds.
 
 **Gating**: lint, unit tests, and E2E each use `continue-on-error: true` so that one
 failure does not hide the others. The final step re-reads their `.outcome` values and

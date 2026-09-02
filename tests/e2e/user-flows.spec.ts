@@ -175,9 +175,9 @@ test.describe('User Navigation Flows', () => {
   test('should show build info consistently', async ({ page }) => {
     // Build info is now in the footer as a short commit hash (e.g. "abc1234")
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
 
-    // Footer commit hash: 7-char hex string visible in footer
+    // No networkidle: toBeVisible() auto-retries, and the homepage's CDN images mean
+    // the network may never go quiet for the 500ms networkidle requires.
     const footer = page.locator('footer');
     await expect(footer).toBeVisible();
 
