@@ -10,14 +10,25 @@
  * Run: npm run test:e2e -- --grep a11y
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
 
 const WCAG_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
 
-async function auditPage(page: Parameters<typeof AxeBuilder>[0], path: string) {
+/**
+ * `readySelector` must be an element that only exists once the content under audit is
+ * actually in the DOM. Defaults to `main`, which is server-rendered on every audited
+ * page. Pages with client-rendered content must pass their own selector, or axe races
+ * hydration and silently audits an incomplete DOM.
+ *
+ * Deliberately not `waitForLoadState('networkidle')`: that needs 500ms of zero network
+ * activity, which image-heavy pages behind a CDN may never reach, and it timed out
+ * intermittently on / and /posts. axe audits the DOM, so it needs markup present, not
+ * every asset fetched (`image-alt` inspects the <img> element, not its bytes).
+ */
+async function auditPage(page: Page, path: string, readySelector = 'main') {
   await page.goto(path)
-  await page.waitForLoadState('networkidle')
+  await expect(page.locator(readySelector)).toBeVisible()
 
   const results = await new AxeBuilder({ page })
     .withTags(WCAG_AA_TAGS)
@@ -45,7 +56,11 @@ test.describe('Accessibility — WCAG 2.1 AA', () => {
   })
 
   test('homepage has no critical/serious a11y violations', async ({ page }) => {
-    const results = await auditPage(page, '/?greeting=morning')
+    // GreetingClient returns null until its first effect resolves, so it is absent from
+    // the SSR HTML while <main> is already visible. Waiting on `main` would audit the
+    // page before the greeting mounts — and the greeting carries the <h1> plus the
+    // color-contrast and link-name surface most at risk under WCAG_AA_TAGS.
+    const results = await auditPage(page, '/?greeting=morning', '[data-testid="greeting-card"]')
     expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
   })
 
