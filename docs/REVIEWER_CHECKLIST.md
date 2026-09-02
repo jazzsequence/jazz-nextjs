@@ -31,7 +31,10 @@ Only proceed if no queued messages.
 
 ## Section A — Always run
 
-These checks apply to every commit without exception.
+These checks apply to every commit, except that items 1-4 are skipped when **every**
+staged file is `.md` or `.txt` — matching the blocklist in `.githooks/pre-commit`
+(`package-lock.json` is excluded from the count first). Any other file type, including
+unknown extensions, runs the full suite.
 
 ### Tests & build
 

@@ -87,7 +87,10 @@ else
 
 # Unit tests
 echo "   Running unit tests..."
-if ! npm test -- --run --reporter=dot 2>&1 | tail -5; then
+# PIPESTATUS, not `if !`: piping through tail makes the pipeline's exit status
+# tail's, which is always 0, so `if ! ... | tail` can never take the failure branch.
+npm test -- --run --reporter=dot 2>&1 | tail -5
+if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     echo -e "${RED}❌ BLOCKED: Unit tests failed${NC}"
     echo "   Fix test failures before committing"
     exit 1
@@ -96,11 +99,17 @@ echo -e "${GREEN}✅ Unit tests passed${NC}"
 
 # Linter
 echo "   Running linter..."
-if ! npm run lint 2>&1 | grep -E "(error|warning|✔)" | tail -3; then
+# No pipe here, so no PIPESTATUS needed — `if !` both suppresses `set -e` and reads
+# npm's own status. The previous `npm run lint | grep -E ... | tail` form was doubly
+# broken: the pipeline masked npm's exit code, and grep itself returns 1 when it matches
+# nothing, which is exactly what a clean lint run produces.
+if ! npm run lint > /tmp/precommit-lint.txt 2>&1; then
+    tail -3 /tmp/precommit-lint.txt
     echo -e "${RED}❌ BLOCKED: Linter failed${NC}"
     echo "   Fix linting errors before committing"
     exit 1
 fi
+tail -3 /tmp/precommit-lint.txt
 echo -e "${GREEN}✅ Linter passed${NC}"
 
 # Build validation
@@ -143,7 +152,7 @@ if [ "$USER_COMMIT" != "1" ]; then
     echo -e "${YELLOW}⚠️  MANDATORY: Reviewer agent must approve before every commit.${NC}"
     echo "   1. Spawn reviewer agent with Agent tool"
     echo "   2. Get APPROVE decision from agent"
-    echo "   3. Main agent writes approval flag, then commit within 5 minutes"
+    echo "   3. The REVIEWER writes the approval flag — never the main agent"
     echo ""
 else
     echo "5️⃣  Skipping reviewer oversight (user commit)"
