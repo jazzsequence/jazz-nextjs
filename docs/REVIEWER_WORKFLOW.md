@@ -17,7 +17,7 @@ Every commit requires reviewer agent approval to ensure code quality and complia
 **What it does:**
 - ✅ Intercepts `git commit` **before** it runs
 - ✅ Checks for approval flag existence
-- ✅ Validates approval timestamp (<5 minutes)
+- ✅ Validates approval timestamp — **two-sided**: rejects older than 5 minutes, and rejects future-dated (a negative age would otherwise never expire)
 - ✅ Allows `USER_COMMIT=1` bypass
 - ✅ Provides clear error messages with instructions
 
@@ -33,17 +33,30 @@ if (cmd.includes('git commit')) {
     // Check if approval file exists
     if (!fs.existsSync(approvalFile)) {
       console.error('[BLOCKED] No reviewer approval found');
-      process.exit(1);
+      process.exit(2);   // 2 blocks the tool call; any other code lets it through
     }
 
-    // Check if approval is fresh (<5 minutes)
     var approvalTime = parseInt(fs.readFileSync(approvalFile, 'utf8').trim(), 10);
+
+    // Without this, NaN >= 300 is false and any garbage authorises a commit
+    if (isNaN(approvalTime) || approvalTime <= 0) {
+      console.error('[BLOCKED] Approval file is corrupted (invalid timestamp)');
+      process.exit(2);
+    }
+
     var currentTime = Math.floor(Date.now() / 1000);
     var timeDiff = currentTime - approvalTime;
 
+    // Two-sided. A future-dated flag gives a negative diff, which is < 300, so
+    // without this branch it would never expire.
+    if (timeDiff < 0) {
+      console.error('[BLOCKED] Approval flag is dated in the future');
+      process.exit(2);
+    }
+
     if (timeDiff >= 300) {
       console.error('[BLOCKED] Reviewer approval expired');
-      process.exit(1);
+      process.exit(2);
     }
   }
 }
@@ -247,6 +260,9 @@ git commit -m "test"
 ```bash
 # Create old approval (6 minutes ago)
 echo "$(($(date +%s) - 360))" > reviewer-approved
+# Note: the hook deletes the flag when it rejects, so re-create it for each attempt.
+# Try `echo "$(($(date +%s) + 9999))" > reviewer-approved` too — a future date is
+# rejected as well, and used to be accepted indefinitely.
 
 # Try commit
 git commit -m "test"
@@ -397,8 +413,12 @@ See Layer 1 implementation above.
 **Yes**, but:
 - File is at project root (`reviewer-approved`) and gitignored — never committed
 - Only affects local commits
-- Still blocked if commit attempted >5 minutes later
-- Pre-commit hook also validates (two checks)
+- Both layers validate the timestamp **two-sided**, so neither a stale nor a
+  future-dated forgery is accepted. Until 2026-09-02 a future date passed both checks
+  and never expired — that is the specific hole this closed.
+- A value that is not a plain integer is rejected before any arithmetic, and the flag is
+  deleted, so a bad forgery cannot be retried
+- Both layers validate independently, though only the pre-commit hook is tracked in git
 
 ### What if malicious code modifies hook-handler.cjs?
 

@@ -22,15 +22,33 @@ if [ "$USER_COMMIT" = "1" ]; then
 elif [ -f reviewer-approved ]; then
     APPROVAL_TIME=$(cat reviewer-approved)
     CURRENT_TIME=$(date +%s)
+
+    # Reject a non-numeric flag before arithmetic. Without this, `$(())` on garbage
+    # yields 0 and a corrupt file reads as a brand-new approval.
+    if ! [[ "$APPROVAL_TIME" =~ ^[0-9]{1,11}$ ]] || [ "$APPROVAL_TIME" -le 0 ]; then
+        echo -e "${RED}❌ BLOCKED: Approval flag is corrupted (invalid timestamp)${NC}"
+        echo "   Value was: '${APPROVAL_TIME}'"
+        echo "   Getting a fresh approval is required"
+        rm -f reviewer-approved
+        exit 1
+    fi
+
     TIME_DIFF=$((CURRENT_TIME - APPROVAL_TIME))
 
-    # Approval valid for 5 minutes
-    if [ $TIME_DIFF -lt 300 ]; then
+    # Approval valid for 5 minutes. The lower bound matters: without `-ge 0`, a
+    # future-dated timestamp yields a negative diff, passes `-lt 300`, and never expires.
+    if [ "$TIME_DIFF" -ge 0 ] && [ "$TIME_DIFF" -lt 300 ]; then
         echo -e "${GREEN}✅ Reviewer agent approved (${TIME_DIFF}s ago)${NC}"
         rm reviewer-approved  # Clear approval after use
     else
-        echo -e "${RED}❌ BLOCKED: Reviewer approval expired (${TIME_DIFF}s old)${NC}"
-        echo "   Spawn reviewer agent again and get fresh approval"
+        if [ "$TIME_DIFF" -lt 0 ]; then
+            echo -e "${RED}❌ BLOCKED: Approval flag is dated in the future (${TIME_DIFF}s)${NC}"
+            echo "   A future timestamp would never expire — rejecting"
+        else
+            echo -e "${RED}❌ BLOCKED: Reviewer approval expired (${TIME_DIFF}s old)${NC}"
+            echo "   Spawn reviewer agent again and get fresh approval"
+        fi
+        rm -f reviewer-approved
         exit 1
     fi
 else
@@ -121,8 +139,13 @@ if [ "$USER_COMMIT" != "1" ]; then
         echo "   Fix failures before committing"
         exit 1
     fi
+    # Inside the guard: printing this unconditionally claimed a pass that never ran
+    # under USER_COMMIT=1, which is why REVIEWER_CHECKLIST.md told reviewers not to
+    # trust this line.
+    echo -e "${GREEN}✅ E2E tests passed${NC}"
+else
+    echo -e "${YELLOW}⏭️  E2E skipped (USER_COMMIT=1)${NC}"
 fi
-echo -e "${GREEN}✅ E2E tests passed${NC}"
 echo ""
 fi  # end: STAGED_CODE_FILES > 0
 
