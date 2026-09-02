@@ -82,8 +82,9 @@ test.describe('Embed — Twitter/X', () => {
 
   test('injects Twitter widgets.js via SocialScriptLoader', async ({ page }) => {
     await page.goto(TWITTER_POST);
-    await page.waitForLoadState('networkidle');
 
+    // No networkidle: toBeAttached() auto-retries until SocialScriptLoader injects the
+    // script, and Twitter's widgets.js keeps connections open so the network may never idle.
     const script = page.locator('script[data-social-embed="twitter"]');
     await expect(script).toBeAttached();
   });

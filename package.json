@@ -50,7 +50,7 @@
     "react-dom": "^19.2.8",
     "sanitize-html": "^2.17.7",
     "sharp": "^0.35.4",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "zod": "4.4"
   },
   "devDependencies": {
@@ -86,10 +86,14 @@
     "msw": "^2.15.0",
     "pantheon-api-helper": "github:jazzsequence/pantheon-api-helper",
     "playwright": "^1.58.2",
-    "postcss": "^8.5.15",
+    "postcss": "^8.5.23",
     "storybook": "^10.5.10",
     "tailwindcss": "^4.2.2",
     "vite": "^8.2.2",
     "vitest": "^4.1.11"
+  },
+  "overrides": {
+    "postcss": "$postcss",
+    "sharp": "$sharp"
   }
 }
