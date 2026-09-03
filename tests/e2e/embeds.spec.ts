@@ -34,7 +34,7 @@ const TWITTER_POST = '/posts/why-you-should-care-about-whats-happening-with-port
 
 test.describe('Embed — YouTube', () => {
   test('renders iframe with youtube.com/embed src', async ({ page }) => {
-    await page.goto('/posts/wordcamp-canada-eh');
+    await page.goto('/posts/wordcamp-canada-eh', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const iframe = page.locator('.wp-block-embed-youtube iframe').first();
@@ -44,7 +44,7 @@ test.describe('Embed — YouTube', () => {
   });
 
   test('figure has is-type-video, is-provider-youtube, wp-has-aspect-ratio classes', async ({ page }) => {
-    await page.goto('/posts/wordcamp-canada-eh');
+    await page.goto('/posts/wordcamp-canada-eh', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const figure = page.locator('figure.wp-block-embed-youtube').first();
@@ -55,7 +55,7 @@ test.describe('Embed — YouTube', () => {
   });
 
   test('binary-jazz 16:9 YouTube embed has correct aspect ratio class', async ({ page }) => {
-    await page.goto('/posts/binary-jazz');
+    await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const figure = page.locator('figure.wp-block-embed-youtube.wp-embed-aspect-16-9').first();
@@ -71,7 +71,7 @@ test.describe('Embed — YouTube', () => {
 
 test.describe('Embed — Twitter/X', () => {
   test('figure has is-type-rich and is-provider-twitter classes', async ({ page }) => {
-    await page.goto(TWITTER_POST);
+    await page.goto(TWITTER_POST, { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const figure = page.locator('figure.wp-block-embed-twitter').first();
@@ -81,7 +81,7 @@ test.describe('Embed — Twitter/X', () => {
   });
 
   test('injects Twitter widgets.js via SocialScriptLoader', async ({ page }) => {
-    await page.goto(TWITTER_POST);
+    await page.goto(TWITTER_POST, { waitUntil: 'domcontentloaded' });
 
     // No networkidle: toBeAttached() auto-retries until SocialScriptLoader injects the
     // script, and Twitter's widgets.js keeps connections open so the network may never idle.
@@ -90,7 +90,7 @@ test.describe('Embed — Twitter/X', () => {
   });
 
   test('binary-jazz has multiple Twitter embed figures', async ({ page }) => {
-    await page.goto('/posts/binary-jazz');
+    await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const figures = page.locator('figure.wp-block-embed-twitter');
@@ -103,7 +103,7 @@ test.describe('Embed — Twitter/X', () => {
 
 test.describe('Embed — Spotify', () => {
   test('figure has is-type-rich and is-provider-spotify classes', async ({ page }) => {
-    await page.goto('/posts/gene');
+    await page.goto('/posts/gene', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const figure = page.locator('figure.wp-block-embed-spotify').first();
@@ -113,7 +113,7 @@ test.describe('Embed — Spotify', () => {
   });
 
   test('renders iframe with open.spotify.com/embed src', async ({ page }) => {
-    await page.goto('/posts/gene');
+    await page.goto('/posts/gene', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const iframe = page.locator('.wp-block-embed-spotify iframe').first();
@@ -129,7 +129,7 @@ test.describe('Embed — SoundCloud (raw iframe)', () => {
   // This post predates Gutenberg — uses raw <iframe src="w.soundcloud.com/player/...">
   // DOMPurify allows iframes; the iframe renders even without wp-block-embed classes.
   test('renders SoundCloud iframe', async ({ page }) => {
-    await page.goto('/posts/free-download-beyonce-end-of-time-2-step-remix-by-jazzsequence');
+    await page.goto('/posts/free-download-beyonce-end-of-time-2-step-remix-by-jazzsequence', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const iframe = page.locator('iframe[src*="soundcloud.com"]').first();
@@ -148,8 +148,8 @@ test.describe('Embed — SoundCloud (raw iframe)', () => {
       }
     });
 
-    await page.goto('/posts/free-download-beyonce-end-of-time-2-step-remix-by-jazzsequence');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/posts/free-download-beyonce-end-of-time-2-step-remix-by-jazzsequence', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('load');
 
     expect(consoleErrors).toHaveLength(0);
   });
@@ -157,10 +157,22 @@ test.describe('Embed — SoundCloud (raw iframe)', () => {
 
 // ── Mixcloud (old-format raw iframe) ───────────────────────────────────────────
 
+// `waitUntil: 'domcontentloaded'` on every goto in this file is deliberate. The default
+// is 'load', which does not resolve until every subresource has settled — including the
+// third-party embeds these tests exist to exercise (Mixcloud, Twitter, YouTube). That
+// makes navigation time depend on servers we do not control, and on a cold PR
+// environment the first render of a route can add ~12s on top. Every goto here was
+// already followed by waitForLoadState('domcontentloaded'), so this matches the
+// intent the file always had. Most assertions below use web-first expects, which
+// retry. The exception is the error-resilience block, whose tests register
+// page.on('response') / page.on('console') listeners and MUST wait for 'load'
+// before asserting — a listener only reports what happened before the assertion
+// ran, so asserting at DCL makes it vacuously true. See the comment there.
+
 test.describe('Embed — Mixcloud (raw iframe)', () => {
   // Pre-Gutenberg post — uses raw <iframe src="mixcloud.com/widget/iframe/...">
   test('renders Mixcloud iframe', async ({ page }) => {
-    await page.goto('/posts/teh-s3quence-halloween-2015');
+    await page.goto('/posts/teh-s3quence-halloween-2015', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const iframe = page.locator('iframe[src*="mixcloud.com"]').first();
@@ -172,7 +184,7 @@ test.describe('Embed — Mixcloud (raw iframe)', () => {
   test('post loads and renders the iframe without a 500 error', async ({ page }) => {
     // Old embeds may produce browser console warnings (mixed content, CORS, etc.)
     // We verify the page itself loads OK — no 500 error, article is present.
-    const response = await page.goto('/posts/teh-s3quence-halloween-2015');
+    const response = await page.goto('/posts/teh-s3quence-halloween-2015', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     expect(response?.status()).toBeLessThan(500);
@@ -188,7 +200,7 @@ test.describe('Embed — WordPress native post embed (is-type-wp-embed)', () => 
   // is-type-wp-embed figures are intercepted by PostContent and replaced with
   // WPEmbedCard → ArticleCard. We verify the ArticleCard rendered correctly.
   test('disclosing-ai-use renders wp-embed as an ArticleCard', async ({ page }) => {
-    await page.goto('/posts/disclosing-ai-use');
+    await page.goto('/posts/disclosing-ai-use', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     // WPEmbedCard shows a loading skeleton first, then the card
@@ -202,7 +214,7 @@ test.describe('Embed — WordPress native post embed (is-type-wp-embed)', () => 
   });
 
   test('wp-tavern podcast post renders wp-embed as an ArticleCard', async ({ page }) => {
-    await page.goto('/posts/i-was-on-the-wp-tavern-podcast');
+    await page.goto('/posts/i-was-on-the-wp-tavern-podcast', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     await page.waitForSelector('article', { timeout: 10000 });
@@ -218,7 +230,7 @@ test.describe('Embed — WordPress native post embed (is-type-wp-embed)', () => 
 
 test.describe('Embed — figure class hierarchy', () => {
   test('wp-block-embed figures in article use the standard wrapper structure', async ({ page }) => {
-    await page.goto('/posts/binary-jazz');
+    await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     // At least one embed should have the standard wp-block-embed__wrapper child structure
@@ -227,7 +239,7 @@ test.describe('Embed — figure class hierarchy', () => {
   });
 
   test('video embeds have wp-has-aspect-ratio class', async ({ page }) => {
-    await page.goto('/posts/binary-jazz');
+    await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
     await page.waitForLoadState('domcontentloaded');
 
     const videoEmbed = page.locator('article .wp-block-embed-youtube.wp-has-aspect-ratio').first();
@@ -251,8 +263,8 @@ test.describe('Embed — error resilience', () => {
       }
     });
 
-    await page.goto('/posts/binary-jazz');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('load');
     expect(consoleErrors).toHaveLength(0);
   });
 
@@ -265,8 +277,11 @@ test.describe('Embed — error resilience', () => {
       }
     });
 
-    await page.goto('/posts/binary-jazz');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
+    // 'load', not 'domcontentloaded': this test observes subresource responses, so it
+    // must not assert before they have been made. At DCL the listener has seen 0 of the
+    // ~55 /embed responses, which would make the assertion vacuously true.
+    await page.waitForLoadState('load');
     expect(failedIframes).toHaveLength(0);
   });
 
@@ -280,8 +295,8 @@ test.describe('Embed — error resilience', () => {
       }
     });
 
-    await page.goto('/posts/gene');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/posts/gene', { waitUntil: 'domcontentloaded' });
+    await page.waitForLoadState('load');
     expect(consoleErrors).toHaveLength(0);
   });
 });
