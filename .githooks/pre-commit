@@ -20,17 +20,43 @@ if [ "$USER_COMMIT" = "1" ]; then
     echo -e "${YELLOW}⚠️  User commit bypass enabled${NC}"
     echo "   Skipping reviewer agent check (user-initiated commit)"
 elif [ -f reviewer-approved ]; then
-    APPROVAL_TIME=$(cat reviewer-approved)
+    # Trim leading/trailing whitespace ONLY, matching Layer 1's .trim() exactly.
+    # $(cat) alone strips just trailing newlines, so a leading space would fail the
+    # regex here while Layer 1 accepted it. `tr -d '[:space:]'` overcorrects the other
+    # way: it also eats INTERIOR whitespace, so "1788 387445" would collapse to a
+    # valid timestamp here while Layer 1 rejected it — and Layer 2 is the tracked
+    # layer, and the only one a plain shell `git commit` runs.
+    APPROVAL_RAW=$(cat reviewer-approved)
+    APPROVAL_RAW="${APPROVAL_RAW#"${APPROVAL_RAW%%[![:space:]]*}"}"
+    APPROVAL_TIME="${APPROVAL_RAW%"${APPROVAL_RAW##*[![:space:]]}"}"
     CURRENT_TIME=$(date +%s)
+
+    # Reject a non-numeric flag before arithmetic. Without this, `$(())` on garbage
+    # yields 0 and a corrupt file reads as a brand-new approval.
+    if ! [[ "$APPROVAL_TIME" =~ ^[0-9]{1,11}$ ]] || [ "$APPROVAL_TIME" -le 0 ]; then
+        echo -e "${RED}❌ BLOCKED: Approval flag is corrupted (invalid timestamp)${NC}"
+        echo "   Value was: '${APPROVAL_TIME}'"
+        echo "   Getting a fresh approval is required"
+        rm -f reviewer-approved
+        exit 1
+    fi
+
     TIME_DIFF=$((CURRENT_TIME - APPROVAL_TIME))
 
-    # Approval valid for 5 minutes
-    if [ $TIME_DIFF -lt 300 ]; then
+    # Approval valid for 5 minutes. The lower bound matters: without `-ge 0`, a
+    # future-dated timestamp yields a negative diff, passes `-lt 300`, and never expires.
+    if [ "$TIME_DIFF" -ge 0 ] && [ "$TIME_DIFF" -lt 300 ]; then
         echo -e "${GREEN}✅ Reviewer agent approved (${TIME_DIFF}s ago)${NC}"
         rm reviewer-approved  # Clear approval after use
     else
-        echo -e "${RED}❌ BLOCKED: Reviewer approval expired (${TIME_DIFF}s old)${NC}"
-        echo "   Spawn reviewer agent again and get fresh approval"
+        if [ "$TIME_DIFF" -lt 0 ]; then
+            echo -e "${RED}❌ BLOCKED: Approval flag is dated in the future (${TIME_DIFF}s)${NC}"
+            echo "   A future timestamp would never expire — rejecting"
+        else
+            echo -e "${RED}❌ BLOCKED: Reviewer approval expired (${TIME_DIFF}s old)${NC}"
+            echo "   Spawn reviewer agent again and get fresh approval"
+        fi
+        rm -f reviewer-approved
         exit 1
     fi
 else
@@ -87,7 +113,10 @@ else
 
 # Unit tests
 echo "   Running unit tests..."
-if ! npm test -- --run --reporter=dot 2>&1 | tail -5; then
+# PIPESTATUS, not `if !`: piping through tail makes the pipeline's exit status
+# tail's, which is always 0, so `if ! ... | tail` can never take the failure branch.
+npm test -- --run --reporter=dot 2>&1 | tail -5
+if [ "${PIPESTATUS[0]}" -ne 0 ]; then
     echo -e "${RED}❌ BLOCKED: Unit tests failed${NC}"
     echo "   Fix test failures before committing"
     exit 1
@@ -96,11 +125,17 @@ echo -e "${GREEN}✅ Unit tests passed${NC}"
 
 # Linter
 echo "   Running linter..."
-if ! npm run lint 2>&1 | grep -E "(error|warning|✔)" | tail -3; then
+# No pipe here, so no PIPESTATUS needed — `if !` both suppresses `set -e` and reads
+# npm's own status. The previous `npm run lint | grep -E ... | tail` form was doubly
+# broken: the pipeline masked npm's exit code, and grep itself returns 1 when it matches
+# nothing, which is exactly what a clean lint run produces.
+if ! npm run lint > /tmp/precommit-lint.txt 2>&1; then
+    tail -3 /tmp/precommit-lint.txt
     echo -e "${RED}❌ BLOCKED: Linter failed${NC}"
     echo "   Fix linting errors before committing"
     exit 1
 fi
+tail -3 /tmp/precommit-lint.txt
 echo -e "${GREEN}✅ Linter passed${NC}"
 
 # Build validation
@@ -121,8 +156,13 @@ if [ "$USER_COMMIT" != "1" ]; then
         echo "   Fix failures before committing"
         exit 1
     fi
+    # Inside the guard: printing this unconditionally claimed a pass that never ran
+    # under USER_COMMIT=1, which is why REVIEWER_CHECKLIST.md told reviewers not to
+    # trust this line.
+    echo -e "${GREEN}✅ E2E tests passed${NC}"
+else
+    echo -e "${YELLOW}⏭️  E2E skipped (USER_COMMIT=1)${NC}"
 fi
-echo -e "${GREEN}✅ E2E tests passed${NC}"
 echo ""
 fi  # end: STAGED_CODE_FILES > 0
 
@@ -143,7 +183,7 @@ if [ "$USER_COMMIT" != "1" ]; then
     echo -e "${YELLOW}⚠️  MANDATORY: Reviewer agent must approve before every commit.${NC}"
     echo "   1. Spawn reviewer agent with Agent tool"
     echo "   2. Get APPROVE decision from agent"
-    echo "   3. Main agent writes approval flag, then commit within 5 minutes"
+    echo "   3. The REVIEWER writes the approval flag — never the main agent"
     echo ""
 else
     echo "5️⃣  Skipping reviewer oversight (user commit)"

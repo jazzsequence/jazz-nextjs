@@ -63,18 +63,20 @@ you wrote the approval flag.`
 
 **Layer 1 - Manual Oversight (Reviewer Agent) - RUNS FIRST:**
 - Spawned BEFORE staging/committing
-- Runs tests, lint, build (once, not duplicate)
+- Runs tests, lint, build, and E2E — see `docs/REVIEWER_CHECKLIST.md` for all 45 items
 - Comprehensive review of ALL rules
 - Checks documentation updates, TDD methodology, file organization, license compatibility
-- Creates approval flag file if everything passes
+- Writes the approval flag itself if everything passes — never the main agent
 - Approval valid for 5 minutes
 
 **Layer 2 - Automated Gate (Pre-commit Hook) - RUNS SECOND:**
 - Checks for reviewer approval flag file
 - Blocks commit if no approval or approval expired
-- Does NOT re-run tests/lint (agent already did that)
-- Only checks secrets as secondary validation
-- Fast execution since agent did heavy lifting
+- **Re-runs the full suite** — unit tests, lint, build and E2E. It does not trust that
+  the reviewer ran them, and it is the layer that actually gates the commit
+- Enforces the commit-size cap (≤5 files excluding `package-lock.json`, ≤500 insertions)
+- Checks for secrets
+- Skips the suite only when every staged file is `.md` or `.txt`
 
 **The reviewer agent will check:**
 See `docs/REVIEWER_CHECKLIST.md` for the full checklist the reviewer works through.
@@ -99,7 +101,7 @@ Section A items run on every commit. Section B items are conditional (skipped wi
   impression of circumventing the system. Describe the change clearly and let the reviewer decide.
 - If reviewer says REJECT, fix violations then spawn reviewer again
 - Approval expires after 5 minutes (prevents stale approvals)
-- Hook does NOT re-run tests (reviewer already did that)
+- Hook re-runs the full suite; the reviewer's own run is not trusted
 
 **TRANSPARENCY:**
 Both the main agent and the reviewer agent must surface what they are doing to the
