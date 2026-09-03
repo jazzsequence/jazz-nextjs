@@ -2,7 +2,18 @@
 
 ## Overview
 
-Every commit requires reviewer agent approval to ensure code quality and compliance with project standards. This is enforced through **three layers of programmatic validation** (not just behavioral compliance).
+Every commit requires reviewer agent approval to ensure code quality and compliance with
+project standards.
+
+**Three layers are described below, but only one is reliably enforced.** Layer 2, the git
+pre-commit hook, is tracked in this repo, runs the full test suite, and is what actually
+gates a commit. Layer 1 is untracked (`.claude/` is gitignored), absent from a fresh
+clone, and silently disabled by a registration ending in `|| true` or any exit code but 2.
+Layer 3 is **behavioural** — instructions to the agent — not programmatic at all.
+
+Treat that as the honest baseline when reasoning about what this system guarantees. This
+file is the authoritative description; `.githooks/pre-commit` is the source of truth if
+the two disagree.
 
 ---
 
@@ -17,7 +28,7 @@ Every commit requires reviewer agent approval to ensure code quality and complia
 **What it does:**
 - ✅ Intercepts `git commit` **before** it runs
 - ✅ Checks for approval flag existence
-- ✅ Validates approval timestamp (<5 minutes)
+- ✅ Validates approval timestamp — **two-sided**: rejects older than 5 minutes, and rejects future-dated (a negative age would otherwise never expire)
 - ✅ Allows `USER_COMMIT=1` bypass
 - ✅ Provides clear error messages with instructions
 
@@ -33,17 +44,42 @@ if (cmd.includes('git commit')) {
     // Check if approval file exists
     if (!fs.existsSync(approvalFile)) {
       console.error('[BLOCKED] No reviewer approval found');
-      process.exit(1);
+      process.exit(2);   // 2 blocks the tool call; any other code lets it through
     }
 
-    // Check if approval is fresh (<5 minutes)
-    var approvalTime = parseInt(fs.readFileSync(approvalFile, 'utf8').trim(), 10);
+    var approvalRaw = fs.readFileSync(approvalFile, 'utf8').trim();
+
+    // parseInt is lenient: parseInt('1756800000junk') returns a valid-looking
+    // timestamp. Layer 2 applies the same ^[0-9]{1,11}$ over the same normalisation —
+    // leading/trailing whitespace trimmed, interior left intact — so both accept the
+    // same inputs. Layer 2 must not use `tr -d '[:space:]'`: that also strips interior
+    // whitespace, so "1788 387445" would pass there and fail here.
+    if (!/^[0-9]{1,11}$/.test(approvalRaw)) {
+      console.error('[BLOCKED] Approval file is corrupted (invalid timestamp)');
+      process.exit(2);
+    }
+
+    var approvalTime = parseInt(approvalRaw, 10);
+
+    // Belt and braces: NaN >= 300 is false, so without this garbage would authorise
+    if (isNaN(approvalTime) || approvalTime <= 0) {
+      console.error('[BLOCKED] Approval file is corrupted (invalid timestamp)');
+      process.exit(2);
+    }
+
     var currentTime = Math.floor(Date.now() / 1000);
     var timeDiff = currentTime - approvalTime;
 
+    // Two-sided. A future-dated flag gives a negative diff, which is < 300, so
+    // without this branch it would never expire.
+    if (timeDiff < 0) {
+      console.error('[BLOCKED] Approval flag is dated in the future');
+      process.exit(2);
+    }
+
     if (timeDiff >= 300) {
       console.error('[BLOCKED] Reviewer approval expired');
-      process.exit(1);
+      process.exit(2);
     }
   }
 }
@@ -52,27 +88,31 @@ if (cmd.includes('git commit')) {
 **Advantages over pre-commit hook:**
 - Catches missing approval **before** git commit starts
 - Faster feedback (no git operations initiated)
-- Works even if pre-commit hook is bypassed with `--no-verify`
 - Provides clearer, more actionable error messages
+- Would catch a `--no-verify` bypass, *if* it is live — see the caveats below; this layer
+  is disabled entirely by a registration ending in `|| true`, and by any exit code but 2
 
-### Layer 2: Pre-commit Hook (Secondary Validation)
+### Layer 2: Pre-commit Hook (the layer that actually gates)
 
 **Location:** `.git/hooks/pre-commit`
 
 **Trigger:** After `git commit` starts, before commit is finalized
 
-**What it does:**
-- ✅ Re-validates approval flag (defense in depth)
+**What it does** (five checks, in order — read `.githooks/pre-commit`, not this list, if
+they disagree):
+- ✅ Re-validates the approval flag, and **deletes it immediately** (single-use). Note it
+  is deleted in check 1, so a later failure means a fresh review is required.
 - ✅ Checks commit size (AI commits only: ≤5 files, ≤500 insertions; `package-lock.json` excluded)
+- ✅ **Runs the full suite** — `npm test -- --run`, `npm run lint`, `npm run build`,
+  `npm run test:e2e`. Skipped only when every staged file is `.md` or `.txt`.
 - ✅ Checks for secrets in staged files
-- ✅ Manual confirmation prompt
-- ✅ Deletes approval flag after use (single-use)
+- ✅ Prints an advisory reminder about reviewer oversight (no prompt — nothing reads stdin)
 
 **Why both layers:**
-- Defense in depth - two independent checks
-- Pre-commit hook can't be bypassed if PreToolUse fails
-- Pre-commit hook cleans up approval flag
-- Pre-commit hook checks secrets (different concern)
+- Layer 2 is the real gate: it is tracked in git, reviewable, and runs the suite
+- Layer 1 is faster feedback, but is untracked and easily disabled without anyone noticing
+- Layer 2 cleans up the approval flag
+- Layer 2 checks secrets (different concern)
 
 ### Layer 3: Behavioral (AI Instructions)
 
@@ -143,7 +183,7 @@ npm run test:e2e
 - Production-mode behavior
 
 **Real example:** The routing conflict bug passed:
-- ✅ Unit tests (271/271 passing)
+- ✅ Unit tests passing (`npm test -- --run`)
 - ✅ Linter (0 errors)
 - ✅ Build (successful)
 - ❌ **E2E tests would have caught:** Server crashed on startup with "different slug names" error
@@ -205,7 +245,7 @@ git commit -m "test"
 # Required before git commit:
 #   1. Spawn reviewer agent with Agent tool
 #   2. Get APPROVE decision from agent
-#   3. Main agent creates approval flag
+#   3. Reviewer agent writes the approval flag
 #   4. Then commit within 5 minutes
 #
 # For manual commits: USER_COMMIT=1 git commit -m "message"
@@ -247,6 +287,9 @@ git commit -m "test"
 ```bash
 # Create old approval (6 minutes ago)
 echo "$(($(date +%s) - 360))" > reviewer-approved
+# Note: the hook deletes the flag when it rejects, so re-create it for each attempt.
+# Try `echo "$(($(date +%s) + 9999))" > reviewer-approved` too — a future date is
+# rejected as well, and used to be accepted indefinitely.
 
 # Try commit
 git commit -m "test"
@@ -304,7 +347,10 @@ See Layer 1 implementation above.
 - Reads `process.env.USER_COMMIT` for bypass
 - Uses `fs.existsSync()` to check for approval file
 - Compares Unix timestamps for expiration check
-- Exits with `process.exit(1)` to block commit
+- Exits with **`process.exit(2)`** to block. Only exit 2 blocks a `PreToolUse` tool
+  call; every other non-zero code is a non-blocking error and the call proceeds. The
+  handler previously used `exit(1)`, so it printed `[BLOCKED]` and allowed the commit.
+  There is no `exit(1)` left in it; unrecognised commands exit 0.
 
 ---
 
@@ -322,15 +368,21 @@ See Layer 1 implementation above.
 
 ### After (Programmatic + Behavioral)
 
-| Check | Enforcement | Timing | Can Bypass |
-|-------|-------------|--------|------------|
-| Reviewer spawning | AI follows CLAUDE.md | Before staging | Still behavioral |
-| **Approval validation** | **PreToolUse hook** | **Before git commit starts** | **Cannot bypass** |
-| **Expiration check** | **PreToolUse hook** | **Before git commit starts** | **Cannot bypass** |
-| Approval re-validation | Git pre-commit hook | At commit time | Secondary defense |
-| Secrets check | Git pre-commit hook | At commit time | Cannot bypass |
+| Check | Enforcement | Timing | Can bypass? |
+|-------|-------------|--------|-------------|
+| Reviewer spawning | AI follows CLAUDE.md | Before staging | Yes — behavioural only |
+| Approval validation | PreToolUse hook | Before git commit starts | Yes — layer may not be installed or live |
+| Expiration check | PreToolUse hook | Before git commit starts | Yes — same |
+| **Approval re-validation** | **Git pre-commit hook** | **At commit time** | **`--no-verify`** |
+| **Full test suite** | **Git pre-commit hook** | **At commit time** | **`--no-verify`** |
+| **Commit size cap** | **Git pre-commit hook** | **At commit time** | **`--no-verify`** |
+| **Secrets check** | **Git pre-commit hook** | **At commit time** | **`--no-verify`** |
 
-**Improvement:** Git commit is blocked immediately if approval is missing or expired, with clear instructions.
+**Nothing here is unbypassable.** `--no-verify` skips every git hook and is already
+auto-approved by `Bash(git commit*)` / `Bash(git commit:*)`, so there is no permission
+barrier. The improvement over the "before" state is real but narrower than it looks: a
+commit missing approval now fails fast with actionable instructions, provided Layer 1 is
+installed and exiting 2.
 
 ---
 
@@ -339,23 +391,41 @@ See Layer 1 implementation above.
 ### What if `.claude/helpers/hook-handler.cjs` is deleted?
 
 - PreToolUse hook won't run (hook file missing)
-- Git pre-commit hook still validates (secondary defense)
+- Git pre-commit hook still validates — and it is the layer that was doing the real work anyway
 - AI will fail to commit and see pre-commit hook error
 
 ### What if both hooks are bypassed?
 
-- PreToolUse hook: Cannot bypass (runs before tool execution)
-- Git hook: Can bypass with `git commit --no-verify`
-- **However:** Claude Code permissions don't allow `--no-verify` by default
-- Would need: `"Bash(git commit --no-verify)"` in allow list (not recommended)
+- PreToolUse hook: runs before tool execution, and blocks only when it exits 2 *and* its
+  registered command does not swallow the code. A wrapper ending in `|| true` disables it
+  entirely — check `.claude/settings.json` before assuming this layer is live.
+- Git hook: bypassable with `git commit --no-verify`
+- **`--no-verify` is already auto-approved.** `.claude/settings.json` allows
+  `Bash(git commit*)` and `.claude/settings.local.json` allows `Bash(git commit:*)` —
+  both are prefix wildcards that match it. There is no permission barrier here.
+
+So the honest description is a single enforced layer: the pre-commit hook, requiring a
+fresh reviewer-written flag, capping commit size, and failing on the test suite —
+bypassable with `--no-verify`.
 
 ### What if approval file is corrupted?
 
-- `parseInt()` returns `NaN`
-- Comparison `currentTime - NaN` → `NaN`
-- `NaN >= 300` → `false`
-- Approval would be incorrectly accepted
-- **Fix:** Add validation: `if (isNaN(approvalTime)) { console.error('[BLOCKED] Invalid approval file'); process.exit(1); }`
+**Fixed in the JS handler 2026-09-02.** `parseInt()` returned `NaN`, `NaN >= 300` is
+`false`, so the staleness check passed and any garbage in the file authorised a commit.
+The handler now rejects with `exit(2)` when the timestamp is `NaN` or `<= 0`.
+
+Both layers now apply the same two-sided bound and the same `^[0-9]{1,11}$` validation
+before parsing, over identically normalised input: each trims **leading and trailing**
+whitespace only, and neither touches interior whitespace — so `1788 387445` is rejected
+by both. Layer 1 uses `.trim()`; Layer 2 uses bash suffix/prefix trimming rather than
+`tr -d '[:space:]'`, which would also strip interior whitespace and so accept a value
+Layer 1 rejects. Verified across 21 inputs — surrounding spaces, tabs and newlines,
+interior whitespace, junk-prefixed and junk-suffixed digits, empty, whitespace-only,
+zero, negative, `+`-prefixed, over-length, and future-dated — with both layers agreeing
+on every one. Layer 1 needs the regex because
+`parseInt` is lenient — `parseInt('1756800000junk')` returns a valid-looking timestamp.
+Layer 2 needs it because `$((...))` on garbage yields `0`, which reads as a *brand-new*
+approval rather than an invalid one.
 
 ---
 
@@ -397,40 +467,45 @@ See Layer 1 implementation above.
 **Yes**, but:
 - File is at project root (`reviewer-approved`) and gitignored — never committed
 - Only affects local commits
-- Still blocked if commit attempted >5 minutes later
-- Pre-commit hook also validates (two checks)
+- Both layers validate the timestamp **two-sided**, so neither a stale nor a
+  future-dated forgery is accepted.
+- A value that is not a plain integer is rejected before any arithmetic by both layers.
+  Layer 2 additionally deletes the rejected flag, so it cannot be silently reused — that
+  is all deletion buys; anything able to write a forged flag can write another.
+- Both layers validate independently, though only the pre-commit hook is tracked in git
 
 ### What if malicious code modifies hook-handler.cjs?
 
-- Hook file is gitignored (`.claude/` is typically in `.gitignore`)
-- Changes only affect local environment
-- Code review would catch malicious edits to hook logic
-- Pre-commit hook provides secondary defense
+- The handler is gitignored (`.gitignore:45` ignores all of `.claude/`), so changes affect
+  only the local environment
+- **Code review would NOT catch an edit to it** — the file is untracked, so it never
+  appears in a diff.
+- The pre-commit hook is the tracked, reviewable layer, and is the actual defense
 
 ---
 
 ## Future Improvements
 
-### 1. Add Corruption Check
+> The corruption check and the two-sided timestamp bound that used to head this list are
+> both **implemented**, in Layer 1 and Layer 2 alike, and the two layers now validate
+> identically over identically normalised input — see the guards in the Layer 1 snippet
+> above and in `.githooks/pre-commit`, and the interior-whitespace note at the corruption
+> section, which is the one case where the two reads could drift apart again.
 
-```javascript
-if (isNaN(approvalTime) || approvalTime <= 0) {
-  console.error('[BLOCKED] Invalid approval file (corrupted timestamp)');
-  process.exit(1);
-}
-```
-
-### 2. Configurable Timeout
+### 1. Configurable Timeout
 
 ```javascript
 var maxAge = process.env.REVIEWER_APPROVAL_TIMEOUT || 300; // Default 5 minutes
-if (timeDiff >= maxAge) {
+// Keep the bound two-sided. A future-dated flag yields a negative diff, which is
+// < maxAge for every maxAge, so writing this as `timeDiff >= maxAge` alone would
+// reintroduce the hole the two-sided guard closes.
+if (timeDiff < 0 || timeDiff >= maxAge) {
   console.error('[BLOCKED] Reviewer approval expired');
-  process.exit(1);
+  process.exit(2);
 }
 ```
 
-### 3. Automatic Reviewer Spawning
+### 2. Automatic Reviewer Spawning
 
 ```javascript
 // When git commit detected without approval, auto-spawn reviewer
@@ -461,13 +536,14 @@ This would make the workflow fully automatic, but requires IPC between hook and 
 - The separation ensures the entity that evaluated the code creates the approval token
 - Both agents surface all actions to the user in chat for real-time auditing
 
-**The three-layer enforcement ensures:**
-- ✅ Git commits are blocked immediately if approval is missing
-- ✅ Approval token is written by the reviewer (not self-approved by main agent)
+**What this system actually ensures — one enforced layer:**
+- ✅ A commit without a fresh reviewer-written approval flag fails at the pre-commit hook
+- ✅ The approval token is written by the reviewer, never self-approved by the main agent
+- ✅ The full suite runs at commit time; the reviewer's own run is not trusted
 - ✅ Clear, actionable error messages guide the user
-- ✅ USER_COMMIT=1 bypass is respected for human commits
-- ✅ Defense in depth with two independent validation layers
-
-**No more production bugs from routing conflicts, server crashes, or integration failures.**
+- ✅ `USER_COMMIT=1` is respected for human commits
+- ⚠️ Layer 1 fails *earlier* than the hook when installed and exiting 2 — but it is
+  untracked, so never assume it is present
+- ⚠️ `--no-verify` bypasses all of it
 
 See @docs/REVIEWER_SETUP.md for installation instructions.

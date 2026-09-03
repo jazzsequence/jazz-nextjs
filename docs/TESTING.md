@@ -104,6 +104,45 @@ tests/
     └── wordpress-data.ts       # Mock WordPress data
 ```
 
+### Navigation waits in E2E tests
+
+Pass `waitUntil: 'domcontentloaded'` to `page.goto()` on any page that loads
+third-party content:
+
+```ts
+await page.goto('/posts/some-post', { waitUntil: 'domcontentloaded' })
+```
+
+Playwright's default is `'load'`, which does not resolve until every subresource
+has settled. On pages carrying third-party embeds (Mixcloud, Twitter, YouTube) that
+makes navigation time depend on servers we do not control, and a cold PR environment
+adds the route's first ISR render on top — measured at ~12s for a cold route versus
+~155ms warm. `embeds.spec.ts` failed all three CI retries on exactly this shape.
+
+Do not reach for `networkidle`: it waits for 500ms of zero network activity, which
+analytics and lazy-loaded media can defer indefinitely. Playwright discourages it.
+Prefer a web-first assertion on something the page renders — `await expect(locator)
+.toBeVisible()` — which retries until the timeout.
+
+**Exception — tests that observe subresources or console output must still wait for
+`load`.** Web-first assertions retry, so they tolerate a fast navigation; a listener
+registered with `page.on('response')` or `page.on('console')` does not. It can only
+report what has happened by the time the assertion runs, so asserting at
+`domcontentloaded` makes it vacuously true. Measured on `/posts/binary-jazz`: at DCL
+the response listener sees **0** `/embed` responses and 1 iframe; after `load` it sees
+**55** and 8. A 4xx check written that way would pass even if every embed returned 404.
+For those tests keep the fast `goto` and add an explicit wait before asserting:
+
+```ts
+await page.goto(path, { waitUntil: 'domcontentloaded' })
+await page.waitForLoadState('load')
+expect(failedIframes).toHaveLength(0)
+```
+
+Scope note: `embeds.spec.ts` is where this was found and fixed, not a proven boundary.
+If the dominant cost is a cold route's first ISR render rather than third-party
+latency, the exposure is not embed-specific and any spec can hit it.
+
 ### Test Naming Convention
 
 - Test files: `*.test.ts` or `*.spec.ts`
