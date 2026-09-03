@@ -102,10 +102,15 @@ describe('GET /api/comments', () => {
 
   it('returns 502 when WordPress is unreachable', async () => {
     server.use(http.get(WP_COMMENTS_URL, () => HttpResponse.error()))
+    // The route logs this failure by design. Capture the call rather than letting
+    // MSW's network-error stack flood the suite output, and assert it happened.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const { GET } = await importRoute()
     const res = await GET(getRequest(42))
     expect(res.status).toBe(502)
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 
   it('returns empty array when WordPress returns 404 (no comments)', async () => {
@@ -235,6 +240,9 @@ describe('POST /api/comments', () => {
 
   it('returns 502 when WordPress is unreachable', async () => {
     server.use(http.post(WP_COMMENTS_URL, () => HttpResponse.error()))
+    // The route logs this failure by design. Capture the call rather than letting
+    // MSW's network-error stack flood the suite output, and assert it happened.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const { POST } = await importRoute()
     const res = await POST(postRequest({
@@ -244,5 +252,7 @@ describe('POST /api/comments', () => {
       content: 'Hello',
     }))
     expect(res.status).toBe(502)
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 })
