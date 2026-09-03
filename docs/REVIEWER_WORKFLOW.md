@@ -27,63 +27,60 @@ the two disagree.
 
 **What it does:**
 - ✅ Intercepts `git commit` **before** it runs
-- ✅ Checks for approval flag existence
-- ✅ Validates approval timestamp — **two-sided**: rejects older than 5 minutes, and rejects future-dated (a negative age would otherwise never expire)
+- ✅ Delegates every flag check to `.githooks/lib/approval.sh` — it validates nothing
+     itself, so it cannot disagree with the git hook
+- ✅ Blocks if that script cannot be run at all, rather than reporting a pass it did
+     not actually verify
+- ✅ Uses `peek`, which does not consume the flag — the commit that follows still needs it
 - ✅ Allows `USER_COMMIT=1` bypass
-- ✅ Provides clear error messages with instructions
+- ✅ Surfaces the script's own error messages, so both layers explain a rejection identically
 
-**Implementation:**
+The checks themselves — flag exists, timestamp is a plain integer, age within the
+timeout and not future-dated, and the fingerprint matches the staged index — are
+described under Layer 2, because that is where the shared script is sourced from.
+
+**Implementation:** Layer 1 no longer validates anything itself. It shells out to
+`.githooks/lib/approval.sh` — the same file the git hook sources — so the two layers
+cannot disagree:
+
 ```javascript
 // In hook-handler.cjs pre-bash handler
 if (cmd.includes('git commit')) {
   var userCommit = process.env.USER_COMMIT === '1';
 
   if (!userCommit) {
-    var approvalFile = path.join(process.cwd(), 'reviewer-approved');
+    var libPath = path.join(process.cwd(), '.githooks', 'lib', 'approval.sh');
 
-    // Check if approval file exists
-    if (!fs.existsSync(approvalFile)) {
-      console.error('[BLOCKED] No reviewer approval found');
-      process.exit(2);   // 2 blocks the tool call; any other code lets it through
-    }
-
-    var approvalRaw = fs.readFileSync(approvalFile, 'utf8').trim();
-
-    // parseInt is lenient: parseInt('1756800000junk') returns a valid-looking
-    // timestamp. Layer 2 applies the same ^[0-9]{1,11}$ over the same normalisation —
-    // leading/trailing whitespace trimmed, interior left intact — so both accept the
-    // same inputs. Layer 2 must not use `tr -d '[:space:]'`: that also strips interior
-    // whitespace, so "1788 387445" would pass there and fail here.
-    if (!/^[0-9]{1,11}$/.test(approvalRaw)) {
-      console.error('[BLOCKED] Approval file is corrupted (invalid timestamp)');
+    if (!fs.existsSync(libPath)) {
+      console.error('[BLOCKED] .githooks/lib/approval.sh is missing');
       process.exit(2);
     }
 
-    var approvalTime = parseInt(approvalRaw, 10);
+    // `peek`, not `check`: peek does not consume the flag. This runs BEFORE
+    // git commit, so consuming here would make the commit fail with
+    // "no approval found".
+    var result = spawnSync('bash', [libPath, 'peek'], { encoding: 'utf8' });
 
-    // Belt and braces: NaN >= 300 is false, so without this garbage would authorise
-    if (isNaN(approvalTime) || approvalTime <= 0) {
-      console.error('[BLOCKED] Approval file is corrupted (invalid timestamp)');
+    // An advisory layer that reports "looks fine" when it could not actually
+    // check is worse than one that reports nothing.
+    if (result.error || typeof result.status !== 'number') {
+      console.error('[BLOCKED] Could not verify reviewer approval');
       process.exit(2);
     }
 
-    var currentTime = Math.floor(Date.now() / 1000);
-    var timeDiff = currentTime - approvalTime;
-
-    // Two-sided. A future-dated flag gives a negative diff, which is < 300, so
-    // without this branch it would never expire.
-    if (timeDiff < 0) {
-      console.error('[BLOCKED] Approval flag is dated in the future');
-      process.exit(2);
-    }
-
-    if (timeDiff >= 300) {
-      console.error('[BLOCKED] Reviewer approval expired');
+    if (result.status !== 0) {
+      process.stderr.write(result.stdout || '');
       process.exit(2);
     }
   }
 }
 ```
+
+Before this, each layer carried its own copy of the checks in a different language,
+and they drifted repeatedly — on leading whitespace, on interior whitespace, on
+`parseInt` leniency, and on whether a UTF-8 BOM counts as whitespace. Every drift was
+a case where one layer accepted a flag the other rejected. Keeping two
+implementations in agreement was manual and kept failing; there is now one.
 
 **Advantages over pre-commit hook:**
 - Catches missing approval **before** git commit starts
@@ -270,14 +267,16 @@ USER_COMMIT=1 git commit -m "test"
 ### Test 3: Fresh Approval (Should Allow)
 
 ```bash
-# Create approval flag manually (simulating reviewer)
-echo "$(date +%s)" > reviewer-approved
+# Create approval flag manually (simulating reviewer). The flag is
+# "<timestamp> <index-fingerprint>" — a bare timestamp is rejected as the
+# pre-binding v1 format.
+printf '%s %s' "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)" > reviewer-approved
 
 # Try commit
 git commit -m "test"
 
-# Expected output:
-# [OK] Reviewer approved (2s ago)
+# Expected output (the tree hash will differ):
+# ✅ Reviewer agent approved (2s ago, tree 6ba6a7851ce9)
 # [OK] Command validated
 # (pre-commit hook also validates, then deletes flag)
 ```
@@ -286,10 +285,16 @@ git commit -m "test"
 
 ```bash
 # Create old approval (6 minutes ago)
-echo "$(($(date +%s) - 360))" > reviewer-approved
+FP=$(bash .githooks/lib/approval.sh fingerprint)
+printf '%s %s' "$(($(date +%s) - 360))" "$FP" > reviewer-approved
 # Note: the hook deletes the flag when it rejects, so re-create it for each attempt.
-# Try `echo "$(($(date +%s) + 9999))" > reviewer-approved` too — a future date is
-# rejected as well, and used to be accepted indefinitely.
+# Also worth trying:
+#   printf '%s %s' "$(($(date +%s) + 9999))" "$FP"   # future date — rejected; used to
+#                                                     # be accepted indefinitely
+#   printf '%s' "$(date +%s)"                        # v1 bare timestamp — rejected
+#   printf '%s %s' "$(date +%s)" "$FP"; git add <any file>   # restaged after approval,
+#                                                     # so the fingerprint no longer
+#                                                     # matches — rejected
 
 # Try commit
 git commit -m "test"
@@ -345,8 +350,9 @@ See Layer 1 implementation above.
 **Key logic points:**
 - Checks `cmd.includes('git commit')` to detect commit commands
 - Reads `process.env.USER_COMMIT` for bypass
-- Uses `fs.existsSync()` to check for approval file
-- Compares Unix timestamps for expiration check
+- Uses `fs.existsSync()` to check that `.githooks/lib/approval.sh` is present
+- Delegates all flag validation to that script via `spawnSync(... 'peek')`, and blocks
+  if it cannot be run at all
 - Exits with **`process.exit(2)`** to block. Only exit 2 blocks a `PreToolUse` tool
   call; every other non-zero code is a non-blocking error and the call proceeds. The
   handler previously used `exit(1)`, so it printed `[BLOCKED]` and allowed the commit.
@@ -414,18 +420,20 @@ bypassable with `--no-verify`.
 `false`, so the staleness check passed and any garbage in the file authorised a commit.
 The handler now rejects with `exit(2)` when the timestamp is `NaN` or `<= 0`.
 
-Both layers now apply the same two-sided bound and the same `^[0-9]{1,11}$` validation
-before parsing, over identically normalised input: each trims **leading and trailing**
-whitespace only, and neither touches interior whitespace — so `1788 387445` is rejected
-by both. Layer 1 uses `.trim()`; Layer 2 uses bash suffix/prefix trimming rather than
-`tr -d '[:space:]'`, which would also strip interior whitespace and so accept a value
-Layer 1 rejects. Verified across 21 inputs — surrounding spaces, tabs and newlines,
-interior whitespace, junk-prefixed and junk-suffixed digits, empty, whitespace-only,
-zero, negative, `+`-prefixed, over-length, and future-dated — with both layers agreeing
-on every one. Layer 1 needs the regex because
-`parseInt` is lenient — `parseInt('1756800000junk')` returns a valid-looking timestamp.
-Layer 2 needs it because `$((...))` on garbage yields `0`, which reads as a *brand-new*
-approval rather than an invalid one.
+**Superseded.** Both layers now run the *same code* — `.githooks/lib/approval.sh` —
+so there is no longer a parity property to maintain or verify. The history is worth
+keeping only as the reason the shared file exists: while the checks were implemented
+twice, once in bash and once in JavaScript, they drifted on leading whitespace, on
+interior whitespace, on `parseInt` leniency, and on UTF-8 BOM handling. Each drift was
+found by testing the two against each other across 21 inputs, and each fix had to be
+applied twice. Parity is now structural rather than tested.
+
+The `^[0-9]{1,11}$` guard survives the consolidation and now lives once, in
+`.githooks/lib/approval.sh`. It earns its place twice over, because the same value is
+consumed by two different paths: bash arithmetic, where `$((...))` on garbage yields
+`0` and so reads as a *brand-new* approval rather than an invalid one; and the JS
+caller, where `parseInt` is lenient enough that `parseInt('1756800000junk')` returns a
+valid-looking timestamp. One regex, two consumption paths.
 
 ---
 
@@ -437,7 +445,7 @@ approval rather than an invalid one.
 - Git pre-commit hook failed (different check)
 - Check git pre-commit hook output for details
 
-### "Reviewer approved (Xs ago)" but commit blocked later
+### "Reviewer agent approved (Xs ago, tree ...)" but commit blocked later
 
 - Approval was valid when PreToolUse ran
 - By the time pre-commit hook ran, >5 minutes had passed
@@ -467,12 +475,18 @@ approval rather than an invalid one.
 **Yes**, but:
 - File is at project root (`reviewer-approved`) and gitignored — never committed
 - Only affects local commits
-- Both layers validate the timestamp **two-sided**, so neither a stale nor a
-  future-dated forgery is accepted.
-- A value that is not a plain integer is rejected before any arithmetic by both layers.
-  Layer 2 additionally deletes the rejected flag, so it cannot be silently reused — that
-  is all deletion buys; anything able to write a forged flag can write another.
-- Both layers validate independently, though only the pre-commit hook is tracked in git
+- The timestamp is validated **two-sided**, so neither a stale nor a future-dated
+  forgery is accepted.
+- A value that is not a plain integer is rejected before any arithmetic.
+- **A forged flag must also carry the current index fingerprint.** Guessing is not the
+  obstacle — the fingerprint is computable by anyone who can read the repo — but it does
+  mean a flag is only ever valid for one exact staged state. A captured or reused flag
+  stops working the moment anything is staged or unstaged, which is the realistic
+  failure mode this defends against: an approval issued for one diff authorising another.
+- A rejected flag is deleted, so it cannot be silently retried. That is all deletion
+  buys; anything able to write a forged flag can write another.
+- Both layers run the same validation, so a forgery cannot pass one and fail the other.
+  Only the pre-commit hook and the shared script are tracked in git
 
 ### What if malicious code modifies hook-handler.cjs?
 
@@ -487,10 +501,9 @@ approval rather than an invalid one.
 ## Future Improvements
 
 > The corruption check and the two-sided timestamp bound that used to head this list are
-> both **implemented**, in Layer 1 and Layer 2 alike, and the two layers now validate
-> identically over identically normalised input — see the guards in the Layer 1 snippet
-> above and in `.githooks/pre-commit`, and the interior-whitespace note at the corruption
-> section, which is the one case where the two reads could drift apart again.
+> both **implemented**, in `.githooks/lib/approval.sh`, which both layers run. See
+> `reviewer_validate_approval` there for the `^[0-9]{1,11}$` guard, the two-sided bound,
+> and the trim semantics.
 
 ### 1. Configurable Timeout
 

@@ -137,7 +137,7 @@ Both `git add` and `git commit` are auto-approved for smooth TDD workflow in thi
 ### Approval Flag
 
 **Location**: `<project-root>/reviewer-approved` (repo root, not `.git/hooks/`)
-**Content**: Unix timestamp
+**Content**: `<unix-timestamp> <index-fingerprint>` — a bare timestamp is rejected
 **Lifetime**: 5 minutes
 
 **Written by the reviewer agent on APPROVE — never by the main agent.** The main agent
@@ -145,13 +145,20 @@ holds the same `Write(*)` permission, so this is a discipline boundary rather th
 technical one: if the agent under review can approve itself, the review means nothing.
 
 ```typescript
-// Inside the reviewer agent, on APPROVE:
-const timestamp = await Bash({ command: "date +%s" });
+// Inside the reviewer agent, on APPROVE — as its LAST action:
+const flag = await Bash({
+  command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"'
+});
 await Write({
   file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-  content: timestamp.trim()
+  content: flag.trim()
 });
 ```
+
+The flag is `<unix-timestamp> <index-fingerprint>`. The fingerprint binds the approval
+to the exact staged content, so it must be written **last** — staging or unstaging
+anything afterwards invalidates it. That is the point: it stops an approval issued for
+one diff from authorising a different one.
 
 ## Pre-Commit Hook Notes
 

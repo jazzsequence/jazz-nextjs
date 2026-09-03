@@ -251,7 +251,7 @@ Expected flow:
 1. Claude makes change
 2. Claude spawns reviewer agent
 3. Reviewer returns "APPROVED - I will create the approval flag"
-4. The reviewer agent writes `reviewer-approved` (project root) with a timestamp
+4. The reviewer agent writes `reviewer-approved` (project root) with a timestamp and a fingerprint of the staged index, so the approval cannot authorise a different set of changes
 5. Claude runs `git add` and `git commit`
 6. Pre-commit hook validates flag and allows commit
 
