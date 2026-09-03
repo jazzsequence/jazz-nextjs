@@ -74,6 +74,20 @@ export const handlers = [
 
   // Passthrough handlers for external CDN resources loaded by components (e.g. style guide Google Fonts)
   // Returns an empty response so happy-dom doesn't error on teardown
+  // GreetingClient's "pass 2" fetches /api/country to refine audience matching.
+  // Returning null country reproduces the no-geo-signal case, which is what every
+  // Greeting test relied on implicitly while this request was unhandled. Tests that
+  // exercise geo-targeting should override with server.use() rather than change this.
+  http.get('*/api/country', () => {
+    return HttpResponse.json({ country: null })
+  }),
+
+  // Post pages fetch comments during render. fetchComments() treats 404 as "no
+  // comments"; an empty array is the same outcome without the unhandled-request error.
+  http.get(`${WORDPRESS_API_URL}/comments`, () => {
+    return HttpResponse.json([])
+  }),
+
   http.get('https://fonts.googleapis.com/*', () => {
     return new HttpResponse('', { status: 200, headers: { 'content-type': 'text/css' } })
   }),

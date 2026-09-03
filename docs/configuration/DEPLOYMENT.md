@@ -155,7 +155,7 @@ flagging `next`, `postcss` and `sharp` entirely — total findings 16 → 13, HI
 That is those three packages and nothing else. In Dependabot's units it clears **five
 alerts** (#11, #12 HIGH postcss; #10 HIGH sharp; #3, #17 MEDIUM postcss) — the counts
 differ because `npm audit` groups per package while Dependabot lists per advisory. The
-full local gate passes: lint, 738 unit tests, build, 157 E2E.
+full local gate passes: lint, unit tests, build, E2E.
 
 **Keep the lockfile in place** when testing this. The change should be a clean ~590-line
 deletion of the nested entries. Deleting `package-lock.json` and re-resolving instead
