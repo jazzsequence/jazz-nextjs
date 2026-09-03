@@ -74,7 +74,19 @@ export async function POST(request: NextRequest) {
     const headerSecret = request.headers.get('x-revalidate-secret')
     const resolvedSecret = headerSecret ?? bodySecret
 
-    if (resolvedSecret !== process.env.REVALIDATE_SECRET) {
+    // Check the server secret is configured *before* comparing. Without this, an
+    // unset REVALIDATE_SECRET makes both sides undefined, the comparison matches,
+    // and the endpoint authenticates unauthenticated cache purges. Empty string is
+    // treated as unset too — that is how a missing Pantheon env var renders.
+    const expectedSecret = process.env.REVALIDATE_SECRET
+    if (!expectedSecret) {
+      // Logged because the 401 alone is indistinguishable from a secret mismatch —
+      // this is the only signal that the environment itself is misconfigured.
+      console.error('REVALIDATE_SECRET is not configured — rejecting all revalidation requests')
+      return NextResponse.json({ error: 'Invalid secret' }, { status: 401 })
+    }
+
+    if (resolvedSecret !== expectedSecret) {
       return NextResponse.json(
         { error: 'Invalid secret' },
         { status: 401 }

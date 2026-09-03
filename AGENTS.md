@@ -75,7 +75,10 @@ you wrote the approval flag.`
 - Blocks commit if no approval or approval expired
 - **Re-runs the full suite** — unit tests, lint, build and E2E. It does not trust that
   the reviewer ran them, and it is the layer that actually gates the commit
-- Enforces the commit-size caps from `.reviewer-config.sh` — changed files, renames
+- Enforces the commit-size caps from `.reviewer-config.sh` — **except on merge commits**,
+  which are exempt because a merge stages every file the incoming branch touched and
+  cannot be split. Audit a merge with `git diff --cached $(cat .git/MERGE_HEAD)`, which
+  shows only what the merge genuinely adds — changed files, renames
   (budgeted separately) and inserted lines, with lock files excluded from the counts.
   Read the values there rather than restating them
 - Checks for secrets
@@ -305,9 +308,11 @@ npm run test:e2e      # E2E tests must pass
 
 **Never commit code without:**
 - ✅ Tests written first
-- ✅ All tests passing (743 unit tests across 62 files)
+- ✅ All tests passing (`npm test -- --run`)
 - ✅ ESLint clean
-- ✅ E2E tests passing (157 E2E tests across 17 files)
+- ✅ E2E tests passing (`npm run test:e2e`)
+
+Counts are deliberately not recorded here — they go stale on every test-adding commit.
 
 See: `/docs/TESTING.md` for full TDD methodology
 

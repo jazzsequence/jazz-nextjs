@@ -153,6 +153,17 @@ lock files are always large on dependency changes and carry no reviewable intent
 
 If exceeded, the commit is blocked. Split into smaller atomic commits.
 
+**Merge commits are exempt.** A merge stages every file the incoming branch touched, so
+any non-trivial merge would exceed the caps — and there is no correct move available:
+the work cannot be split, and agents must not use `USER_COMMIT=1`. The caps exist to
+keep *authored* commits atomic; a merge is integration, and its content was reviewed on
+the branch it came from. The exemption is keyed on `.git/MERGE_HEAD`, so it applies only
+while a merge is in progress.
+
+The tradeoff is that a merge commit is the one place authored work could hide from the
+caps. Audit with `git diff --cached $(cat .git/MERGE_HEAD)`, which shows only what the
+merge genuinely adds.
+
 The reviewer agent also checks this and will **REJECT** any staged set exceeding these limits.
 
 `USER_COMMIT=1` is available for the **human's own commits** only — AI agents must never use it.

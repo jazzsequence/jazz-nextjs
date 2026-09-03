@@ -129,6 +129,14 @@ that touches code in the diff, always blocks.
     - Read the values from that file rather than assuming them; it is the source of
       truth and the hook enforces exactly what it says
     - HARD BLOCK if exceeded — do not approve, require split
+    - **Merge commits are exempt.** A merge stages every file the incoming branch
+      touched, so the caps have no legitimate outcome there — the work cannot be split,
+      and the merged content was already reviewed on its source branch. Do not approve
+      a merge on the raw staged count. Instead run
+      `git diff --cached $(cat .git/MERGE_HEAD)` to see what the merge genuinely adds,
+      and review that — the conflict resolutions — against the caps' intent. If that
+      set contains authored work unrelated to the merge, block it: a merge commit is
+      the one place the size caps cannot catch smuggled changes
 17. Co-author line present: `Co-Authored-By: Claude <noreply@anthropic.com>`
 18. Commit message is clear and descriptive
 19. No amended commits (new commits only)
