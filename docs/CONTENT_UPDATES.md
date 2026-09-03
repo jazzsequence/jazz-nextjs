@@ -136,7 +136,18 @@ Tags used across the codebase for grouped invalidation:
 
 ### Endpoint returns 401
 
-Secret mismatch — confirm `NEXTJS_REVALIDATE_SECRET` in wp-config.php equals `REVALIDATE_SECRET` in Pantheon secrets exactly (no trailing spaces).
+Two different causes — check which one you have before hunting for a mismatch:
+
+**Some requests 401, others succeed** — secret mismatch. Confirm
+`NEXTJS_REVALIDATE_SECRET` in wp-config.php equals `REVALIDATE_SECRET` in Pantheon
+secrets exactly (no trailing spaces).
+
+**Every request 401s, including known-good ones** — the Next.js side has no
+`REVALIDATE_SECRET` set, or it is set to an empty string. The route rejects everything
+when its own secret is unset, by design: it previously compared two undefined values,
+matched, and **accepted unauthenticated purge requests**. Look for
+`REVALIDATE_SECRET is not configured` in the Pantheon logs to confirm, then set the
+secret on the environment.
 
 ### Endpoint returns 500
 

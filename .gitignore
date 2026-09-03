@@ -61,6 +61,11 @@ next-env.d.ts
 secrets.json
 # next-agents-md
 .next-docs/
+# Reviewer install state — records the hash of the INSTALLED hook copy, which is
+# per-machine. The tracked sources in .githooks/ are the shared artifact.
+.reviewer-manifest
+.git/hooks/pre-commit.bak
+
 reviewer-approved
 .swarm/
 
