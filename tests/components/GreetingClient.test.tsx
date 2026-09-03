@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { GreetingClient } from '@/components/GreetingClient';
 
 // Mock the audience matcher
@@ -34,6 +36,12 @@ const mockVariants = [
     heading: "Good evening, I'm Chris",
     content: '<p>Evening content.</p>',
   },
+  {
+    audienceId: 16377,
+    isFallback: false,
+    heading: "Ni hao, I'm Chris",
+    content: '<p>China content.</p>',
+  },
 ];
 
 const mockAudiences = [
@@ -51,6 +59,10 @@ const mockAudiences = [
   {
     id: 16722,
     rules: [{ field: 'metrics.hour', operator: 'gte', value: '17', type: 'string' }],
+  },
+  {
+    id: 16377,
+    rules: [{ field: 'endpoints.country', operator: 'equals', value: 'CN', type: 'string' }],
   },
 ] as const;
 
@@ -108,28 +120,40 @@ describe('GreetingClient', () => {
     it('should read ?greeting= from window.location.search when no greetingParam prop', () => {
       // Server no longer reads searchParams for greeting (would force dynamic rendering).
       // GreetingClient reads it client-side from the URL instead.
+      // A spread of window.location copies only own enumerable properties, so href and
+      // origin — which live on the prototype — are lost. That silently breaks relative-URL
+      // resolution for every later test in this file, including GreetingClient's own
+      // fetch('/api/country'). Use a real URL, which carries href/origin/search, and
+      // restore the original descriptor afterwards.
+      const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')
       Object.defineProperty(window, 'location', {
-        value: { ...window.location, search: '?greeting=morning' },
+        value: new URL('http://localhost:3000/?greeting=morning'),
         writable: true,
         configurable: true,
       })
 
-      const { container } = render(
-        <GreetingClient
-          variants={mockVariants}
-          audiences={mockAudiences}
-          serverCountry={undefined}
-        />
-      )
+      // finally, not a trailing statement: if the assertion throws, an unrestored
+      // window.location would poison every later test in this file — re-arming the
+      // exact bug this restore exists to prevent, at the moment something is already
+      // failing and the noise is hardest to attribute.
+      try {
+        const { container } = render(
+          <GreetingClient
+            variants={mockVariants}
+            audiences={mockAudiences}
+            serverCountry={undefined}
+          />
+        )
 
-      expect(container.querySelector('h1')?.textContent).toContain('Good morning')
-
-      // Reset
-      Object.defineProperty(window, 'location', {
-        value: { ...window.location, search: '' },
-        writable: true,
-        configurable: true,
-      })
+        expect(container.querySelector('h1')?.textContent).toContain('Good morning')
+      } finally {
+        // Restore the real Location object, not a copy of it.
+        if (originalLocation) {
+          Object.defineProperty(window, 'location', originalLocation)
+        } else {
+          delete (window as unknown as Record<string, unknown>).location
+        }
+      }
     })
 
     it('should force morning greeting with ?greeting=morning', () => {
@@ -234,6 +258,118 @@ describe('GreetingClient', () => {
       expect(container.querySelector('[data-testid="greeting-card"]')).toBeTruthy()
     })
   })
+
+  // Pass 2 of GreetingClient fetches /api/country and re-matches. Until the MSW handler
+  // for that route existed, this fetch always failed, so none of these paths were covered:
+  // every test only ever exercised pass 1. The default handler returns { country: null },
+  // so tests that need a country override it with server.use().
+  describe('geo-targeting (pass 2 country fetch)', () => {
+    // Distinguish the two passes by what the matcher is given: pass 1 has no country,
+    // pass 2 has the fetched one. Anything else would not prove a re-match occurred.
+    const matchByCountry = () =>
+      vi.mocked(matchAudiences).mockImplementation((_audiences, endpoints) =>
+        (endpoints as { country?: string }).country === 'CN' ? [16377] : [16722]
+      );
+
+    it('re-matches the variant after /api/country returns a country', async () => {
+      matchByCountry();
+      server.use(http.get('*/api/country', () => HttpResponse.json({ country: 'CN' })));
+
+      const { container } = render(
+        <GreetingClient variants={mockVariants} audiences={mockAudiences} serverCountry={undefined} />
+      );
+
+      // Pass 1: no country yet, so the time-based variant renders first.
+      expect(container.querySelector('h1')?.textContent).toContain('Good evening');
+
+      // Pass 2: the fetched country produces a different match.
+      await waitFor(() => {
+        expect(container.querySelector('h1')?.textContent).toContain('Ni hao');
+      });
+
+      expect(matchAudiences).toHaveBeenCalledWith(
+        mockAudiences,
+        expect.objectContaining({ country: 'CN' })
+      );
+    });
+
+    it('keeps the pass-1 variant when the country comes back null', async () => {
+      matchByCountry();
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      server.use(http.get('*/api/country', () => HttpResponse.json({ country: null })));
+
+      const { container } = render(
+        <GreetingClient variants={mockVariants} audiences={mockAudiences} serverCountry={undefined} />
+      );
+
+      // Wait for the fetch to actually resolve, so "unchanged" means the guard held
+      // rather than that we asserted before pass 2 ran.
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith('/api/country'));
+      await waitFor(() => {
+        expect(container.querySelector('h1')?.textContent).toContain('Good evening');
+      });
+
+      // Assert the re-match never ran at all. Checking only the rendered heading would
+      // pass even if the guard were removed, because re-matching on a null country
+      // returns the same variant — the test would agree for the wrong reason.
+      expect(matchAudiences).toHaveBeenCalledTimes(1);
+      fetchSpy.mockRestore();
+    });
+
+    it('keeps the pass-1 variant when the country fetch fails', async () => {
+      matchByCountry();
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      server.use(http.get('*/api/country', () => HttpResponse.error()));
+
+      const { container } = render(
+        <GreetingClient variants={mockVariants} audiences={mockAudiences} serverCountry={undefined} />
+      );
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith('/api/country'));
+      await waitFor(() => {
+        expect(container.querySelector('h1')?.textContent).toContain('Good evening');
+      });
+      fetchSpy.mockRestore();
+    });
+
+    it('does not fetch the country when ?greeting= is set', async () => {
+      matchByCountry();
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      const { container } = render(
+        <GreetingClient
+          variants={mockVariants}
+          audiences={mockAudiences}
+          greetingParam="morning"
+          serverCountry={undefined}
+        />
+      );
+
+      expect(container.querySelector('h1')?.textContent).toContain('Good morning');
+      // An explicit greeting is a deliberate override; re-matching on country would undo it.
+      expect(fetchSpy).not.toHaveBeenCalledWith('/api/country');
+      fetchSpy.mockRestore();
+    });
+
+    it('does not fetch the country when serverCountry is already known', async () => {
+      matchByCountry();
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+      render(
+        <GreetingClient variants={mockVariants} audiences={mockAudiences} serverCountry="CN" />
+      );
+
+      await waitFor(() =>
+        expect(matchAudiences).toHaveBeenCalledWith(
+          mockAudiences,
+          expect.objectContaining({ country: 'CN' })
+        )
+      );
+      // The server already supplied it, so the extra round trip would be wasted.
+      expect(fetchSpy).not.toHaveBeenCalledWith('/api/country');
+      fetchSpy.mockRestore();
+    });
+  });
 
   describe('empty data handling', () => {
     it('should show default fallback when no variants', () => {
