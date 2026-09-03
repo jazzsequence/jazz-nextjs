@@ -51,7 +51,7 @@
     "sanitize-html": "^2.17.7",
     "sharp": "^0.35.4",
     "typescript": "^6.0.3",
-    "zod": "4.4"
+    "zod": "4.5"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",
