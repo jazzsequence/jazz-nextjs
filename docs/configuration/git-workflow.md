@@ -138,7 +138,7 @@ Both `git add` and `git commit` are auto-approved for smooth TDD workflow in thi
 
 **Location**: `<project-root>/reviewer-approved` (repo root, not `.git/hooks/`)
 **Content**: `<unix-timestamp> <index-fingerprint>` — a bare timestamp is rejected
-**Lifetime**: 5 minutes
+**Lifetime**: `REVIEWER_APPROVAL_TIMEOUT` in `.reviewer-config.sh`, and only for the staged content it was written against
 
 **Written by the reviewer agent on APPROVE — never by the main agent.** The main agent
 holds the same `Write(*)` permission, so this is a discipline boundary rather than a

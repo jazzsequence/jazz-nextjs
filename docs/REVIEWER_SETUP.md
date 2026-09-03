@@ -177,7 +177,7 @@ Create `AGENTS.md` or add to `CLAUDE.md`:
 1. Spawn reviewer agent using Claude Code's Agent tool
 2. Get APPROVE decision from agent
 3. Reviewer agent writes the approval flag
-4. Commit within 5 minutes
+4. Commit within `REVIEWER_APPROVAL_TIMEOUT`, without restaging
 
 ### Reviewer Agent Prompt Template
 
@@ -308,7 +308,7 @@ See @docs/REVIEWER_WORKFLOW.md for the authoritative description of what each la
 **Symptom:** Pre-commit hook says "approval expired (350s old)"
 
 **Solution:**
-- Approval is >5 minutes old
+- Approval is older than `REVIEWER_APPROVAL_TIMEOUT` (see `.reviewer-config.sh`)
 - Spawn reviewer again and commit immediately
 
 ### Issue: "Hook doesn't run"

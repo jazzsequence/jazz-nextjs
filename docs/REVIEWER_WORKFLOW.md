@@ -211,9 +211,9 @@ graph TD
     G --> H[Main agent calls Bash: git commit]
     H --> I{PreToolUse Hook}
     I -->|No approval| J[BLOCKED - Exit 1]
-    I -->|Expired >5min| J
+    I -->|Expired| J
     I -->|USER_COMMIT=1| K[Bypass to git]
-    I -->|Valid <5min| K
+    I -->|Valid| K
     K --> L{Git Pre-commit Hook}
     L -->|No approval| M[BLOCKED - Exit 1]
     L -->|Expired / wrong tree| M
@@ -252,7 +252,7 @@ git commit -m "test"
 #   1. Spawn reviewer agent with Agent tool
 #   2. Get APPROVE decision from agent
 #   3. Reviewer agent writes the approval flag
-#   4. Then commit within 5 minutes
+#   4. Then commit within REVIEWER_APPROVAL_TIMEOUT, without restaging
 #
 # For manual commits: USER_COMMIT=1 git commit -m "message"
 ```
@@ -309,10 +309,8 @@ printf '%s %s' "$(($(date +%s) - 360))" "$FP" > reviewer-approved
 git commit -m "test"
 
 # Expected output:
-# [BLOCKED] Reviewer approval expired (360s old)
-#
-# Approval is older than 5 minutes.
-# Spawn reviewer agent again and get fresh approval.
+# ❌ BLOCKED: Reviewer approval expired (360s old)
+#    Spawn the reviewer agent again and get fresh approval
 ```
 
 ---
@@ -457,7 +455,7 @@ valid-looking timestamp. One regex, two consumption paths.
 ### "Reviewer agent approved (Xs ago, tree ...)" but commit blocked later
 
 - Approval was valid when PreToolUse ran
-- By the time pre-commit hook ran, >5 minutes had passed
+- By the time the pre-commit hook ran, the approval had passed `REVIEWER_APPROVAL_TIMEOUT`
 - Solution: Commit faster after approval, or get new approval
 
 ### USER_COMMIT=1 doesn't work
@@ -509,25 +507,14 @@ valid-looking timestamp. One regex, two consumption paths.
 
 ## Future Improvements
 
-> The corruption check and the two-sided timestamp bound that used to head this list are
-> both **implemented**, in `.githooks/lib/approval.sh`, which both layers run. See
-> `reviewer_validate_approval` there for the `^[0-9]{1,11}$` guard, the two-sided bound,
-> and the trim semantics.
+> The corruption check, the two-sided timestamp bound and the configurable timeout that
+> used to head this list are all **implemented**, in `.githooks/lib/approval.sh`, which
+> both layers run. See `reviewer_validate_approval` there for the `^[0-9]{1,11}$` guard,
+> the two-sided bound and the trim semantics. The timeout comes from
+> `REVIEWER_APPROVAL_TIMEOUT`: the hook passes it into the validator, and the PreToolUse
+> handler parses the same value out of `.reviewer-config.sh`, so both layers honour it.
 
-### 1. Configurable Timeout
-
-```javascript
-var maxAge = process.env.REVIEWER_APPROVAL_TIMEOUT || 300; // Default 5 minutes
-// Keep the bound two-sided. A future-dated flag yields a negative diff, which is
-// < maxAge for every maxAge, so writing this as `timeDiff >= maxAge` alone would
-// reintroduce the hole the two-sided guard closes.
-if (timeDiff < 0 || timeDiff >= maxAge) {
-  console.error('[BLOCKED] Reviewer approval expired');
-  process.exit(2);
-}
-```
-
-### 2. Automatic Reviewer Spawning
+### 1. Automatic Reviewer Spawning
 
 ```javascript
 // When git commit detected without approval, auto-spawn reviewer
