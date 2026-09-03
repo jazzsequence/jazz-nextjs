@@ -1,0 +1,239 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: embeds.spec.ts >> Embed — WordPress native post embed (is-type-wp-embed) >> disclosing-ai-use renders wp-embed as an ArticleCard
+- Location: tests/e2e/embeds.spec.ts:202:3
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "jazzsequence" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - navigation "Main navigation" [ref=e6]:
+        - search [ref=e7]:
+          - button "Search" [ref=e8]:
+            - generic [ref=e9]: 
+        - list [ref=e11]:
+          - listitem [ref=e12]:
+            - link "Home" [ref=e13] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e14]:
+            - link "Music" [ref=e15] [cursor=pointer]:
+              - /url: /music
+          - listitem [ref=e18]:
+            - link "Code" [ref=e19] [cursor=pointer]:
+              - /url: https://github.com/jazzsequence
+          - listitem [ref=e22]:
+            - link "Games" [ref=e23] [cursor=pointer]:
+              - /url: /games
+          - listitem [ref=e26]:
+            - link "Articles" [ref=e27] [cursor=pointer]:
+              - /url: /articles
+          - listitem [ref=e28]:
+            - link "Media" [ref=e29] [cursor=pointer]:
+              - /url: /media
+          - listitem [ref=e30]:
+            - link "About" [ref=e31] [cursor=pointer]:
+              - /url: /about
+          - listitem [ref=e32]:
+            - link "Now" [ref=e33] [cursor=pointer]:
+              - /url: /now
+  - main [ref=e34]:
+    - article [ref=e35]:
+      - generic [ref=e36]:
+        - heading "Disclosing AI use" [level=1] [ref=e37]
+        - time [ref=e38]: March 20, 2026
+      - img "Person working at a laptop in a neon-lit synthwave room, seen from behind, with purple headphones, a cluttered desk, and a glowing retro sunset cityscape outside the window — image created by DALL·E via ChatGPT" [ref=e40]
+      - generic [ref=e43]:
+        - paragraph [ref=e44]:
+          - text: This is based on a thread that I posted to Bluesky that I decided to keep here for posterity. If you want to discuss on Bluesky, follow me at
+          - link "@jazzsequence.com" [ref=e45] [cursor=pointer]:
+            - /url: https://bsky.app/profile/jazzsequence.com
+          - text: and let’s chat.
+        - paragraph [ref=e46]: Let’s talk about AI.
+        - paragraph [ref=e47]: I’ve been using it a lot recently.
+        - paragraph [ref=e48]: It’s not that I don’t see or care about the environmental impact, the human/social impact. I do. I strongly believe that we need regulatory bodies to apply rules and guidelines around how AI is used. But regulation moves slow and needs experts to advise on what those regulations and standards should be. And that can’t exist in a vacuum. It can only happen through deep usage and understanding of the merits and the flaws of the system.
+        - paragraph [ref=e49]:
+          - text: I also understand that a lot of people are fundamentally opposed to AI use
+          - emphasis [ref=e50]: full stop
+          - text: . I see you.
+        - paragraph [ref=e51]:
+          - text: I don’t assume that AI is something that everyone wants or needs. I use it in my work because in my role, I feel like I need to split my brain in many different pieces to do my job. That ties into US-based tech hustle culture which is not great, either. AI accelerates that. Rather than solving the underlying problem, we’re just creating tools to do
+          - strong [ref=e52]: EVEN MORE WORK
+          - text: with fewer people. AI didn’t create the problem. It’s also not a solution, it’s a band-aid.
+        - paragraph [ref=e53]: People don’t want AI shoved down their throats. They don’t want AI in their fridge (probably). They don’t want it turned on by default. They want to be able to opt out. They want an understanding of where their data is going. They want to know where the humans live in the equation.
+        - paragraph [ref=e54]:
+          - emphasis [ref=e55]: (This thread post isn’t written by AI, by the way.)
+        - paragraph [ref=e56]:
+          - text: I’ve been thinking about all these things a lot. The thing I wanted to share is something I did without any real fanfare on the
+          - strong [ref=e57]:
+            - link [ref=e58] [cursor=pointer]:
+              - /url: https://communitycode.dev
+              - emphasis [ref=e59]: Community
+              - text: + Code
+          - text: site. Previously, I had written an AI disclosure and sort of hid it on the Privacy Page. I didn’t
+          - emphasis [ref=e60]: intentionally
+          - text: hide it. But as I started creating skills and recipes for Claude to do more with the management of the show, I decided it was important to disclose how I am using AI for the pod and how I’m not. So, here’s my AI Disclosure on Community + Code. I don’t have all the answers. But I’m trying to find a middle ground where we can be informed and conscientious about how and where AI is used.
+        - status "Loading article embed" [ref=e61]
+        - paragraph [ref=e62]:
+          - text: "On"
+          - emphasis [ref=e63]: this
+          - text: "site, I use AI in the following ways:"
+        - list [ref=e64]:
+          - listitem [ref=e65]: I use it to assist in developing and maintaining the code that runs the site.
+          - listitem [ref=e66]: I use it to inform the blog posts I write, which largely come from personal use and experimentation.
+          - listitem [ref=e67]:
+            - text: With the exception of
+            - link "this post" [ref=e68] [cursor=pointer]:
+              - /url: /posts/teaching-an-ai-to-read-my-website-over-mcp
+            - text: (which was one such experiment) I do
+            - emphasis [ref=e69]: not
+            - text: use AI to write my content.
+          - listitem [ref=e70]:
+            - text: I
+            - emphasis [ref=e71]: might
+            - text: use it to review blog posts that
+            - emphasis [ref=e72]: I
+            - text: have written and give feedback and suggestions.
+          - listitem [ref=e73]: I use it to generate featured images, usually by feeding AI the blog post content and asking it to come up with an image for the post.
+          - listitem [ref=e74]: I also use it to come up with alt text for those images (usually by asking it to expose the prompt used to create the featured image).
+          - listitem [ref=e75]:
+            - text: I
+            - emphasis [ref=e76]: might
+            - text: use it to write the Bluesky post for the blog post.
+        - paragraph [ref=e77]:
+          - text: Obviously, I’ve been
+          - link "writing and thinking about AI" [ref=e78] [cursor=pointer]:
+            - /url: /series/artificial-intelligence/
+          - text: for a long time. If you’ve been here a while, that’s nothing new. I’m trying to be human in my use of AI. I understand there’s a hype cycle and I have personally seen people hand over large portions of their brain or given a (probably) undue amount of trust, faith and credence to AI and there are
+          - emphasis [ref=e79]: so many social issues
+          - text: tied to AI use that it is definitely something that we need to be concerned about.
+        - paragraph [ref=e80]:
+          - text: But like social media and the evolution of media
+          - emphasis [ref=e81]: in general
+          - text: right now, it’s one of the things that we need to understand, accept, and learn to challenge and take ownership of in order to move forward together and create something better for humanity. I don’t think AI is a net good for humanity, but I also don’t think it’s entirely bad. I think we just need to have transparency in how it’s being used, and so, I’m doing my part in trying to be transparent.
+        - paragraph
+      - generic [ref=e82]:
+        - generic [ref=e83]:
+          - generic [ref=e84]: series
+          - link "Artificial Intelligence" [ref=e85] [cursor=pointer]:
+            - /url: /series/artificial-intelligence
+        - generic [ref=e86]:
+          - generic [ref=e87]: Categories
+          - link "geek of technology" [ref=e88] [cursor=pointer]:
+            - /url: /category/geek-of-technology
+          - link "welcome to the working week" [ref=e89] [cursor=pointer]:
+            - /url: /category/welcome-to-the-working-week
+        - generic [ref=e90]:
+          - generic [ref=e91]: Tags
+          - link "ai" [ref=e92] [cursor=pointer]:
+            - /url: /tag/ai
+          - link "podcast" [ref=e93] [cursor=pointer]:
+            - /url: /tag/podcast
+          - link "work" [ref=e94] [cursor=pointer]:
+            - /url: /tag/work
+          - link "writing" [ref=e95] [cursor=pointer]:
+            - /url: /tag/writing
+    - region [ref=e96]:
+      - heading "No comments yet" [level=2] [ref=e98]
+      - generic [ref=e100]:
+        - heading "Leave a Reply" [level=3] [ref=e101]
+        - paragraph [ref=e102]:
+          - text: Fields marked *
+          - generic [ref=e103]: with an asterisk
+          - text: are required. Your email address will not be published.
+        - generic [ref=e104]:
+          - generic [ref=e105]: Name *
+          - textbox "Name" [ref=e106]
+        - generic [ref=e107]:
+          - generic [ref=e108]: Email *
+          - textbox "Email" [ref=e109]
+        - generic [ref=e110]:
+          - generic [ref=e111]: Comment *
+          - textbox "Comment" [ref=e112]
+        - button "Post Comment" [ref=e113]
+  - contentinfo [ref=e114]:
+    - generic [ref=e115]:
+      - generic [ref=e116]:
+        - generic [ref=e118]:
+          - paragraph [ref=e119]: jazzsequence
+          - paragraph [ref=e120]: "@jazzsequence@jazzsequence.com"
+          - paragraph [ref=e121]: I make websites and things.
+          - generic [ref=e122]:
+            - button "Follow on the Open Social Web" [ref=e123]:
+              - generic [ref=e124]: 
+              - text: Follow on the Open Social Web
+            - link "View profile" [ref=e125] [cursor=pointer]:
+              - /url: https://jazzsequence.com/@jazzsequence
+        - paragraph [ref=e126]:
+          - text: Want to know what makes this site go?
+          - link "Check out the GitHub repo" [ref=e127] [cursor=pointer]:
+            - /url: https://github.com/jazzsequence/jazz-nextjs
+          - text: "!"
+      - generic [ref=e128]:
+        - link "Personal site" [ref=e129] [cursor=pointer]:
+          - /url: https://chrisreynolds.io
+          - generic [ref=e130]: 
+        - link "Newsletter" [ref=e131] [cursor=pointer]:
+          - /url: https://us1.campaign-archive.com/home/?u=4085972eca88b58d063f1b9a5&id=85460dd934
+          - generic [ref=e132]: 
+        - link "Bluesky" [ref=e133] [cursor=pointer]:
+          - /url: https://bsky.app/profile/jazzsequence.com
+          - generic [ref=e134]: 
+        - link "GitHub" [ref=e135] [cursor=pointer]:
+          - /url: https://github.com/jazzsequence
+          - generic [ref=e136]: 
+        - link "Instagram" [ref=e137] [cursor=pointer]:
+          - /url: https://instagram.com/jazzs3quence
+          - generic [ref=e138]: 
+        - link "Spotify" [ref=e139] [cursor=pointer]:
+          - /url: https://open.spotify.com/user/jazzsequence
+          - generic [ref=e140]: 
+        - link "LinkedIn" [ref=e141] [cursor=pointer]:
+          - /url: https://linkedin.com/in/chrissreynolds
+          - generic [ref=e142]: 
+        - link "YouTube" [ref=e143] [cursor=pointer]:
+          - /url: https://www.youtube.com/c/chrisreynoldsjazzsequence
+          - generic [ref=e144]: 
+        - link "Bandcamp" [ref=e145] [cursor=pointer]:
+          - /url: https://music.jazzsequence.com/
+          - generic [ref=e146]: 
+        - link "SoundCloud" [ref=e147] [cursor=pointer]:
+          - /url: https://soundcloud.com/jazzs3quence
+          - generic [ref=e148]: 
+        - link "Twitch" [ref=e149] [cursor=pointer]:
+          - /url: https://twitch.tv/jazzsequence
+          - generic [ref=e150]: 
+        - link "Mastodon" [ref=e151] [cursor=pointer]:
+          - /url: https://mstdn.social/@jazzsequence
+          - generic [ref=e152]: 
+        - link "WordPress.org" [ref=e153] [cursor=pointer]:
+          - /url: https://profiles.wordpress.org/jazzs3quence
+          - generic [ref=e154]: 
+        - link "Etsy" [ref=e155] [cursor=pointer]:
+          - /url: https://possibleoctopus.com
+          - generic [ref=e156]: 
+      - generic [ref=e157]:
+        - generic [ref=e158]: jazzsequence
+        - generic [ref=e159]:
+          - generic [ref=e160]:
+            - text: "Last Built: 9/3/2026, 3:15:47 PM MT •"
+            - link "3794907" [ref=e161] [cursor=pointer]:
+              - /url: https://github.com/jazzsequence/jazz-nextjs/commit/379490773f7b19565b372398d5d1197c94477af4
+          - generic [ref=e162]: © 2026 Chris Reynolds
+  - alert [ref=e163]
+```
