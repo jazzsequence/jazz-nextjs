@@ -31,7 +31,10 @@ Only proceed if no queued messages.
 
 ## Section A — Always run
 
-These checks apply to every commit without exception.
+These checks apply to every commit, except that items 1-4 are skipped when **every**
+staged file is `.md` or `.txt` — matching the blocklist in `.githooks/pre-commit`
+(`package-lock.json` is excluded from the count first). Any other file type, including
+unknown extensions, runs the full suite.
 
 ### Tests & build
 
@@ -49,7 +52,12 @@ After `npm run test:e2e`, read the Playwright summary line directly:
 - `X passed` with no failures → pass
 - `X failed` or `X flaky` → do NOT reject reflexively. Triage first (see below).
 
-Do NOT trust the `✅ E2E tests passed` hook output — read actual Playwright output.
+Read the Playwright summary yourself rather than the hook's `✅ E2E tests passed` line.
+E2E runs when `REVIEWER_E2E_CMD` is set and the commit is not text-only. Whether it also
+runs under `USER_COMMIT=1` depends on `REVIEWER_E2E_ON_USER_COMMIT`; when it is skipped
+the hook says so explicitly (`⏭️ E2E skipped`), so trust the hook's output over any
+description here. Agent commits always run it — they cannot reach the bypass. The
+summary is still the thing that tells you *what* passed.
 
 **Flaky-test triage (mandatory before rejecting on E2E):**
 
@@ -90,8 +98,17 @@ that touches code in the diff, always blocks.
 
 ### Code quality
 
+<!-- Item 10 ("No file exceeds 500 lines") was removed: unenforced, already exceeded by
+     several docs, and a repeated source of false blocks. The remaining numbers are
+     deliberately NOT resequenced. This file cites its own items by number, and reviewer
+     reports cite them too ("BLOCKED on item 16"), so resequencing would silently
+     repoint those references and make past reports read against the wrong rules. A gap
+     costs nothing; a shifted number is a wrong answer that looks right.
+
+     Convention: item numbers are RETIRED, not reused. A new item takes the next unused
+     number; it does not refill this gap. -->
+
 9. DRY — no code duplication introduced
-10. No file exceeds 500 lines
 11. Existing files edited rather than new ones created where possible
 12. Files were read before being edited (no blind writes)
 
@@ -103,9 +120,23 @@ that touches code in the diff, always blocks.
 ### Git practices
 
 15. Commit subject line ≤ 72 characters (count before reporting — GitHub truncates beyond this)
-16. Commit size: ≤ 5 files staged (excluding lock files), ≤ 500 lines inserted
-    - Run: `git diff --cached --name-only | wc -l` and `git diff --cached --stat`
+16. Commit size is within the limits set in `.reviewer-config.sh`
+    - `REVIEWER_MAX_FILES` — changed files, excluding the lock files matched by
+      `REVIEWER_EXCLUDED_FILES`
+    - `REVIEWER_MAX_RENAMES` — renames are budgeted separately, being lower-risk
+      than edits
+    - `REVIEWER_MAX_INSERTIONS` — inserted lines
+    - Read the values from that file rather than assuming them; it is the source of
+      truth and the hook enforces exactly what it says
     - HARD BLOCK if exceeded — do not approve, require split
+    - **Merge commits are exempt.** A merge stages every file the incoming branch
+      touched, so the caps have no legitimate outcome there — the work cannot be split,
+      and the merged content was already reviewed on its source branch. Do not approve
+      a merge on the raw staged count. Instead run
+      `git diff --cached $(cat .git/MERGE_HEAD)` to see what the merge genuinely adds,
+      and review that — the conflict resolutions — against the caps' intent. If that
+      set contains authored work unrelated to the merge, block it: a merge commit is
+      the one place the size caps cannot catch smuggled changes
 17. Co-author line present: `Co-Authored-By: Claude <noreply@anthropic.com>`
 18. Commit message is clear and descriptive
 19. No amended commits (new commits only)
@@ -207,14 +238,17 @@ If the condition does not apply, output `⏭️ N: [condition not met]`.
 
 All items in Section A must pass. All applicable Section B items must pass.
 
-1. Run: `Bash({ command: "date +%s" })` — note the timestamp
-2. Write the approval flag:
+1. Run: `Bash({ command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"' })`
+2. Write the approval flag, as your **last** action:
    ```
    Write({
      file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-     content: "<timestamp>"
+     content: "<timestamp> <fingerprint>"
    })
    ```
+   The fingerprint binds the approval to the exact staged content. Write it last —
+   staging or unstaging anything afterwards invalidates it. A bare timestamp is
+   rejected as the pre-binding v1 format.
 3. Respond: `✅ APPROVED — approval flag written. Main agent may now stage and commit.`
 
 **Only the reviewer agent writes `reviewer-approved`. The main agent must not write it.**

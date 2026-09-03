@@ -40,7 +40,7 @@ Needed after: WordPress menu changes, any content edits not auto-revalidated via
 
 **All 5 commands MUST pass before committing** + Reviewer agent approval
 
-**Exception**: commits where every staged file is `.md` or `.txt` skip the test suite automatically (blocklist approach — all other file types run tests).
+**Exception**: commits whose staged files all match `REVIEWER_TEXT_ONLY_PATTERN` in `.reviewer-config.sh` skip the test suite automatically. It is a blocklist by extension, not a path allowlist, so a new file type runs the full suite by default rather than being silently exempt.
 
 **E2E test output**: Always redirect E2E output to a file for efficient debugging:
 ```bash
@@ -75,15 +75,23 @@ Prefer these over `gh` CLI for reading remote files and creating PRs/issues.
 
 ### Reviewer Approval Workflow
 
-**The reviewer agent writes the approval flag** on APPROVE using Write() (auto-approved):
+**The reviewer agent writes the approval flag** on APPROVE using Write() (auto-approved).
+The flag is `<unix-timestamp> <index-fingerprint>` — the fingerprint binds the approval
+to the exact staged content, so restaging after a review invalidates it:
 ```typescript
-// Reviewer agent writes this file on APPROVE:
-const timestamp = await Bash({ command: "date +%s" });
+// Reviewer agent writes this file on APPROVE, as its LAST action:
+const flag = await Bash({
+  command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"'
+});
 await Write({
   file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-  content: timestamp.trim()
+  content: flag.trim()
 });
 ```
+
+Write it **last**, after all verification. Staging or unstaging anything afterwards
+changes the index fingerprint and invalidates the flag you just wrote. A bare
+timestamp (the pre-binding v1 format) is rejected.
 
 **DO NOT use cat/echo for approval** - those require manual approval.
 
@@ -187,7 +195,9 @@ See: `@docs/REVIEWER_WORKFLOW.md`
 - **CDN cache invalidation**: `@pantheon-systems/nextjs-cache-handler` v0.11.0 manages edge cache clearing internally. The `GcsCacheHandler` (configured in `cacheHandler.mjs`) maintains a tag-to-key mapping in GCS and calls the Pantheon outbound proxy directly on `revalidateTag()` / `revalidatePath()`. The previous `proxy.ts` Surrogate-Key middleware and `scripts/patch-cache-handler.mjs` postinstall patch have been removed as part of the v0.6.0 migration.
   - **As of v0.9.0**, `revalidateTag()` no longer *deletes* the cache entries it revalidates — it marks them stale via the shared `tagsManifest` (matching Next's own `FileSystemCache.revalidateTag`), so the last-good value stays servable while Next revalidates in the background. This is why high-cardinality tags are now fast: revalidating `posts` (homepage + every archive + every post) previously triggered a synchronous delete-sweep that held the webhook connection open past the client timeout and failed three `/api/revalidate` E2E tests. Confirmed fixed on the PR-78 Pantheon environment.
 - **Next.js is pinned to exactly `16.2.12`** (no caret). The **16.3.x line** fails Pantheon's buildpack at "Finalizing page optimization" with `ENOENT: .next/next-server.js.nft.json`, which `output: 'standalone'` requires. It does **not** reproduce locally — only in Pantheon's Linux buildpack under Turbopack. Re-validate on a PR environment before moving to 16.3.x; do not assume it is still broken.
-  - Re-validated 2026-08-31 on 16.3.3 (pr-88 build `1fe23cd4`): still fails, byte-identical `ENOENT`.
+  - Re-validated 2026-08-31 on 16.3.3 (pr-88 build `1fe23cd4`) and 2026-09-01 on 16.3.4
+    (pr-94 build `1fe6a733`): both still fail, byte-identical `ENOENT`. Three releases, one
+    error — treat 16.3.x as broken, not flaky.
   - Moved 16.2.7 → 16.2.12 the same day: a patch bump within the working minor line that clears all nine open advisories (all patched in 16.2.11). See the "Next.js version pin" section in `@docs/configuration/DEPLOYMENT.md`.
 
 ### Design Patterns

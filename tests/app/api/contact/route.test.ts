@@ -80,17 +80,27 @@ describe('POST /api/contact', () => {
       http.post(WP_CONTACT_URL, () => HttpResponse.json({ message: 'Server error' }, { status: 500 }))
     )
 
+    // Error-status logging is intentional; silence it and assert instead.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
     const res = await POST(makeRequest({ name: 'Chris', email: 'chris@example.com', message: 'Hello' }))
     expect(res.status).toBe(502)
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 
   it('returns 502 when WordPress is unreachable', async () => {
     server.use(
       http.post(WP_CONTACT_URL, () => HttpResponse.error())
     )
+    // The route logs this failure by design. Capture the call rather than letting
+    // MSW's network-error stack flood the suite output, and assert it happened.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const res = await POST(makeRequest({ name: 'Chris', email: 'chris@example.com', message: 'Hello' }))
     expect(res.status).toBe(502)
+    expect(errorSpy).toHaveBeenCalled()
+    errorSpy.mockRestore()
   })
 
   it('returns 500 when WordPress credentials are not configured', async () => {
@@ -98,11 +108,15 @@ describe('POST /api/contact', () => {
     const savedPassword = process.env.WORDPRESS_APP_PASSWORD
     delete process.env.WORDPRESS_USERNAME
     delete process.env.WORDPRESS_APP_PASSWORD
+    // Missing-credentials logging is intentional; silence it and assert instead.
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     try {
       const res = await POST(makeRequest({ name: 'Chris', email: 'chris@example.com', message: 'Hello' }))
       expect(res.status).toBe(500)
+      expect(errorSpy).toHaveBeenCalled()
     } finally {
+      errorSpy.mockRestore()
       process.env.WORDPRESS_USERNAME = savedUsername
       process.env.WORDPRESS_APP_PASSWORD = savedPassword
     }

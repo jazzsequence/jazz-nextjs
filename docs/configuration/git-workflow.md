@@ -4,9 +4,9 @@
 
 **MANDATORY**: All commits require reviewer agent approval. See `@docs/REVIEWER_WORKFLOW.md` for full details.
 
-**Three-layer enforcement**:
+**Three layers, one of them reliably enforced** (see `@docs/REVIEWER_WORKFLOW.md`):
 1. **PreToolUse Hook** - Blocks git commit before it executes
-2. **Pre-commit Hook** - Secondary validation after commit starts
+2. **Pre-commit Hook** - **the layer that actually gates**; runs the full suite
 3. **Behavioral** - AI spawns reviewer proactively
 
 ## Git Command Workflow
@@ -114,8 +114,8 @@ git commit -m "feat(api): add WordPress MCP integration" \
 {
   "permissions": {
     "allow": [
-      "Bash(git commit *)",
-      "Bash(git add *)"
+      "Bash(git commit*)",
+      "Bash(git add*)"
     ]
   }
 }
@@ -130,24 +130,35 @@ Both `git add` and `git commit` are auto-approved for smooth TDD workflow in thi
 1. **Make changes** - Edit files, write code
 2. **Run tests locally** - Verify all pass
 3. **Spawn reviewer agent** - Get approval BEFORE staging
-4. **Create approval flag** - Main agent writes timestamp
+4. **Reviewer writes the approval flag** - never the main agent
 5. **Stage files** - `git add specific-file.ts`
 6. **Commit** - Pre-commit hook validates approval
 
 ### Approval Flag
 
 **Location**: `<project-root>/reviewer-approved` (repo root, not `.git/hooks/`)
-**Content**: Unix timestamp
-**Lifetime**: 5 minutes
+**Content**: `<unix-timestamp> <index-fingerprint>` — a bare timestamp is rejected
+**Lifetime**: `REVIEWER_APPROVAL_TIMEOUT` in `.reviewer-config.sh`, and only for the staged content it was written against
 
-**Created by main agent after reviewer approves**:
+**Written by the reviewer agent on APPROVE — never by the main agent.** The main agent
+holds the same `Write(*)` permission, so this is a discipline boundary rather than a
+technical one: if the agent under review can approve itself, the review means nothing.
+
 ```typescript
-const timestamp = await Bash({ command: "date +%s" });
+// Inside the reviewer agent, on APPROVE — as its LAST action:
+const flag = await Bash({
+  command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"'
+});
 await Write({
   file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-  content: timestamp.trim()
+  content: flag.trim()
 });
 ```
+
+The flag is `<unix-timestamp> <index-fingerprint>`. The fingerprint binds the approval
+to the exact staged content, so it must be written **last** — staging or unstaging
+anything afterwards invalidates it. That is the point: it stops an approval issued for
+one diff from authorising a different one.
 
 ## Pre-Commit Hook Notes
 

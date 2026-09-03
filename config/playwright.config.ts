@@ -11,8 +11,14 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  /* Use multiple workers for parallel test execution */
-  workers: 4,  // 4 workers in both CI and local; tests are isolated by page routes
+  /* Use multiple workers for parallel test execution.
+   * CI targets a deployed Pantheon environment (BASE_URL set → no local webServer), which
+   * handles 4 concurrent workers fine. Locally the webServer below is a single `next dev`
+   * process, and 4 workers saturate it — `page.goto` then times out in whichever spec
+   * happens to be unlucky. 2 workers locally costs little to nothing — the dev server,
+   * not worker count, is the bottleneck (measured: 94s at 4 workers with 4 failures,
+   * 98s at 2 workers with none). */
+  workers: process.env.CI ? 4 : 2,
   /* Global timeout to prevent infinite hangs */
   timeout: 30_000,  // 30 seconds per test
   /* Timeout for expect() assertions */
