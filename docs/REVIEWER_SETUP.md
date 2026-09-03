@@ -62,6 +62,19 @@ That copies it to `.git/hooks/pre-commit` and marks it executable. The copy is a
 snapshot — if you edit `.githooks/pre-commit`, re-run `install.sh` or the installed hook
 silently diverges.
 
+Re-running is safe. `install.sh` records what it installed in `.reviewer-manifest`, so it
+can tell an installed copy that is unchanged since install from one edited by hand. The
+first kind is updated; the second is preserved with a diff and needs `--force`, which
+backs it up to `.git/hooks/pre-commit.bak` first. A first run on a project that predates
+the manifest needs no flags — the existing hook is backed up and replaced.
+
+`./.githooks/install.sh --check` reports the status without changing anything.
+
+Behaviour comes from `.reviewer-config.sh` at the project root: which test, lint, build
+and E2E commands run, the commit-size limits, the approval timeout, and which files are
+treated as text-only or excluded from size counts. The hook ships defaults for all of
+them, so a project without that file still works — but its defaults skip E2E.
+
 Read `.githooks/pre-commit` for what it enforces; do not rely on a copy in this document.
 Earlier revisions inlined a template here that drifted badly out of date (wrong approval
 path, missing the commit-size gate, missing the test suite entirely). Its five checks are

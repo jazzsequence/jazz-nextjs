@@ -140,9 +140,16 @@ Before ANY commit is allowed, all of these checks must pass:
 
 ### 0. Commit Size (AI commits only — hard block)
 
-The pre-commit hook enforces atomic commit size for AI-generated commits:
-- **Max 5 files** staged per commit (`package-lock.json` excluded — always large on dependency changes)
-- **Max 500 lines** inserted per commit (`package-lock.json` excluded)
+The pre-commit hook enforces atomic commit size for AI-generated commits. The limits
+live in `.reviewer-config.sh` — read them there rather than from this page:
+
+- `REVIEWER_MAX_FILES` — files staged per commit
+- `REVIEWER_MAX_RENAMES` — renames, budgeted separately because they are lower-risk
+  than edits
+- `REVIEWER_MAX_INSERTIONS` — lines inserted
+
+Files matching `REVIEWER_EXCLUDED_FILES` are left out of every one of those counts —
+lock files are always large on dependency changes and carry no reviewable intent.
 
 If exceeded, the commit is blocked. Split into smaller atomic commits.
 
@@ -209,11 +216,13 @@ graph TD
     I -->|Valid <5min| K
     K --> L{Git Pre-commit Hook}
     L -->|No approval| M[BLOCKED - Exit 1]
-    L -->|Expired| M
-    L -->|USER_COMMIT=1| N[Skip validation]
-    L -->|Valid| O[Delete approval flag]
-    N --> P[Commit succeeds]
-    O --> P
+    L -->|Expired / wrong tree| M
+    L -->|USER_COMMIT=1| N[Skip approval + size checks]
+    L -->|Valid| O[Consume approval flag]
+    N --> Q[Tests, lint, build, E2E, secrets]
+    O --> Q
+    Q -->|Any fail| M
+    Q -->|All pass| P[Commit succeeds]
 
     style I fill:#fff3cd
     style L fill:#d1ecf1
