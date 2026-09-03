@@ -74,9 +74,11 @@ you wrote the approval flag.`
 - Blocks commit if no approval or approval expired
 - **Re-runs the full suite** — unit tests, lint, build and E2E. It does not trust that
   the reviewer ran them, and it is the layer that actually gates the commit
-- Enforces the commit-size cap (≤5 files excluding `package-lock.json`, ≤500 insertions)
+- Enforces the commit-size caps from `.reviewer-config.sh` — changed files, renames
+  (budgeted separately) and inserted lines, with lock files excluded from the counts.
+  Read the values there rather than restating them
 - Checks for secrets
-- Skips the suite only when every staged file is `.md` or `.txt`
+- Skips the suite only when every staged file matches `REVIEWER_TEXT_ONLY_PATTERN`
 
 **The reviewer agent will check:**
 See `docs/REVIEWER_CHECKLIST.md` for the full checklist the reviewer works through.

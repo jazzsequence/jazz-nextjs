@@ -40,7 +40,7 @@ Needed after: WordPress menu changes, any content edits not auto-revalidated via
 
 **All 5 commands MUST pass before committing** + Reviewer agent approval
 
-**Exception**: commits where every staged file is `.md` or `.txt` skip the test suite automatically (blocklist approach — all other file types run tests).
+**Exception**: commits whose staged files all match `REVIEWER_TEXT_ONLY_PATTERN` in `.reviewer-config.sh` skip the test suite automatically. It is a blocklist by extension, not a path allowlist, so a new file type runs the full suite by default rather than being silently exempt.
 
 **E2E test output**: Always redirect E2E output to a file for efficient debugging:
 ```bash
