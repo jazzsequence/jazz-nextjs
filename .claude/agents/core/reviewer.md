@@ -253,11 +253,12 @@ function processOrder(date: Date, config: Config) {
 ## Automated Checks
 
 ```bash
-# Run automated tools before manual review
+# The four gates this project actually has — see the Approval Workflow below.
+# Run each as a separate Bash call; never chain with && or ;
+npm test -- --run     # bare `npm test` is watch mode and never exits
 npm run lint
-npm run test
-npm run security-scan
-npm run complexity-check
+npm run build
+npm run test:e2e
 ```
 
 ## Best Practices
@@ -335,20 +336,34 @@ When reviewing code for commit approval:
      - Tell main agent to address those messages before proceeding with commit
    - Only proceed with validation if no queued messages
 
-2. **Run all validation checks** — run each command separately, never chain with `&&` or `;`:
-   - Unit tests: `npm test`
+2. **Read the project checklist and work it in full**:
+   ```
+   Read({ file_path: "docs/REVIEWER_CHECKLIST.md" })
+   ```
+   It is the authoritative list — 45 numbered items across two sections, including the
+   commit-size hard block, the documentation-staleness items, the dependency/registry
+   checks, and the E2E flake-triage protocol. Report every item explicitly. Do not
+   substitute the summary below for reading it.
+
+3. **Run all validation checks** — run each command separately, never chain with `&&` or `;`:
+   - Unit tests: `npm test -- --run`  (bare `npm test` is watch mode and never exits)
    - Lint: `npm run lint`
    - Build: `npm run build`
+   - **E2E: `npm run test:e2e`** — this is the check the pre-commit hook actually gates on,
+     and the one most likely to catch runtime and routing breakage. Never approve without it.
+
+   Skip all four only when every staged file is `.md` or `.txt`, matching the blocklist in
+   `.githooks/pre-commit`.
 
    **CRITICAL — no compound commands**: Each command must be a separate Bash call. Commands chained with `&&`, `;`, or `|` require manual human approval in this project and will block the workflow. Run them one at a time.
 
-3. **If all checks PASS**:
+4. **If all checks PASS**:
    - Write the approval flag using the Write tool:
      - Get timestamp: `Bash({ command: "date +%s" })`
      - Write: `Write({ file_path: "<project-root>/reviewer-approved", content: "<timestamp>" })`
    - Respond with: **"✅ APPROVED"** and confirm the flag was written
 
-4. **If any checks FAIL**:
+5. **If any checks FAIL**:
    - Respond with: **"❌ BLOCKED"**
    - List specific issues found
    - Provide actionable fixes
