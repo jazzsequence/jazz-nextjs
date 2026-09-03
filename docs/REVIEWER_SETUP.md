@@ -62,6 +62,21 @@ That copies it to `.git/hooks/pre-commit` and marks it executable. The copy is a
 snapshot — if you edit `.githooks/pre-commit`, re-run `install.sh` or the installed hook
 silently diverges.
 
+Re-running is safe. `install.sh` records what it installed in `.reviewer-manifest`, so it
+can tell an installed copy that is unchanged since install from one edited by hand. The
+first kind is updated; the second is preserved with a diff and needs `--force`, which
+backs it up to `.git/hooks/pre-commit.bak` first. A first run on a project that predates
+the manifest needs no flags — the existing hook is backed up and replaced.
+
+`./.githooks/install.sh --check` reports the status without changing anything.
+
+Behaviour comes from `.reviewer-config.sh` at the project root: which test, lint, build
+and E2E commands run, whether E2E also runs under `USER_COMMIT=1`, the commit-size limits
+(files, renames and insertions, plus which files are excluded from those counts), the
+approval timeout, and which files are treated as text-only. The hook ships defaults for
+all of them, so a project without that file still works — but its defaults skip E2E
+entirely, which is a weaker gate than this page describes.
+
 Read `.githooks/pre-commit` for what it enforces; do not rely on a copy in this document.
 Earlier revisions inlined a template here that drifted badly out of date (wrong approval
 path, missing the commit-size gate, missing the test suite entirely). Its five checks are
@@ -164,7 +179,7 @@ Create `AGENTS.md` or add to `CLAUDE.md`:
 1. Spawn reviewer agent using Claude Code's Agent tool
 2. Get APPROVE decision from agent
 3. Reviewer agent writes the approval flag
-4. Commit within 5 minutes
+4. Commit within `REVIEWER_APPROVAL_TIMEOUT`, without restaging
 
 ### Reviewer Agent Prompt Template
 
@@ -251,7 +266,7 @@ Expected flow:
 1. Claude makes change
 2. Claude spawns reviewer agent
 3. Reviewer returns "APPROVED - I will create the approval flag"
-4. The reviewer agent writes `reviewer-approved` (project root) with a timestamp
+4. The reviewer agent writes `reviewer-approved` (project root) with a timestamp and a fingerprint of the staged index, so the approval cannot authorise a different set of changes
 5. Claude runs `git add` and `git commit`
 6. Pre-commit hook validates flag and allows commit
 
@@ -295,7 +310,7 @@ See @docs/REVIEWER_WORKFLOW.md for the authoritative description of what each la
 **Symptom:** Pre-commit hook says "approval expired (350s old)"
 
 **Solution:**
-- Approval is >5 minutes old
+- Approval is older than `REVIEWER_APPROVAL_TIMEOUT` (see `.reviewer-config.sh`)
 - Spawn reviewer again and commit immediately
 
 ### Issue: "Hook doesn't run"
