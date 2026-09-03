@@ -53,9 +53,11 @@ After `npm run test:e2e`, read the Playwright summary line directly:
 - `X failed` or `X flaky` → do NOT reject reflexively. Triage first (see below).
 
 Read the Playwright summary yourself rather than the hook's `✅ E2E tests passed` line.
-E2E runs whenever `REVIEWER_E2E_CMD` is set and the commit is not text-only — including
-under `USER_COMMIT=1`, since the test step is not bypassed by it. The summary is still
-the thing that tells you *what* passed.
+E2E runs when `REVIEWER_E2E_CMD` is set and the commit is not text-only. Whether it also
+runs under `USER_COMMIT=1` depends on `REVIEWER_E2E_ON_USER_COMMIT`; when it is skipped
+the hook says so explicitly (`⏭️ E2E skipped`), so trust the hook's output over any
+description here. Agent commits always run it — they cannot reach the bypass. The
+summary is still the thing that tells you *what* passed.
 
 **Flaky-test triage (mandatory before rejecting on E2E):**
 

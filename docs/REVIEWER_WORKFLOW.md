@@ -217,9 +217,9 @@ graph TD
     K --> L{Git Pre-commit Hook}
     L -->|No approval| M[BLOCKED - Exit 1]
     L -->|Expired / wrong tree| M
-    L -->|USER_COMMIT=1| N[Skip approval + size checks]
+    L -->|USER_COMMIT=1| N[Skip approval + size checks<br/>E2E too if REVIEWER_E2E_ON_USER_COMMIT=0]
     L -->|Valid| O[Consume approval flag]
-    N --> Q[Tests, lint, build, E2E, secrets]
+    N --> Q[Tests, lint, build, secrets<br/>E2E per config]
     O --> Q
     Q -->|Any fail| M
     Q -->|All pass| P[Commit succeeds]

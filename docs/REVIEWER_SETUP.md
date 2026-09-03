@@ -71,9 +71,11 @@ the manifest needs no flags — the existing hook is backed up and replaced.
 `./.githooks/install.sh --check` reports the status without changing anything.
 
 Behaviour comes from `.reviewer-config.sh` at the project root: which test, lint, build
-and E2E commands run, the commit-size limits, the approval timeout, and which files are
-treated as text-only or excluded from size counts. The hook ships defaults for all of
-them, so a project without that file still works — but its defaults skip E2E.
+and E2E commands run, whether E2E also runs under `USER_COMMIT=1`, the commit-size limits
+(files, renames and insertions, plus which files are excluded from those counts), the
+approval timeout, and which files are treated as text-only. The hook ships defaults for
+all of them, so a project without that file still works — but its defaults skip E2E
+entirely, which is a weaker gate than this page describes.
 
 Read `.githooks/pre-commit` for what it enforces; do not rely on a copy in this document.
 Earlier revisions inlined a template here that drifted badly out of date (wrong approval

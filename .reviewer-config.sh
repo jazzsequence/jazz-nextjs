@@ -17,6 +17,12 @@ REVIEWER_BUILD_CMD="npm run build"
 # catches routing conflicts and runtime errors the unit suite cannot see.
 REVIEWER_E2E_CMD="npm run test:e2e"
 
+# Skip E2E for the human's own commits. CI runs the E2E suite against a real Pantheon
+# environment on every PR, so running it locally under USER_COMMIT=1 buys the same
+# signal twice and it is the slowest check in the gate. Agent commits still run it:
+# they cannot use USER_COMMIT=1, and they are what the gate exists to catch.
+REVIEWER_E2E_ON_USER_COMMIT=0
+
 # ── Commit size limits (AI commits only) ──────────────────────────────────────
 REVIEWER_MAX_FILES=5          # max changed files (add/modify/delete, excluding lock files)
 REVIEWER_MAX_RENAMES=20       # max renamed files (renames are lower-risk than edits)

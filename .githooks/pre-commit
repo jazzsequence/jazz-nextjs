@@ -18,6 +18,7 @@ REVIEWER_TEST_CMD="npm test -- --run"
 REVIEWER_LINT_CMD="npm run lint"
 REVIEWER_BUILD_CMD="npm run build"
 REVIEWER_E2E_CMD=""                        # empty = skip E2E
+REVIEWER_E2E_ON_USER_COMMIT=1              # run E2E under USER_COMMIT=1? 0 = skip
 REVIEWER_MAX_FILES=5                       # max changed files (add/modify/delete; AI commits)
 REVIEWER_MAX_RENAMES=20                    # max renamed files (AI commits)
 REVIEWER_MAX_INSERTIONS=500                # max inserted lines (AI commits)
@@ -166,14 +167,25 @@ else
     echo -e "${GREEN}✅ Build successful${NC}"
   fi
 
-  # E2E tests (opt-in)
+  # E2E tests (opt-in). REVIEWER_E2E_ON_USER_COMMIT=0 skips them for the human's own
+  # commits, which is the right trade when CI already runs E2E against a real
+  # environment on every PR — paying for it locally buys the same signal twice, and
+  # it is the slowest check in the gate. It does NOT apply to agent commits: those
+  # are the ones the gate exists to catch, and an agent must not reach the bypass.
   if [ -n "$REVIEWER_E2E_CMD" ]; then
-    echo "   Running E2E tests..."
-    if ! eval "$REVIEWER_E2E_CMD"; then
-      echo -e "${RED}❌ BLOCKED: E2E tests failed${NC}"
-      exit 1
+    # `= "0"`, not `!= "1"`: only an explicit 0 skips. Written the other way, an unset
+    # or misspelled value ("", "no", "O") would silently skip the slowest and most
+    # revealing check in the gate. A config typo must fail toward running the check.
+    if [ "$USER_COMMIT" = "1" ] && [ "$REVIEWER_E2E_ON_USER_COMMIT" = "0" ]; then
+      echo -e "${YELLOW}⏭️  E2E skipped (USER_COMMIT=1, REVIEWER_E2E_ON_USER_COMMIT=0)${NC}"
+    else
+      echo "   Running E2E tests..."
+      if ! eval "$REVIEWER_E2E_CMD"; then
+        echo -e "${RED}❌ BLOCKED: E2E tests failed${NC}"
+        exit 1
+      fi
+      echo -e "${GREEN}✅ E2E tests passed${NC}"
     fi
-    echo -e "${GREEN}✅ E2E tests passed${NC}"
   fi
 
   echo ""
