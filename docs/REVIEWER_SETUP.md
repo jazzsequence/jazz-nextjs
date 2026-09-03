@@ -15,13 +15,14 @@ This document provides complete step-by-step instructions to reproduce the revie
 
 ## Architecture Overview
 
-The reviewer workflow has **3 layers of programmatic enforcement**:
+The reviewer workflow nominally has three layers, but **only one is reliably enforced** —
+see "Layer 2" in `@docs/REVIEWER_WORKFLOW.md`, which owns the authoritative description:
 
 1. **PreToolUse Hook** (Layer 1) - Blocks git commit before it starts
-2. **Pre-commit Hook** (Layer 2) - Secondary validation after commit starts
+2. **Pre-commit Hook** (Layer 2) - **the layer that actually gates**; tracked in git and runs the full suite
 3. **Behavioral Instructions** (Layer 3) - AI spawns reviewer proactively
 
-See @docs/REVIEWER_WORKFLOW.md for complete technical details on the three-layer enforcement model.
+See @docs/REVIEWER_WORKFLOW.md for the authoritative description of what each layer enforces.
 
 ```
 User Request
@@ -34,7 +35,7 @@ Reviewer runs tests/lint/checks
     ↓
 Reviewer returns APPROVE/REJECT
     ↓
-Main Agent writes approval flag ← Uses Claude Code's Write tool
+Reviewer Agent writes approval flag ← Uses Write tool (never the main agent)
     ↓
 git commit triggers PreToolUse hook (Layer 1)
     ↓
@@ -49,121 +50,23 @@ Commit allowed/blocked
 
 ## Step-by-Step Setup
 
-### Step 1: Create Pre-Commit Hook
+### Step 1: Install the Pre-Commit Hook
 
-Create `.githooks/pre-commit`:
+The hook lives in the repo at **`.githooks/pre-commit`**. Install it with:
 
-```bash
-#!/bin/bash
-# Pre-commit enforcement: Basic checks before commit allowed
-
-set -e
-
-echo "🔍 Pre-Commit Validation"
-echo "=============================="
-echo ""
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-# Check 1: Reviewer agent validation (can be bypassed for user commits)
-echo "1️⃣  Checking reviewer agent approval..."
-
-# Allow user to bypass reviewer requirement with USER_COMMIT=1
-if [ "$USER_COMMIT" = "1" ]; then
-    echo -e "${YELLOW}⚠️  User commit bypass enabled${NC}"
-    echo "   Skipping reviewer agent check (user-initiated commit)"
-elif [ -f .git/hooks/reviewer-approved ]; then
-    APPROVAL_TIME=$(cat .git/hooks/reviewer-approved)
-    CURRENT_TIME=$(date +%s)
-    TIME_DIFF=$((CURRENT_TIME - APPROVAL_TIME))
-
-    # Approval valid for 5 minutes
-    if [ $TIME_DIFF -lt 300 ]; then
-        echo -e "${GREEN}✅ Reviewer agent approved (${TIME_DIFF}s ago)${NC}"
-        rm .git/hooks/reviewer-approved  # Clear approval after use
-    else
-        echo -e "${RED}❌ BLOCKED: Reviewer approval expired (${TIME_DIFF}s old)${NC}"
-        echo "   Spawn reviewer agent again and get fresh approval"
-        echo "   OR use: USER_COMMIT=1 git commit (for your own changes)"
-        exit 1
-    fi
-else
-    echo -e "${RED}❌ BLOCKED: No reviewer agent approval found${NC}"
-    echo "   For AI-generated changes: Spawn reviewer agent and get APPROVE"
-    echo "   For your own changes: Use USER_COMMIT=1 git commit -m \"message\""
-    exit 1
-fi
-echo ""
-
-# Check 2: No secrets
-echo "2️⃣  Checking for secrets..."
-for file in $(git diff --cached --name-only); do
-    if [[ "$file" == ".env" ]] || [[ "$file" == *".env."* ]] || [[ "$file" == *"credentials"* ]]; then
-        echo -e "${RED}❌ BLOCKED: Attempting to commit secrets: $file${NC}"
-        exit 1
-    fi
-done
-echo -e "${GREEN}✅ No secrets${NC}"
-echo ""
-
-# Check 3: Manual confirmation (skip for user commits)
-if [ "$USER_COMMIT" != "1" ]; then
-    echo "3️⃣  Reviewer oversight check..."
-    echo -e "${YELLOW}⚠️  MANDATORY: Did you spawn a reviewer agent and get approval?${NC}"
-    echo ""
-    echo "   If you haven't done this, press Ctrl+C to abort."
-    echo "   If you got agent approval, press Enter to continue."
-    echo ""
-
-    # Give user 5 seconds to abort if they forgot
-    read -t 5 -p "   Press Enter to confirm agent review completed..." || true
-    echo ""
-else
-    echo "3️⃣  Skipping reviewer oversight (user commit)"
-    echo ""
-fi
-
-echo "=============================="
-echo -e "${GREEN}✅ COMMIT ALLOWED${NC}"
-echo ""
-exit 0
-```
-
-Create `.githooks/install.sh`:
-
-```bash
-#!/bin/bash
-# Install enforcement hooks
-
-echo "Installing enforcement hooks..."
-
-cp .githooks/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-
-echo "✅ Pre-commit hook installed"
-echo ""
-echo "The hook will now:"
-echo "  1. Require reviewer agent approval for AI-generated changes"
-echo "  2. Block commits with secrets or credentials"
-echo "  3. Validate approval is fresh (<5 minutes old)"
-echo ""
-echo "For your own manual changes:"
-echo "  USER_COMMIT=1 git commit -m \"message\""
-```
-
-Make executable:
-```bash
-chmod +x .githooks/install.sh
-chmod +x .githooks/pre-commit
-```
-
-Install the hook:
 ```bash
 ./.githooks/install.sh
 ```
+
+That copies it to `.git/hooks/pre-commit` and marks it executable. The copy is a
+snapshot — if you edit `.githooks/pre-commit`, re-run `install.sh` or the installed hook
+silently diverges.
+
+Read `.githooks/pre-commit` for what it enforces; do not rely on a copy in this document.
+Earlier revisions inlined a template here that drifted badly out of date (wrong approval
+path, missing the commit-size gate, missing the test suite entirely). Its five checks are
+summarised in `@docs/REVIEWER_WORKFLOW.md`.
+
 
 ### Step 2: Configure Claude Code Permissions
 
@@ -200,8 +103,8 @@ Create or edit `.claude/settings.json`:
 
 **Critical permissions explained:**
 
-- `"Write(*)"` - **REQUIRED** - Allows main agent to create approval flag without manual approval
-  - More specific paths like `"Write(.git/hooks/reviewer-approved)"` **do NOT work** due to glob matching
+- `"Write(*)"` - **REQUIRED** - lets the *reviewer* agent write the approval flag without a prompt. The main agent shares this permission but must never use it to write `reviewer-approved`.
+  - We use `"Write(*)"`; narrower globs were not made to work. The flag lives at the project root as `reviewer-approved`, not under `.git/hooks/`.
   - Must be exactly `"Write(*)"`
 - `"Bash(date*)"` - For getting Unix timestamp
 - `"Agent(subagent_type=reviewer)"` - Auto-approve spawning reviewer agents
@@ -213,80 +116,41 @@ Create or edit `.claude/settings.json`:
 
 **Note:** `.claude/settings.json` is **project-specific** and **gitignored** by default. Each developer needs to create this file locally.
 
-### Step 2b: Create PreToolUse Hook Handler
+### Step 2b: PreToolUse Hook Handler
 
-Create `.claude/helpers/hook-handler.cjs`:
+The handler lives at **`.claude/helpers/hook-handler.cjs`** and is registered in
+`.claude/settings.json`:
 
-```javascript
-#!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-
-// Pre-bash handler: Validate git commits have reviewer approval
-const args = process.argv.slice(2);
-if (args[0] === 'pre-bash') {
-  const stdin = fs.readFileSync(0, 'utf-8');
-  const toolInput = JSON.parse(stdin);
-  const cmd = toolInput.command || '';
-
-  if (cmd.includes('git commit')) {
-    var userCommit = process.env.USER_COMMIT === '1';
-
-    if (!userCommit) {
-      var approvalFile = path.join(process.cwd(), '.git/hooks/reviewer-approved');
-
-      if (!fs.existsSync(approvalFile)) {
-        console.error('[BLOCKED] No reviewer approval found');
-        console.error('');
-        console.error('Required before git commit:');
-        console.error('  1. Spawn reviewer agent with Agent tool');
-        console.error('  2. Get APPROVE decision from agent');
-        console.error('  3. Main agent creates approval flag');
-        console.error('  4. Then commit within 5 minutes');
-        console.error('');
-        console.error('For manual commits: USER_COMMIT=1 git commit -m "message"');
-        process.exit(1);
-      }
-
-      var approvalTime = parseInt(fs.readFileSync(approvalFile, 'utf8').trim(), 10);
-
-      if (isNaN(approvalTime) || approvalTime <= 0) {
-        console.error('[BLOCKED] Invalid approval file (corrupted timestamp)');
-        process.exit(1);
-      }
-
-      var currentTime = Math.floor(Date.now() / 1000);
-      var timeDiff = currentTime - approvalTime;
-
-      if (timeDiff >= 300) {
-        console.error(`[BLOCKED] Reviewer approval expired (${timeDiff}s old)`);
-        console.error('');
-        console.error('Approval is older than 5 minutes.');
-        console.error('Spawn reviewer agent again and get fresh approval.');
-        process.exit(1);
-      }
-
-      console.log(`[OK] Reviewer approved (${timeDiff}s ago)`);
-    } else {
-      console.log('[OK] User commit (bypassing reviewer)');
-    }
-  }
-
-  console.log('[OK] Command validated');
-  process.exit(0);
-}
-
-console.error('[ERROR] Unknown hook command');
-process.exit(1);
+```json
+"PreToolUse": [{
+  "matcher": "Bash",
+  "hooks": [{
+    "type": "command",
+    "command": "test -f .claude/helpers/hook-handler.cjs && node .claude/helpers/hook-handler.cjs pre-bash"
+  }]
+}]
 ```
 
-Make executable:
-```bash
-mkdir -p .claude/helpers
-chmod +x .claude/helpers/hook-handler.cjs
-```
+**Do not append `|| true`.** It forces exit 0, and a `PreToolUse` hook only blocks a tool
+call on **exit code 2** — every other code is a non-blocking error that lets the call
+proceed. The handler exits 2 on its block paths for the same reason.
 
-**This provides Layer 1 enforcement** - blocking git commits before they start.
+Read the handler for its behaviour rather than a copy here.
+
+> **Neither of these two files is in this repository.** `.claude/` is gitignored
+> (`.gitignore:45`), and `./.githooks/install.sh` installs *only* the pre-commit hook —
+> it does not create `.claude/settings.json` or `hook-handler.cjs`. They come from the
+> upstream installer at
+> [`jazzsequence/claude-code-reviewer`](https://github.com/jazzsequence/claude-code-reviewer).
+>
+> **A fresh clone of this repo therefore has Layer 2 only, with no warning.** Run
+> upstream's `install.sh` to get Layer 1.
+>
+> Note also that upstream's handler used `process.exit(1)` on its block paths until
+> [PR #5](https://github.com/jazzsequence/claude-code-reviewer/pull/5) — so an install
+> made before that merges gets a Layer 1 that prints `[BLOCKED]` and allows the commit.
+> Check for `exit(2)` in your installed copy before assuming it enforces.
+
 
 ### Step 3: Create Project Requirements Document
 
@@ -299,7 +163,7 @@ Create `AGENTS.md` or add to `CLAUDE.md`:
 
 1. Spawn reviewer agent using Claude Code's Agent tool
 2. Get APPROVE decision from agent
-3. Main agent creates approval flag
+3. Reviewer agent writes the approval flag
 4. Commit within 5 minutes
 
 ### Reviewer Agent Prompt Template
@@ -387,7 +251,7 @@ Expected flow:
 1. Claude makes change
 2. Claude spawns reviewer agent
 3. Reviewer returns "APPROVED - I will create the approval flag"
-4. Claude creates `.git/hooks/reviewer-approved` with timestamp
+4. The reviewer agent writes `reviewer-approved` (project root) with a timestamp
 5. Claude runs `git add` and `git commit`
 6. Pre-commit hook validates flag and allows commit
 
@@ -412,7 +276,7 @@ Use the bypass flag for your own edits:
 USER_COMMIT=1 git commit -m "Your message"
 \`\`\`
 
-See @docs/REVIEWER_WORKFLOW.md for complete technical details on the three-layer enforcement model.
+See @docs/REVIEWER_WORKFLOW.md for the authoritative description of what each layer enforces.
 ```
 
 ## Common Issues

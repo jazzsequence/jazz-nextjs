@@ -48,12 +48,13 @@ The project uses `.githooks/pre-commit` to enforce these checks automatically.
 ./.githooks/install.sh
 ```
 
-**What it checks**:
-- ✅ Reviewer agent approval (validates all tests passed)
-- ✅ No secrets in staged files
-- ⚠️ Manual confirmation prompt
+**What it checks**: a fresh reviewer-written approval flag, the commit-size cap, the full
+test suite (unit, lint, build, E2E), and staged secrets — five checks in that order.
 
-See `@docs/REVIEWER_WORKFLOW.md` for full enforcement details.
+Deliberately not restated in detail here. `@docs/REVIEWER_WORKFLOW.md` owns the
+authoritative list, and `.githooks/pre-commit` is the source of truth if the two ever
+disagree. Restating these checks in four separate files is how three of them came to
+describe a confirmation prompt that does not exist and omit the entire test suite.
 
 ## Critical Rules
 

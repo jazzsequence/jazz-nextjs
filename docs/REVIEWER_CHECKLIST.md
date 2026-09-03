@@ -31,7 +31,10 @@ Only proceed if no queued messages.
 
 ## Section A — Always run
 
-These checks apply to every commit without exception.
+These checks apply to every commit, except that items 1-4 are skipped when **every**
+staged file is `.md` or `.txt` — matching the blocklist in `.githooks/pre-commit`
+(`package-lock.json` is excluded from the count first). Any other file type, including
+unknown extensions, runs the full suite.
 
 ### Tests & build
 
@@ -49,7 +52,10 @@ After `npm run test:e2e`, read the Playwright summary line directly:
 - `X passed` with no failures → pass
 - `X failed` or `X flaky` → do NOT reject reflexively. Triage first (see below).
 
-Do NOT trust the `✅ E2E tests passed` hook output — read actual Playwright output.
+Read the Playwright summary yourself rather than the hook's `✅ E2E tests passed` line.
+That line is now printed only when E2E actually ran (it used to print unconditionally,
+including under `USER_COMMIT=1` when nothing ran), but the summary is still the thing
+that tells you *what* passed.
 
 **Flaky-test triage (mandatory before rejecting on E2E):**
 
