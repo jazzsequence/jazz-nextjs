@@ -213,14 +213,17 @@ If the condition does not apply, output `⏭️ N: [condition not met]`.
 
 All items in Section A must pass. All applicable Section B items must pass.
 
-1. Run: `Bash({ command: "date +%s" })` — note the timestamp
-2. Write the approval flag:
+1. Run: `Bash({ command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"' })`
+2. Write the approval flag, as your **last** action:
    ```
    Write({
      file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-     content: "<timestamp>"
+     content: "<timestamp> <fingerprint>"
    })
    ```
+   The fingerprint binds the approval to the exact staged content. Write it last —
+   staging or unstaging anything afterwards invalidates it. A bare timestamp is
+   rejected as the pre-binding v1 format.
 3. Respond: `✅ APPROVED — approval flag written. Main agent may now stage and commit.`
 
 **Only the reviewer agent writes `reviewer-approved`. The main agent must not write it.**

@@ -19,51 +19,24 @@ echo "1️⃣  Checking reviewer agent approval..."
 if [ "$USER_COMMIT" = "1" ]; then
     echo -e "${YELLOW}⚠️  User commit bypass enabled${NC}"
     echo "   Skipping reviewer agent check (user-initiated commit)"
-elif [ -f reviewer-approved ]; then
-    # Trim leading/trailing whitespace ONLY, matching Layer 1's .trim() exactly.
-    # $(cat) alone strips just trailing newlines, so a leading space would fail the
-    # regex here while Layer 1 accepted it. `tr -d '[:space:]'` overcorrects the other
-    # way: it also eats INTERIOR whitespace, so "1788 387445" would collapse to a
-    # valid timestamp here while Layer 1 rejected it — and Layer 2 is the tracked
-    # layer, and the only one a plain shell `git commit` runs.
-    APPROVAL_RAW=$(cat reviewer-approved)
-    APPROVAL_RAW="${APPROVAL_RAW#"${APPROVAL_RAW%%[![:space:]]*}"}"
-    APPROVAL_TIME="${APPROVAL_RAW%"${APPROVAL_RAW##*[![:space:]]}"}"
-    CURRENT_TIME=$(date +%s)
-
-    # Reject a non-numeric flag before arithmetic. Without this, `$(())` on garbage
-    # yields 0 and a corrupt file reads as a brand-new approval.
-    if ! [[ "$APPROVAL_TIME" =~ ^[0-9]{1,11}$ ]] || [ "$APPROVAL_TIME" -le 0 ]; then
-        echo -e "${RED}❌ BLOCKED: Approval flag is corrupted (invalid timestamp)${NC}"
-        echo "   Value was: '${APPROVAL_TIME}'"
-        echo "   Getting a fresh approval is required"
-        rm -f reviewer-approved
-        exit 1
-    fi
-
-    TIME_DIFF=$((CURRENT_TIME - APPROVAL_TIME))
-
-    # Approval valid for 5 minutes. The lower bound matters: without `-ge 0`, a
-    # future-dated timestamp yields a negative diff, passes `-lt 300`, and never expires.
-    if [ "$TIME_DIFF" -ge 0 ] && [ "$TIME_DIFF" -lt 300 ]; then
-        echo -e "${GREEN}✅ Reviewer agent approved (${TIME_DIFF}s ago)${NC}"
-        rm reviewer-approved  # Clear approval after use
-    else
-        if [ "$TIME_DIFF" -lt 0 ]; then
-            echo -e "${RED}❌ BLOCKED: Approval flag is dated in the future (${TIME_DIFF}s)${NC}"
-            echo "   A future timestamp would never expire — rejecting"
-        else
-            echo -e "${RED}❌ BLOCKED: Reviewer approval expired (${TIME_DIFF}s old)${NC}"
-            echo "   Spawn reviewer agent again and get fresh approval"
-        fi
-        rm -f reviewer-approved
-        exit 1
-    fi
 else
-    echo -e "${RED}❌ BLOCKED: No reviewer agent approval found${NC}"
-    echo "   For AI-generated changes: Spawn reviewer agent and get APPROVE"
-    echo "   For your own changes: Use USER_COMMIT=1 git commit -m \"message\""
-    exit 1
+    # Validation lives in lib/approval.sh so that this hook and the gitignored
+    # PreToolUse handler run the SAME code. Two hand-maintained implementations
+    # drifted on whitespace, on parseInt leniency, and on BOM handling — each a case
+    # where one layer accepted a flag the other rejected.
+    REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+    APPROVAL_LIB="$REPO_ROOT/.githooks/lib/approval.sh"
+
+    if [ ! -f "$APPROVAL_LIB" ]; then
+        echo -e "${RED}❌ BLOCKED: .githooks/lib/approval.sh is missing${NC}"
+        echo "   Run ./.githooks/install.sh to repair the hook installation."
+        exit 1
+    fi
+
+    # shellcheck source=lib/approval.sh
+    source "$APPROVAL_LIB"
+
+    reviewer_validate_approval "$REPO_ROOT/reviewer-approved" 300 || exit 1
 fi
 echo ""
 

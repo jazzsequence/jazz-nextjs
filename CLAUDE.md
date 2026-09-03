@@ -75,15 +75,23 @@ Prefer these over `gh` CLI for reading remote files and creating PRs/issues.
 
 ### Reviewer Approval Workflow
 
-**The reviewer agent writes the approval flag** on APPROVE using Write() (auto-approved):
+**The reviewer agent writes the approval flag** on APPROVE using Write() (auto-approved).
+The flag is `<unix-timestamp> <index-fingerprint>` — the fingerprint binds the approval
+to the exact staged content, so restaging after a review invalidates it:
 ```typescript
-// Reviewer agent writes this file on APPROVE:
-const timestamp = await Bash({ command: "date +%s" });
+// Reviewer agent writes this file on APPROVE, as its LAST action:
+const flag = await Bash({
+  command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"'
+});
 await Write({
   file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-  content: timestamp.trim()
+  content: flag.trim()
 });
 ```
+
+Write it **last**, after all verification. Staging or unstaging anything afterwards
+changes the index fingerprint and invalidates the flag you just wrote. A bare
+timestamp (the pre-binding v1 format) is rejected.
 
 **DO NOT use cat/echo for approval** - those require manual approval.
 
