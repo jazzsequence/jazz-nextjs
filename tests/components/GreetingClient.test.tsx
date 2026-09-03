@@ -132,21 +132,27 @@ describe('GreetingClient', () => {
         configurable: true,
       })
 
-      const { container } = render(
-        <GreetingClient
-          variants={mockVariants}
-          audiences={mockAudiences}
-          serverCountry={undefined}
-        />
-      )
+      // finally, not a trailing statement: if the assertion throws, an unrestored
+      // window.location would poison every later test in this file — re-arming the
+      // exact bug this restore exists to prevent, at the moment something is already
+      // failing and the noise is hardest to attribute.
+      try {
+        const { container } = render(
+          <GreetingClient
+            variants={mockVariants}
+            audiences={mockAudiences}
+            serverCountry={undefined}
+          />
+        )
 
-      expect(container.querySelector('h1')?.textContent).toContain('Good morning')
-
-      // Restore the real Location object, not a copy of it.
-      if (originalLocation) {
-        Object.defineProperty(window, 'location', originalLocation)
-      } else {
-        delete (window as unknown as Record<string, unknown>).location
+        expect(container.querySelector('h1')?.textContent).toContain('Good morning')
+      } finally {
+        // Restore the real Location object, not a copy of it.
+        if (originalLocation) {
+          Object.defineProperty(window, 'location', originalLocation)
+        } else {
+          delete (window as unknown as Record<string, unknown>).location
+        }
       }
     })
 
