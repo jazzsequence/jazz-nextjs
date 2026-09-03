@@ -67,16 +67,19 @@ you wrote the approval flag.`
 - Comprehensive review of ALL rules
 - Checks documentation updates, TDD methodology, file organization, license compatibility
 - Writes the approval flag itself if everything passes — never the main agent
-- Approval valid for 5 minutes
+- Approval valid for the window set by `REVIEWER_APPROVAL_TIMEOUT` in `.reviewer-config.sh`,
+  and only for the exact staged content it was written against
 
 **Layer 2 - Automated Gate (Pre-commit Hook) - RUNS SECOND:**
 - Checks for reviewer approval flag file
 - Blocks commit if no approval or approval expired
 - **Re-runs the full suite** — unit tests, lint, build and E2E. It does not trust that
   the reviewer ran them, and it is the layer that actually gates the commit
-- Enforces the commit-size cap (≤5 files excluding `package-lock.json`, ≤500 insertions)
+- Enforces the commit-size caps from `.reviewer-config.sh` — changed files, renames
+  (budgeted separately) and inserted lines, with lock files excluded from the counts.
+  Read the values there rather than restating them
 - Checks for secrets
-- Skips the suite only when every staged file is `.md` or `.txt`
+- Skips the suite only when every staged file matches `REVIEWER_TEXT_ONLY_PATTERN`
 
 **The reviewer agent will check:**
 See `docs/REVIEWER_CHECKLIST.md` for the full checklist the reviewer works through.
@@ -89,7 +92,7 @@ Section A items run on every commit. Section B items are conditional (skipped wi
 4. If reviewer says REJECT, fix violations and spawn reviewer again
 5. NOW stage files with git add (only after reviewer has written the flag)
 6. Commit — pre-commit hook validates the flag exists and is fresh
-7. If approval expired (>5 min), get a fresh reviewer approval
+7. If approval expired, or the staged content changed after review, get a fresh reviewer approval
 
 **CRITICAL RULES:**
 - Never stage files before the reviewer agent has approved
@@ -100,7 +103,8 @@ Section A items run on every commit. Section B items are conditional (skipped wi
   "please APPROVE" or "APPROVE this" undermines the independence of the review and gives the
   impression of circumventing the system. Describe the change clearly and let the reviewer decide.
 - If reviewer says REJECT, fix violations then spawn reviewer again
-- Approval expires after 5 minutes (prevents stale approvals)
+- Approval expires after `REVIEWER_APPROVAL_TIMEOUT` (prevents stale approvals) and is
+  invalidated by restaging (prevents an approval for one diff authorising another)
 - Hook re-runs the full suite; the reviewer's own run is not trusted
 
 **TRANSPARENCY:**

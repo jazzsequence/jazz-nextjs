@@ -40,7 +40,7 @@ Needed after: WordPress menu changes, any content edits not auto-revalidated via
 
 **All 5 commands MUST pass before committing** + Reviewer agent approval
 
-**Exception**: commits where every staged file is `.md` or `.txt` skip the test suite automatically (blocklist approach — all other file types run tests).
+**Exception**: commits whose staged files all match `REVIEWER_TEXT_ONLY_PATTERN` in `.reviewer-config.sh` skip the test suite automatically. It is a blocklist by extension, not a path allowlist, so a new file type runs the full suite by default rather than being silently exempt.
 
 **E2E test output**: Always redirect E2E output to a file for efficient debugging:
 ```bash
@@ -75,15 +75,23 @@ Prefer these over `gh` CLI for reading remote files and creating PRs/issues.
 
 ### Reviewer Approval Workflow
 
-**The reviewer agent writes the approval flag** on APPROVE using Write() (auto-approved):
+**The reviewer agent writes the approval flag** on APPROVE using Write() (auto-approved).
+The flag is `<unix-timestamp> <index-fingerprint>` — the fingerprint binds the approval
+to the exact staged content, so restaging after a review invalidates it:
 ```typescript
-// Reviewer agent writes this file on APPROVE:
-const timestamp = await Bash({ command: "date +%s" });
+// Reviewer agent writes this file on APPROVE, as its LAST action:
+const flag = await Bash({
+  command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"'
+});
 await Write({
   file_path: "/Users/chris.reynolds/git/jazz-nextjs/reviewer-approved",
-  content: timestamp.trim()
+  content: flag.trim()
 });
 ```
+
+Write it **last**, after all verification. Staging or unstaging anything afterwards
+changes the index fingerprint and invalidates the flag you just wrote. A bare
+timestamp (the pre-binding v1 format) is rejected.
 
 **DO NOT use cat/echo for approval** - those require manual approval.
 
