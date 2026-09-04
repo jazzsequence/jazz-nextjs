@@ -83,6 +83,96 @@ describe('BoundedGcsCacheHandler.writeTagsMapping() — removes a write amplifie
   })
 })
 
+describe('readCacheEntry — make read failures visible', () => {
+  // Written before the implementation. Upstream (gcs.js:123) ends in a bare
+  // `catch { return null }` with no logging, and null is indistinguishable from a
+  // cache miss. Every GCS read failure is therefore invisible by construction —
+  // the single reason the 2026-09-04 outage went unnoticed for months and then took
+  // a day to characterise.
+  //
+  // This is the hot path — every cache read — so logging must be throttled, using
+  // the same powers-of-ten pattern as INIT_BOUND_EXCEEDED. Unthrottled it would
+  // bury the signal it exists to provide.
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const realGetCacheKey = Object.getPrototypeOf(BoundedGcsCacheHandler.prototype).getCacheKey
+
+  function makeCtx(fileImpl: Record<string, unknown>) {
+    return {
+      readCacheFailureCount: 0,
+      routeCachePrefix: 'route-cache/',
+      fetchCachePrefix: 'fetch-cache/',
+      imageCachePrefix: 'image-cache/',
+      getCacheKey: realGetCacheKey,
+      deserializeFromStorage: (o: Record<string, unknown>) => o,
+      bucket: { file: () => fileImpl },
+    }
+  }
+
+  const failing = {
+    exists: () => Promise.reject(new Error('ECONNRESET')),
+    download: () => Promise.reject(new Error('ECONNRESET')),
+  }
+
+  it('still returns null on failure, so behaviour is unchanged', async () => {
+    const ctx = makeCtx(failing)
+
+    const result = await BoundedGcsCacheHandler.prototype.readCacheEntry.call(ctx, 'x', 'route')
+
+    expect(result).toBeNull()
+  })
+
+  it('logs the first failure instead of swallowing it', async () => {
+    const ctx = makeCtx(failing)
+
+    await BoundedGcsCacheHandler.prototype.readCacheEntry.call(ctx, 'x', 'route')
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('CACHE_READ_FAILED'),
+      expect.anything()
+    )
+  })
+
+  it('throttles on the hot path rather than logging every read', async () => {
+    const ctx = makeCtx(failing)
+
+    for (let i = 0; i < 9; i += 1) {
+      await BoundedGcsCacheHandler.prototype.readCacheEntry.call(ctx, 'x', 'route')
+    }
+
+    expect(ctx.readCacheFailureCount).toBe(9)
+    expect(console.warn).toHaveBeenCalledTimes(1)
+  })
+
+  it('returns null for a genuine miss without logging', async () => {
+    // A miss is not a failure. Conflating them is the whole problem being fixed.
+    const ctx = makeCtx({ exists: () => Promise.resolve([false]) })
+
+    const result = await BoundedGcsCacheHandler.prototype.readCacheEntry.call(ctx, 'x', 'route')
+
+    expect(result).toBeNull()
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+
+  it('returns the entry on a successful read', async () => {
+    const ctx = makeCtx({
+      exists: () => Promise.resolve([true]),
+      download: () => Promise.resolve([Buffer.from(JSON.stringify({ value: 'ok' }))]),
+    })
+
+    const result = await BoundedGcsCacheHandler.prototype.readCacheEntry.call(ctx, 'x', 'route')
+
+    expect(result).toEqual({ value: 'ok' })
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+})
+
 describe('tag flush interval — headroom under the GCS per-object limit', () => {
   // Written before the implementation. Reproduced on pr-109: flooding the
   // environment produced 476 "exceeded the rate limit for object mutation

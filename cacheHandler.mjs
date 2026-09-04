@@ -1,6 +1,33 @@
 import { GcsCacheHandler, FileCacheHandler } from '@pantheon-systems/nextjs-cache-handler'
 
-// Overridable per environment so the bound can be tuned without a code change.
+// 2000ms is measured, not guessed. From 1265 INIT_OBSERVED samples on a Pantheon
+// environment: p50=166 p90=427 p95=551 p99=825 max=1111, and ZERO exceeded 2000ms.
+// So the bound sits at ~1.8x the worst observed init and never fires in normal
+// operation — which matters, because when it does fire get() falls through to
+// previous-build cache entries.
+//
+// WHAT THAT SAMPLE COVERS, because the population matters more than the numbers:
+// init takes a cheap path when the stored buildId matches (base.js:78-86) and an
+// expensive one when it does not — only the latter reaches invalidateRouteCache()
+// and its awaited nukeCache(), which is bounded at 10000ms. Most of the 1265
+// samples are the cheap path. Deploy-path inits ARE present but few: a rebuild
+// produced six at 175-257ms, and a rebuild mints a new buildId even for the same
+// commit, so those did run the full sweep.
+//
+// NOT COVERED: that sweep on an environment with a large edge cache. A PR
+// environment's CDN purge returns almost immediately because there is nearly
+// nothing to purge; live has a real edge cache. **The bound is therefore
+// unvalidated for the slowest known path — a deploy-time purge on live.** If
+// deploy-time init there runs past 2000ms, this fires on every deploy and get()
+// falls through to previous-build entries, which looks like a CDN problem rather
+// than this. Watch INIT_BOUND_EXCEEDED on the first deploy to any busy environment.
+//
+// Do not raise it casually: every additional second is worst-case blocking on the
+// request path, and the sampled data says none is needed. Do not lower it below
+// ~1200ms without re-measuring, or normal inits start tripping it.
+//
+// Re-measure by reading INIT_OBSERVED from the runtime log. Overridable per
+// environment for tuning without a deploy.
 const INIT_TIMEOUT_MS = Number(process.env.CACHE_INIT_TIMEOUT_MS) || 2000
 
 // CACHE_INIT_FAULT=hang makes init never settle, so an environment can demonstrate
@@ -80,6 +107,52 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
           'Unset CACHE_INIT_FAULT for normal operation.'
       )
       this.initPromise = new Promise(() => {})
+    }
+  }
+
+  /**
+   * Make cache read failures visible. They are invisible upstream.
+   *
+   * gcs.js:123 ends in a bare `catch { return null }`, and null is what a genuine
+   * cache miss also returns. So a GCS read that fails — ECONNRESET, throttling,
+   * anything — is indistinguishable from "not cached". That is the single reason the
+   * 2026-09-04 outage went unnoticed for months and then took a day to characterise:
+   * the busiest code path in the handler cannot report that it is failing.
+   *
+   * COST, stated plainly: this mirrors upstream's body rather than wrapping super(),
+   * because super() swallows the error before we could see it. That means ~8 lines
+   * duplicated from gcs.js:123-137 on the hottest path in the handler, and it will
+   * drift if upstream changes the read. The tests below pin the contract — miss,
+   * hit, and failure — so drift surfaces as a test failure rather than silently.
+   * Delete this override the moment upstream logs its own read failures.
+   *
+   * Throttled by powers of ten, like INIT_BOUND_EXCEEDED: this runs on every cache
+   * read, and one line per failure would bury the signal it exists to provide.
+   */
+  async readCacheEntry(cacheKey, cacheType) {
+    try {
+      const gcsKey = this.getCacheKey(cacheKey, cacheType)
+      const file = this.bucket.file(gcsKey)
+      const [exists] = await file.exists()
+      if (!exists) {
+        // A miss is not a failure. Conflating the two is the defect being fixed.
+        return null
+      }
+      const [data] = await file.download()
+      const parsed = JSON.parse(data.toString())
+      return this.deserializeFromStorage({ [cacheKey]: parsed })[cacheKey] || null
+    } catch (error) {
+      this.readCacheFailureCount = (this.readCacheFailureCount || 0) + 1
+      const n = this.readCacheFailureCount
+      if (n === 1 || n === 10 || n === 100 || n % 1000 === 0) {
+        console.warn(
+          `[BoundedGcsCacheHandler] CACHE_READ_FAILED count=${n} key=${cacheKey} ` +
+            `type=${cacheType} — serving as a cache MISS. Sustained counts mean GCS ` +
+            'reads are failing, which upstream would report as an ordinary miss.',
+          error
+        )
+      }
+      return null
     }
   }
 

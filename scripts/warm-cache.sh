@@ -41,7 +41,9 @@ echo "Sitemap: $BASE_URL/sitemap.xml"
 # Next emits either a urlset or a sitemapindex. Handle both: collect <loc>
 # values, and if any of them are themselves sitemaps, expand one level.
 fetch_locs() {
-  curl -sS --fail --max-time 30 "$1" 2>/dev/null \
+  # --retry: without it a single transient blip aborts the whole run behind
+  # "no URLs found in sitemap", which blames reachability for a network hiccup.
+  curl -sS --fail --retry 2 --retry-delay 1 --max-time 30 "$1" 2>/dev/null \
     | grep -o '<loc>[^<]*</loc>' \
     | sed -e 's|<loc>||' -e 's|</loc>||' || true
 }
