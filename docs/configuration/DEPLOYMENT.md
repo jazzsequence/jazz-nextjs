@@ -40,10 +40,17 @@ module.exports = nextConfig;
 
 As of February 2026, Pantheon provides `@pantheon-systems/nextjs-cache-handler` for persistent caching that survives deployments.
 
-### Version pin — 0.9.0, pending a mechanism we can explain
+### Version — 0.11.0, with a bounded initialise
 
-Pinned to exactly **0.9.0** (no caret). 0.11.0 took the live site down on 2026-09-04;
-rolling back restored service. The pin is a **mitigation, not a fix**.
+**Runs 0.11.0.** `cacheHandler.mjs` subclasses `GcsCacheHandler` to bound
+`ensureInitialized()`, because 0.11.0 makes `get()`/`set()` await it and none of the GCS I/O
+in `initialize()` has a timeout. 0.11.0 took the live site down on 2026-09-04; rolling back to
+0.9.0 restored service.
+
+**The live pin is separate and still in force.** Live remains on 0.9.0 until the bounded
+handler has taken several real deploys on Dev and Test with `INIT_BOUND_EXCEEDED` watched —
+see **LIFT WHEN** below. A single-instance PR environment cannot validate multi-instance
+behaviour or a deploy-time CDN purge against a large edge cache.
 
 **Verified by code inspection.** 0.9.0 initialised fire-and-forget
 (`this.initialize().catch(() => {})`). 0.11.0 made it blocking — `setInitPromise()` /
@@ -56,12 +63,62 @@ or failing `initialize()` therefore stops being a cache miss and becomes unavail
 of objects — not thousands. That sweep is byte-identical in 0.9.0; the only difference
 is that 0.9.0 does not make requests wait for it.
 
-**Not explained.** The runtime log showed thousands of concurrent GCS requests and
-socket exhaustion (TLS handshake failures, hang-ups, EPIPE). The init path issues on the
-order of tens of requests, so it is not the source. Possibly ordinary traffic
-accumulating against slow GCS reads, but that is undemonstrated. Three earlier
-explanations were investigated and are **wrong** — an unreachable bucket, 0.11.0's new
-image cache, and a large route-cache sweep. Do not repeat them.
+**Verified by reading the runtime log** (this replaces the earlier "not explained" entry;
+the log was available throughout and the gap was that nobody had read it). Every error in
+the captured window falls into exactly two headlines, `[GcsCacheHandler] Error reading tags
+mapping` and `Error writing tags mapping`, and every one is against the single object
+`cache/tags/tags.json`. No other GCS object appears in any error. Alongside them:
+`TeenyStatisticsWarning: Possible excessive concurrent requests detected`, plus ECONNRESET,
+`Client network socket disconnected before secure TLS connection was established`, EPIPE and
+socket hang-ups.
+
+**Do not read that warning as a measured peak.** The figure it prints is
+`TeenyStatistics.DEFAULT_WARN_CONCURRENT_REQUESTS`, the library's default threshold, and
+`requestStarting()` latches `_didConcurrentRequestWarn` on first emission — so it fires
+**once per process, ever**, and never reports a maximum. N occurrences means N processes each
+crossed the threshold once; the true ceiling is unknown and unbounded above. It also means the
+warning's timing tracks *process starts*, not load, so its distribution across the incident
+window says nothing about when contention began.
+
+So the TLS failures are **client-side connection exhaustion, not GCS refusing us** — a
+rate limit returns 429/503, an actual HTTP response, not a handshake torn down before it
+completes. Write errors begin a minute *before* read errors, so this is not only an
+init/read-path problem.
+
+**The bottleneck predates 0.11.0.** Unpacking 0.9.0 confirms `TagsBuffer` is byte-identical:
+same single `cache/tags/tags.json`, same 1s flush, same `// GCS rate limit is 1 write/second
+per object` comment. That budget is per object across **all** writers while the flush
+interval is per process, so one instance complies and autoscaled instances cannot. On
+failure `doFlush()` re-queues every pending update and retries with no queue cap, so the
+payload grows monotonically once failures start. The only delta in 0.11.0 is `gcs.js:37`
+`this.initialize().catch(...)` becoming `gcs.js:39` `setInitPromise(this.initialize().catch(...))`
+plus the awaits at `base.js:237`/`:323`.
+
+**Init is a victim of the contention, not a participant — the obvious reading is wrong.**
+`initialize()` is `initializeTagsMapping()` + `checkBuildInvalidation()`: an `exists()`
+metadata check on `tags.json` (its `.save()` branch fires only when the object is absent,
+which it is not on live), a `build-meta.json` download, and on a new buildId the route sweep.
+`readTagsMapping()` → `tagsBuffer.flush()` has exactly two callers, `base.js:92` and
+`base.js:365`, and neither is reachable from init — `gcs.js:105` overrides
+`updateTagsMapping()` to be buffer-only, so the base version never runs on the GCS path. What
+0.11.0 moves onto the request path is init's **unbounded reads**, any of which can hang under
+the connection failures the buffer's write contention produces.
+
+This has a practical consequence: because init does not perform the contended write, bounding
+it **cannot relieve contention** — it only stops requests waiting on a hung read.
+
+**Why the platform never noticed.** `STARTUP TCP probe succeeded ... port 3000` logged on
+every restart, always succeeding — Next binds the port before any cache code runs. Restart
+reason was always `AUTOSCALING`, never a failed health check. Stalled requests read as
+demand, so the platform added instances, i.e. added writers to the one contended object.
+
+**Still not demonstrated.** Whether the first domino was GCS pushing back on write
+contention or something degrading outbound connections generally. Failures being confined
+to `tags.json` points hard at object contention, but the causal direction is not proven.
+
+Three earlier explanations were investigated and are **wrong** — an unreachable bucket,
+0.11.0's new image cache, and a large route-cache sweep. Do not repeat them. A fourth,
+"the health probe killed the process", is also wrong: the probe never failed.
 
 **LIFT WHEN** a release survives a deploy on an environment carrying a cache comparable
 to live's, across both prefixes, since which one matters is unresolved. A green CI run
@@ -70,10 +127,25 @@ does **not** qualify: the handler is inert unless `NODE_ENV=production` and
 instantiate it. Nor does a PR environment, which carries roughly a hundred objects.
 
 **Related defect, separate from the pin.** The tag manifest is never pruned of
-references to evicted entries — dev references thousands of keys against hundreds of
+references to evicted entries — `invalidateRouteCache()` deletes route-cache objects but
+never calls `tagsBuffer.deleteKeys()`. Dev references thousands of keys against hundreds of
 real objects, and its manifest is far larger than live's despite holding much less
-cache. It is read and rewritten inside the blocking init, so init cost grows with an
-environment's age regardless of traffic.
+cache. It inflates the very object every instance contends on, so the cost of each buffered
+flush grows with an environment's age regardless of traffic. (It is **not** read and rewritten
+inside init — see above; init only does an `exists()` check against it.)
+
+**Known trade-off in the bounded init — read before interpreting multidev results.**
+Past the bound, `get()` falls through to `readCacheEntry()` (`gcs.js:123`) and reads
+route-cache entries that `checkBuildInvalidation()` has not wiped yet. So the timeout does
+**not** degrade to "uncached"; it degrades to **the previous build's cache**. That knowingly
+re-opens the cross-build staleness race `initPromise` was added to close (documented upstream
+at `base.js:44-50` and `base.js:233-237`). Concretely, previous-build HTML/RSC can reference
+`/_next/static/<old-buildId>/…` assets absent from the deployed image, presenting as static
+assets 404ing — the same symptom as the original outage. **If 404s appear on the multidev
+after a deploy, the bounded init is a candidate cause, not only the thing under test.**
+`readCacheEntry()` is also unbounded in its own right, and `Promise.race` does not cancel
+the loser, so init I/O continues after the bound expires: if the mechanism is socket
+exhaustion, the bound relocates where requests queue rather than reducing contention.
 
 **Installation**:
 ```bash
