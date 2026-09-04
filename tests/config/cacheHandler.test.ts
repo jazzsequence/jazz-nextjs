@@ -83,6 +83,158 @@ describe('BoundedGcsCacheHandler.writeTagsMapping() — removes a write amplifie
   })
 })
 
+describe('tag flush interval — headroom under the GCS per-object limit', () => {
+  // Written before the implementation. Reproduced on pr-109: flooding the
+  // environment produced 476 "exceeded the rate limit for object mutation
+  // operations" on cache/tags/tags.json. GCS allows ~1 mutation/sec to a single
+  // object; upstream hardcodes flushIntervalMs: 1000, so it runs exactly at the
+  // ceiling with zero headroom and any burst goes over. The visible damage is not
+  // a crash — it is revalidateTag() silently failing to record anything, so new
+  // content never invalidates.
+  it('widens the buffer flush interval above the 1/sec ceiling', async () => {
+    const { TAGS_FLUSH_INTERVAL_MS } = await import('../../cacheHandler.mjs')
+    expect(TAGS_FLUSH_INTERVAL_MS).toBeGreaterThan(1000)
+  })
+
+  it('applies the wider interval to the buffer upstream already built', async () => {
+    // Must mutate the existing buffer rather than replace it: super's constructor
+    // already handed its callbacks to that instance, and TagsBuffer reads
+    // flushIntervalMs inside scheduleFlush() at call time, so a later write takes
+    // effect. Replacing the object would orphan any pending updates.
+    const { BoundedGcsCacheHandler: Handler, TAGS_FLUSH_INTERVAL_MS } = await import(
+      '../../cacheHandler.mjs'
+    )
+    const buffer = { flushIntervalMs: 1000 }
+    const ctx = { tagsBuffer: buffer }
+
+    Handler.prototype.widenTagsFlushInterval.call(ctx)
+
+    expect(buffer.flushIntervalMs).toBe(TAGS_FLUSH_INTERVAL_MS)
+  })
+
+  it('does not throw when there is no buffer', async () => {
+    const { BoundedGcsCacheHandler: Handler } = await import('../../cacheHandler.mjs')
+    expect(() => Handler.prototype.widenTagsFlushInterval.call({})).not.toThrow()
+  })
+})
+
+describe('pruneRouteKeysFromTagMap — stop the tag map growing forever', () => {
+  // Written before the implementation. invalidateRouteCache() (gcs.js:166) deletes
+  // every route-cache object but never calls tagsBuffer.deleteKeys(), so the tag
+  // map keeps references to keys whose objects are gone — dev's is 604KB with ~89%
+  // dead. That inflates the one object every instance mutates, which is what runs
+  // into the GCS per-object rate limit.
+  //
+  // Object names are lossy (getCacheKey replaces non-alphanumerics with "_"), so a
+  // name cannot be turned back into a key. Match forward instead: compute each
+  // key's route-cache object name and test it against the deleted set.
+  // Borrow the REAL getCacheKey off GcsCacheHandler.prototype rather than
+  // reimplementing the lossy name transform. A hand-written copy would drift from
+  // upstream and quietly stop matching, which is the failure this guards against.
+  const realGetCacheKey = Object.getPrototypeOf(BoundedGcsCacheHandler.prototype).getCacheKey
+
+  function makeCtx(mapping: Record<string, string[]>) {
+    const deleted: string[][] = []
+    return {
+      ctx: {
+        routeCachePrefix: 'route-cache/',
+        fetchCachePrefix: 'fetch-cache/',
+        imageCachePrefix: 'image-cache/',
+        getCacheKey: realGetCacheKey,
+        log: { error: () => {}, warn: () => {}, debug: () => {} },
+        readTagsMapping: () => Promise.resolve(mapping),
+        tagsBuffer: { deleteKeys: (k: string[]) => deleted.push(k) },
+      },
+      deleted,
+    }
+  }
+
+  it('drops keys whose route-cache object was deleted', async () => {
+    const { ctx, deleted } = makeCtx({ posts: ['/posts/a', '/posts/b'] })
+
+    await BoundedGcsCacheHandler.prototype.pruneRouteKeysFromTagMap.call(
+      ctx,
+      new Set(['route-cache/_posts_a.json'])
+    )
+
+    expect(deleted).toHaveLength(1)
+    expect(deleted[0]).toEqual(['/posts/a'])
+  })
+
+  it('leaves keys alone when their object still exists', async () => {
+    const { ctx, deleted } = makeCtx({ posts: ['/posts/a'] })
+
+    await BoundedGcsCacheHandler.prototype.pruneRouteKeysFromTagMap.call(ctx, new Set())
+
+    expect(deleted).toHaveLength(0)
+  })
+
+  it('does not touch fetch-cache keys, which this sweep never deletes', async () => {
+    // The sweep enumerates route-cache/ only. Live holds tens of objects there
+    // against ~18k under fetch-cache/, so pruning by the wrong prefix would
+    // discard the overwhelming majority of a live tag map.
+    const { ctx, deleted } = makeCtx({ posts: ['/api/data'] })
+
+    await BoundedGcsCacheHandler.prototype.pruneRouteKeysFromTagMap.call(
+      ctx,
+      new Set(['fetch-cache/_api_data.json'])
+    )
+
+    expect(deleted).toHaveLength(0)
+  })
+
+  it('de-duplicates a key referenced by several tags', async () => {
+    const { ctx, deleted } = makeCtx({
+      posts: ['/posts/a'],
+      menu: ['/posts/a'],
+      header: ['/posts/a'],
+    })
+
+    await BoundedGcsCacheHandler.prototype.pruneRouteKeysFromTagMap.call(
+      ctx,
+      new Set(['route-cache/_posts_a.json'])
+    )
+
+    expect(deleted[0]).toEqual(['/posts/a'])
+  })
+
+  it('skips the tag-map read entirely when nothing was deleted', async () => {
+    // This runs inside initialize(), which 0.11.0 puts on the request path. Reading
+    // a ~100KB object for a no-op would add latency to the exact path the bound
+    // exists to protect.
+    let read = false
+    const ctx = {
+      routeCachePrefix: 'route-cache/',
+      log: { error: () => {}, warn: () => {}, debug: () => {} },
+      readTagsMapping: () => {
+        read = true
+        return Promise.resolve({})
+      },
+      tagsBuffer: { deleteKeys: () => {} },
+    }
+
+    await BoundedGcsCacheHandler.prototype.pruneRouteKeysFromTagMap.call(ctx, new Set())
+
+    expect(read).toBe(false)
+  })
+
+  it('swallows failures — pruning is best effort and must not break startup', async () => {
+    const ctx = {
+      routeCachePrefix: 'route-cache/',
+      log: { error: () => {}, warn: () => {}, debug: () => {} },
+      readTagsMapping: () => Promise.reject(new Error('429')),
+      tagsBuffer: { deleteKeys: () => {} },
+    }
+
+    await expect(
+      BoundedGcsCacheHandler.prototype.pruneRouteKeysFromTagMap.call(
+        ctx,
+        new Set(['route-cache/_x.json'])
+      )
+    ).resolves.toBeUndefined()
+  })
+})
+
 describe('writeTagsMapping wiring — the override actually reaches TagsBuffer', () => {
   // The gap every other test here leaves open. They invoke the prototype method
   // directly, so they pass identically whether or not the buffer ever calls it.
@@ -137,6 +289,7 @@ describe('writeTagsMapping wiring — the override actually reaches TagsBuffer',
 describe('observeInitDuration() — what INIT_OBSERVED actually reports', () => {
   beforeEach(() => {
     vi.useFakeTimers()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
     vi.spyOn(console, 'info').mockImplementation(() => {})
   })
 
@@ -146,9 +299,25 @@ describe('observeInitDuration() — what INIT_OBSERVED actually reports', () => 
   })
 
   function lastInfo(): string {
-    const calls = (console.info as unknown as { mock: { calls: string[][] } }).mock.calls
+    const calls = (console.warn as unknown as { mock: { calls: string[][] } }).mock.calls
     return calls[calls.length - 1][0]
   }
+
+  it('logs at warn level, because Pantheon drops info-level output', async () => {
+    // Regression guard for a bug that only appeared in production. This used
+    // console.info, which passes every local test and emits nothing on Pantheon:
+    // pr-109 showed zero INIT_OBSERVED lines and zero of upstream's own
+    // log.info('Initializing cache handler'), while warn/error came through fine.
+    // A measurement you cannot read is not a measurement.
+    const initPromise = Promise.resolve()
+
+    observeInitDuration(initPromise, Date.now(), () => 0)
+    await initPromise
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('INIT_OBSERVED'))
+    expect(console.info).not.toHaveBeenCalled()
+  })
 
   it('reports the REAL init duration, not the bound and not a request wait', async () => {
     // The bug this exists to prevent: with a 100ms bound against an init genuinely
@@ -178,7 +347,7 @@ describe('observeInitDuration() — what INIT_OBSERVED actually reports', () => 
     await initPromise
     await vi.advanceTimersByTimeAsync(0)
 
-    expect(console.info).toHaveBeenCalledWith(expect.stringContaining('INIT_OBSERVED'))
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('INIT_OBSERVED'))
   })
 
   it('reports how many requests hit the bound while init was still running', async () => {
@@ -248,7 +417,7 @@ describe('BoundedGcsCacheHandler.ensureInitialized() — blast-radius bound', ()
 
     await ensureInitialized.call(ctx)
 
-    expect(console.info).not.toHaveBeenCalledWith(expect.stringContaining('INIT_OBSERVED'))
+    expect(console.warn).not.toHaveBeenCalledWith(expect.stringContaining('INIT_OBSERVED'))
   })
 
   it('gives up at the bound when init never settles, and says so', async () => {

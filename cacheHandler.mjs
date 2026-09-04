@@ -7,6 +7,28 @@ const INIT_TIMEOUT_MS = Number(process.env.CACHE_INIT_TIMEOUT_MS) || 2000
 // the bound instead of waiting for GCS to fail. Opt-in, announced at construction.
 const INIT_FAULT = process.env.CACHE_INIT_FAULT || ''
 
+// GCS allows roughly one mutation per second to a single object. Upstream hardcodes
+// flushIntervalMs: 1000, so cache/tags/tags.json runs exactly at that ceiling with
+// no headroom and any burst goes over. Measured on pr-109: a 350-URL flood produced
+// 476 "exceeded the rate limit for object mutation operations" on that one object.
+//
+// The damage is not a crash. Failed tag writes mean revalidateTag() records nothing,
+// so published content silently never invalidates.
+//
+// 5s trades a slightly later tag landing for 5x headroom.
+//
+// Within one process, explicit revalidation is unaffected: readTagsMapping() flushes
+// the buffer before reading, so a purge does not wait for the timer.
+//
+// ACROSS processes it is not. Instance A can hold a tag->key mapping in its in-memory
+// buffer while instance B takes the revalidation webhook, flushes its own (empty)
+// buffer, reads GCS, and never sees A's pending mapping. That race exists upstream at
+// 1s; widening to 5s widens the window 5x. The trade is deliberate: a missed
+// revalidation self-corrects at the next flush or ISR expiry, whereas a throttled
+// tag write fails repeatedly and blocks invalidation outright. Revisit if content
+// updates start needing more than one purge to appear.
+const TAGS_FLUSH_INTERVAL_MS = Number(process.env.CACHE_TAGS_FLUSH_MS) || 5000
+
 /**
  * Report real wall-clock init duration, once.
  *
@@ -21,8 +43,13 @@ function observeInitDuration(initPromise, startedAt, getWaitCount) {
   }
   // Side-effect only: do not reassign this.initPromise. The fast path depends on
   // super nulling that exact object. Never rejects — super wraps it in .catch().
+  //
+  // console.warn, not console.info: Pantheon's runtime log drops info-level output.
+  // Verified on pr-109 — zero INIT_OBSERVED lines, and zero of upstream's own
+  // log.info('Initializing cache handler'), while 117 warn/error lines came through.
+  // An unreadable measurement is the same as no measurement.
   initPromise.then(() => {
-    console.info(
+    console.warn(
       `[BoundedGcsCacheHandler] INIT_OBSERVED durationMs=${Date.now() - startedAt} ` +
         `bound=${INIT_TIMEOUT_MS}ms boundExceededWhileWaiting=${getWaitCount()}`
     )
@@ -41,6 +68,7 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
     super(...args)
 
     this.boundExceededCount = 0
+    this.widenTagsFlushInterval()
 
     // Captured before the fault swap below, so this times the real init.
     observeInitDuration(this.initPromise, Date.now(), () => this.boundExceededCount)
@@ -53,6 +81,91 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
       )
       this.initPromise = new Promise(() => {})
     }
+  }
+
+  /**
+   * Widen the tag-buffer flush interval to get under the GCS per-object limit.
+   *
+   * Mutates the buffer super already built rather than replacing it: super handed
+   * its callbacks to that exact instance, and replacing it would orphan any queued
+   * updates. Safe because TagsBuffer reads flushIntervalMs inside scheduleFlush()
+   * at call time, so a later write is picked up by the next schedule.
+   */
+  widenTagsFlushInterval() {
+    if (this.tagsBuffer) {
+      this.tagsBuffer.flushIntervalMs = TAGS_FLUSH_INTERVAL_MS
+    }
+  }
+
+  /**
+   * Drop tag-map references to route-cache keys that no longer exist.
+   *
+   * invalidateRouteCache() (gcs.js:166) deletes every route-cache object but never
+   * calls tagsBuffer.deleteKeys(), so the map keeps pointing at keys whose objects
+   * are gone. Dev's is 604KB with ~89% dead references. That matters here because
+   * it inflates the single object every instance mutates once per flush, and that
+   * object is the one hitting the GCS per-object rate limit.
+   *
+   * Object names are lossy — getCacheKey() replaces every non-alphanumeric with "_",
+   * so a name cannot be turned back into a key. Matching runs forward instead:
+   * compute each key's route-cache object name and test it against the deleted set.
+   * Lossy in that direction too, so two keys can collide onto one name; the cost is
+   * a spurious cache miss, which is the safe way to be wrong.
+   *
+   * Best effort by design. Never throws: this runs during startup, and a failed
+   * prune must not be able to stop a process from serving.
+   */
+  async pruneRouteKeysFromTagMap(deletedObjectNames) {
+    if (!deletedObjectNames || deletedObjectNames.size === 0) {
+      return
+    }
+    try {
+      const mapping = await this.readTagsMapping()
+      const orphaned = new Set()
+      for (const keys of Object.values(mapping)) {
+        for (const key of keys) {
+          if (deletedObjectNames.has(this.getCacheKey(key, 'route'))) {
+            orphaned.add(key)
+          }
+        }
+      }
+      if (orphaned.size > 0) {
+        this.tagsBuffer.deleteKeys([...orphaned])
+      }
+    } catch (error) {
+      // Best effort — never rethrow. But LOG it: a bare silent catch here is the
+      // same blindness as readCacheEntry()'s `catch { return null }`, which is why
+      // the original outage went unnoticed for months. It already bit once during
+      // development, swallowing a TypeError and presenting as "pruned nothing".
+      console.warn('[BoundedGcsCacheHandler] TAG_PRUNE_FAILED', error)
+    }
+  }
+
+  /**
+   * Prune the tag map after the build sweep, without slowing startup.
+   *
+   * The enumeration must happen before super deletes the objects, and is cheap:
+   * live's route-cache/ holds tens of objects, and super enumerates again anyway.
+   * The expensive part — reading a ~100KB map, scanning it, writing it back —
+   * runs unawaited, because initialize() is on the request path in 0.11.0 and
+   * adding latency here would worsen the exact problem the bound exists to contain.
+   */
+  async invalidateRouteCache() {
+    let deletedObjectNames = new Set()
+    try {
+      const [files] = await this.bucket.getFiles({ prefix: this.routeCachePrefix })
+      deletedObjectNames = new Set(files.map((file) => file.name))
+    } catch (error) {
+      // Skip pruning this cycle rather than block the sweep — but emit. A silent
+      // failure here means pruning no-ops on EVERY build while the tag map grows
+      // unboundedly and nobody knows: the exact defect this method exists to fix,
+      // reintroduced one level up. Catch to prevent propagation, always emit.
+      console.warn('[BoundedGcsCacheHandler] TAG_PRUNE_LISTING_FAILED', error)
+    }
+
+    await super.invalidateRouteCache()
+
+    void this.pruneRouteKeysFromTagMap(deletedObjectNames)
   }
 
   /**
@@ -135,5 +248,11 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
 // returns the unbounded GcsCacheHandler; will not track upstream changes.
 const CacheHandler = process.env.CACHE_BUCKET ? BoundedGcsCacheHandler : FileCacheHandler
 
-export { BoundedGcsCacheHandler, INIT_TIMEOUT_MS, INIT_FAULT, observeInitDuration }
+export {
+  BoundedGcsCacheHandler,
+  INIT_TIMEOUT_MS,
+  INIT_FAULT,
+  TAGS_FLUSH_INTERVAL_MS,
+  observeInitDuration,
+}
 export default CacheHandler
