@@ -20,6 +20,35 @@ updates:
     # way). Dependabot ALERTS are unaffected and are the signal that survives — they
     # must stay enabled.
     ignore:
+      # BLOCKER: 0.11.0 took the live site down on 2026-09-04. Initialisation became
+      #   blocking — setInitPromise()/ensureInitialized() in dist/handlers/base.js,
+      #   awaited by get() (base.js:237) and set() (base.js:323) — and initialize()
+      #   awaits initializeTagsMapping() first (base.js:79), which reads and rewrites
+      #   cache/tags/tags.json.
+      #   Live crash-looped every 1-4 minutes: requests queued behind the unresolved
+      #   init, health probes failed, the container was killed and restarted. 0.9.0
+      #   ran the same work fire-and-forget, so identical conditions merely served
+      #   uncached — degraded, but up. Rolling live back restored service.
+      #   NOT EXPLAINED: the log showed thousands of concurrent GCS requests and
+      #   socket exhaustion. The init path issues only tens of requests (the route
+      #   sweep enumerates route-cache/, which holds tens of objects on live, not the
+      #   ~18k under fetch-cache/), so init is not the source. Three explanations were
+      #   investigated and are wrong: an unreachable bucket, 0.11.0's image cache, and
+      #   a large route-cache sweep. Do not repeat them.
+      # LIFT WHEN: a release survives a deploy on an environment carrying a cache
+      #   comparable to live's, across BOTH prefixes since which one matters is
+      #   unresolved. A green CI run does NOT qualify: the handler is inert unless
+      #   NODE_ENV=production and PANTHEON_ENVIRONMENT are both set
+      #   (next.config.ts:9), so local build and E2E never instantiate it. Nor does a
+      #   PR environment, which carries roughly a hundred objects.
+      # SCOPE: ">0.9.0" rather than "0.11.x" on purpose. Unlike the `next` entry, where
+      #   the next minor should still surface, every version above 0.9.0 here is
+      #   untested against a warm cache, so a future 0.12.0 must not pass either.
+      # SECURITY: a `versions:` ignore also suppresses security-update PRs in this
+      #   range. Accepted: alerts still fire, and an outage on every deploy is the
+      #   larger risk. Revisit if an advisory lands against 0.9.0.
+      - dependency-name: "@pantheon-systems/nextjs-cache-handler"
+        versions: [">0.9.0"]
       # BLOCKER: 16.3.x fails Pantheon's buildpack at "Finalizing page optimization"
       #   with ENOENT .next/next-server.js.nft.json, which output:'standalone'
       #   requires. Confirmed identically on 16.3.1 (build 6c1e9cf6), 16.3.3
