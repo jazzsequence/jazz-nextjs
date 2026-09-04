@@ -83,6 +83,42 @@ describe('BoundedGcsCacheHandler.writeTagsMapping() — removes a write amplifie
   })
 })
 
+describe('fault injection — must be structurally impossible on live', () => {
+  // Written before the implementation. CACHE_INIT_FAULT=hang replaces initPromise
+  // with one that never settles. That is exactly right on a PR environment and
+  // catastrophic on live: every instance would sit permanently past the bound,
+  // serving PREVIOUS BUILD cache entries, which presents as /_next/static/ 404s —
+  // the same symptom as the outage this branch exists to address.
+  //
+  // A console.warn is a notice, not a control. And the propagation behaviour makes
+  // it worse: setting the flag on pr-109 took ~30 minutes to take effect, and
+  // clearing it had not confirmed at last check. A switch that is slow and
+  // unreliable to turn OFF must be prevented from applying where it would hurt.
+  it('is inert on live even when the flag is set', async () => {
+    const { resolveInitFault } = await import('../../cacheHandler.mjs')
+    expect(resolveInitFault({ PANTHEON_ENVIRONMENT: 'live', CACHE_INIT_FAULT: 'hang' })).toBe('')
+  })
+
+  it('activates on a non-live environment', async () => {
+    const { resolveInitFault } = await import('../../cacheHandler.mjs')
+    expect(resolveInitFault({ PANTHEON_ENVIRONMENT: 'pr-109', CACHE_INIT_FAULT: 'hang' })).toBe(
+      'hang'
+    )
+  })
+
+  it('is inert when the flag is unset', async () => {
+    const { resolveInitFault } = await import('../../cacheHandler.mjs')
+    expect(resolveInitFault({ PANTHEON_ENVIRONMENT: 'dev' })).toBe('')
+  })
+
+  it('fails safe when the environment is unknown', async () => {
+    // An unset PANTHEON_ENVIRONMENT must not be treated as "not live" by accident;
+    // it should still require an explicit non-live environment to arm.
+    const { resolveInitFault } = await import('../../cacheHandler.mjs')
+    expect(resolveInitFault({ CACHE_INIT_FAULT: 'hang' })).toBe('')
+  })
+})
+
 describe('readCacheEntry — make read failures visible', () => {
   // Written before the implementation. Upstream (gcs.js:123) ends in a bare
   // `catch { return null }` with no logging, and null is indistinguishable from a
@@ -158,6 +194,26 @@ describe('readCacheEntry — make read failures visible', () => {
 
     expect(result).toBeNull()
     expect(console.warn).not.toHaveBeenCalled()
+  })
+
+  it('upstream still swallows read failures — DELETE THE OVERRIDE WHEN THIS GOES RED', async () => {
+    // Pins the *reason the override exists*, not the override's own behaviour.
+    //
+    // The other tests here assert what our override does, so if upstream changed
+    // readCacheEntry they would all stay green while our copy silently kept the old
+    // semantics — drift with no signal, which is the exact failure class this PR is
+    // about. This one watches upstream directly: the moment it reports its own read
+    // failures, this goes red and the override should be deleted.
+    const upstreamRead = Object.getPrototypeOf(BoundedGcsCacheHandler.prototype).readCacheEntry
+    const log = { warn: vi.fn(), error: vi.fn(), debug: vi.fn(), info: vi.fn() }
+    const ctx = { ...makeCtx(failing), log }
+
+    const result = await upstreamRead.call(ctx, 'x', 'route')
+
+    expect(result).toBeNull()
+    expect(console.warn).not.toHaveBeenCalled()
+    expect(log.warn).not.toHaveBeenCalled()
+    expect(log.error).not.toHaveBeenCalled()
   })
 
   it('returns the entry on a successful read', async () => {

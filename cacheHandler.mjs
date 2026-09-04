@@ -30,9 +30,34 @@ import { GcsCacheHandler, FileCacheHandler } from '@pantheon-systems/nextjs-cach
 // environment for tuning without a deploy.
 const INIT_TIMEOUT_MS = Number(process.env.CACHE_INIT_TIMEOUT_MS) || 2000
 
-// CACHE_INIT_FAULT=hang makes init never settle, so an environment can demonstrate
-// the bound instead of waiting for GCS to fail. Opt-in, announced at construction.
-const INIT_FAULT = process.env.CACHE_INIT_FAULT || ''
+/**
+ * CACHE_INIT_FAULT=hang makes init never settle, so an environment can demonstrate
+ * the bound instead of waiting for GCS to fail.
+ *
+ * ALLOWLISTED, not blocklisted, and that asymmetry is the whole point. A hung init
+ * on live would leave every instance permanently past the bound, serving PREVIOUS
+ * BUILD cache entries — which presents as /_next/static/ 404s, the same symptom as
+ * the outage this file exists to contain. A console.warn is a notice, not a control.
+ *
+ * Arming requires an explicitly non-live PANTHEON_ENVIRONMENT, so an unset or
+ * unrecognised environment stays inert rather than being treated as "not live".
+ * Observed on pr-109: the flag took ~30 minutes to propagate on, and clearing it had
+ * not confirmed at last check. A switch that is slow and unreliable to turn OFF must
+ * be structurally prevented from applying where it would do damage.
+ */
+function resolveInitFault(env = process.env) {
+  const requested = env.CACHE_INIT_FAULT || ''
+  if (!requested) {
+    return ''
+  }
+  const environment = env.PANTHEON_ENVIRONMENT || ''
+  if (!environment || environment === 'live') {
+    return ''
+  }
+  return requested
+}
+
+const INIT_FAULT = resolveInitFault()
 
 // GCS allows roughly one mutation per second to a single object. Upstream hardcodes
 // flushIntervalMs: 1000, so cache/tags/tags.json runs exactly at that ceiling with
@@ -122,9 +147,11 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
    * COST, stated plainly: this mirrors upstream's body rather than wrapping super(),
    * because super() swallows the error before we could see it. That means ~8 lines
    * duplicated from gcs.js:123-137 on the hottest path in the handler, and it will
-   * drift if upstream changes the read. The tests below pin the contract — miss,
-   * hit, and failure — so drift surfaces as a test failure rather than silently.
-   * Delete this override the moment upstream logs its own read failures.
+   * drift if upstream changes the read. The tests pin miss, hit and failure — but
+   * note those pin THIS override, so on their own they would stay green while a
+   * changed upstream drifted silently underneath. A separate test therefore watches
+   * upstream's own readCacheEntry and asserts it still swallows failures; that one
+   * goes red the moment upstream reports them, which is the signal to delete this.
    *
    * Throttled by powers of ten, like INIT_BOUND_EXCEEDED: this runs on every cache
    * read, and one line per failure would bury the signal it exists to provide.
@@ -322,6 +349,7 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
 const CacheHandler = process.env.CACHE_BUCKET ? BoundedGcsCacheHandler : FileCacheHandler
 
 export {
+  resolveInitFault,
   BoundedGcsCacheHandler,
   INIT_TIMEOUT_MS,
   INIT_FAULT,
