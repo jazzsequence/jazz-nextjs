@@ -40,15 +40,17 @@ module.exports = nextConfig;
 
 As of February 2026, Pantheon provides `@pantheon-systems/nextjs-cache-handler` for persistent caching that survives deployments.
 
-### Version pin — 0.9.0 on `main`; this branch runs 0.11.0 under test
+### Version — 0.11.0, with a bounded initialise
 
-**On `main`:** pinned to exactly **0.9.0** (no caret). 0.11.0 took the live site down on
-2026-09-04; rolling back restored service. The pin is a **mitigation, not a fix**.
+**Runs 0.11.0.** `cacheHandler.mjs` subclasses `GcsCacheHandler` to bound
+`ensureInitialized()`, because 0.11.0 makes `get()`/`set()` await it and none of the GCS I/O
+in `initialize()` has a timeout. 0.11.0 took the live site down on 2026-09-04; rolling back to
+0.9.0 restored service.
 
-**On this branch (`fix/bound-cache-handler-init`):** the dependency is moved back up to
-**0.11.0** and `cacheHandler.mjs` subclasses `GcsCacheHandler` to bound `ensureInitialized()`.
-The point of the branch is to open a PR, get a multidev, and find out whether that bound is
-sufficient. Do not read this section as describing `main`'s runtime.
+**The live pin is separate and still in force.** Live remains on 0.9.0 until the bounded
+handler has taken several real deploys on Dev and Test with `INIT_BOUND_EXCEEDED` watched —
+see **LIFT WHEN** below. A single-instance PR environment cannot validate multi-instance
+behaviour or a deploy-time CDN purge against a large edge cache.
 
 **Verified by code inspection.** 0.9.0 initialised fire-and-forget
 (`this.initialize().catch(() => {})`). 0.11.0 made it blocking — `setInitPromise()` /
