@@ -40,6 +40,41 @@ module.exports = nextConfig;
 
 As of February 2026, Pantheon provides `@pantheon-systems/nextjs-cache-handler` for persistent caching that survives deployments.
 
+### Version pin — 0.9.0, pending a mechanism we can explain
+
+Pinned to exactly **0.9.0** (no caret). 0.11.0 took the live site down on 2026-09-04;
+rolling back restored service. The pin is a **mitigation, not a fix**.
+
+**Verified by code inspection.** 0.9.0 initialised fire-and-forget
+(`this.initialize().catch(() => {})`). 0.11.0 made it blocking — `setInitPromise()` /
+`ensureInitialized()` in `dist/handlers/base.js`, awaited by `get()` and `set()`. A slow
+or failing `initialize()` therefore stops being a cache miss and becomes unavailability.
+
+**Verified by measurement.** Live's bucket holds tens of thousands of objects under
+`fetch-cache/` but only tens under `route-cache/`. The build-invalidation sweep
+(`invalidateRouteCache()`, `gcs.js:166`) enumerates `route-cache/`, so it deletes tens
+of objects — not thousands. That sweep is byte-identical in 0.9.0; the only difference
+is that 0.9.0 does not make requests wait for it.
+
+**Not explained.** The runtime log showed thousands of concurrent GCS requests and
+socket exhaustion (TLS handshake failures, hang-ups, EPIPE). The init path issues on the
+order of tens of requests, so it is not the source. Possibly ordinary traffic
+accumulating against slow GCS reads, but that is undemonstrated. Three earlier
+explanations were investigated and are **wrong** — an unreachable bucket, 0.11.0's new
+image cache, and a large route-cache sweep. Do not repeat them.
+
+**LIFT WHEN** a release survives a deploy on an environment carrying a cache comparable
+to live's, across both prefixes, since which one matters is unresolved. A green CI run
+does **not** qualify: the handler is inert unless `NODE_ENV=production` and
+`PANTHEON_ENVIRONMENT` are both set (`next.config.ts:9`), so local build and E2E never
+instantiate it. Nor does a PR environment, which carries roughly a hundred objects.
+
+**Related defect, separate from the pin.** The tag manifest is never pruned of
+references to evicted entries — dev references thousands of keys against hundreds of
+real objects, and its manifest is far larger than live's despite holding much less
+cache. It is read and rewritten inside the blocking init, so init cost grows with an
+environment's age regardless of traffic.
+
 **Installation**:
 ```bash
 npm install @pantheon-systems/nextjs-cache-handler
