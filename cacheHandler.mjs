@@ -1,132 +1,139 @@
 import { GcsCacheHandler, FileCacheHandler } from '@pantheon-systems/nextjs-cache-handler'
 
-/**
- * Upper bound on how long a request will wait for cache initialisation.
- *
- * WIP: 2000ms is a placeholder. The real value comes from measuring what
- * initialize() actually costs against a warm cache on a PR environment.
- */
-const INIT_TIMEOUT_MS = 2000
+// Overridable per environment so the bound can be tuned without a code change.
+const INIT_TIMEOUT_MS = Number(process.env.CACHE_INIT_TIMEOUT_MS) || 2000
+
+// CACHE_INIT_FAULT=hang makes init never settle, so an environment can demonstrate
+// the bound instead of waiting for GCS to fail. Opt-in, announced at construction.
+const INIT_FAULT = process.env.CACHE_INIT_FAULT || ''
 
 /**
- * GcsCacheHandler with a bounded initialise.
+ * Report real wall-clock init duration, once.
  *
- * WHY THIS EXISTS — from the live runtime log of 2026-09-04, not from inference:
+ * Must be anchored to the promise, not to a request. Timing from inside
+ * ensureInitialized() measures how long one REQUEST waited, which converges on
+ * INIT_TIMEOUT_MS — the number you would then calibrate the bound from. It also
+ * never fires when the request times out, which is the case that matters most.
+ */
+function observeInitDuration(initPromise, startedAt, getWaitCount) {
+  if (!initPromise) {
+    return
+  }
+  // Side-effect only: do not reassign this.initPromise. The fast path depends on
+  // super nulling that exact object. Never rejects — super wraps it in .catch().
+  initPromise.then(() => {
+    console.info(
+      `[BoundedGcsCacheHandler] INIT_OBSERVED durationMs=${Date.now() - startedAt} ` +
+        `bound=${INIT_TIMEOUT_MS}ms boundExceededWhileWaiting=${getWaitCount()}`
+    )
+  })
+}
+
+/**
+ * GcsCacheHandler that bounds initialise and cheapens the tag-map write.
  *
- *   [GcsCacheHandler] Error reading tags mapping: FetchError: request to
- *   .../o/cache%2Ftags%2Ftags.json failed, reason: Client network socket
- *   disconnected before secure TLS connection was established  (ECONNRESET)
- *
- * 153 of those, ramping 3 -> 71 per minute, alongside 13 SIGTERMs.
- *
- * The bottleneck is NOT new in 0.11.0. TagsBuffer is byte-identical in 0.9.0:
- * both keep the whole tag->key mapping in ONE object (cache/tags/tags.json) and
- * flush it as a full read-modify-write on a 1s timer. Upstream comments the
- * constraint itself — "GCS rate limit is 1 write/second per object" — but that
- * budget is per object across ALL writers while the interval is per process, so
- * N autoscaled instances are N x over budget on the same object. Failure then
- * re-queues every pending update and retries at 2x interval, unbounded, so each
- * failure makes the next attempt larger.
- *
- * What 0.11.0 changed is one line — gcs.js:37 `this.initialize().catch(...)`
- * became gcs.js:39 `this.setInitPromise(this.initialize().catch(...))`, with
- * get() (base.js:237) and set() (base.js:323) now awaiting ensureInitialized().
- * initialize() does NOT reach the buffered flush — worth stating because the
- * obvious reading is wrong. It is initializeTagsMapping() + checkBuildInvalidation():
- * an exists() metadata check on tags.json (the .save() branch only fires when the
- * object is absent, which it is not on live), a build-meta.json download, and on a
- * new buildId the route sweep. readTagsMapping() -> flush() has two callers,
- * base.js:92 and base.js:365, and neither is reachable from init — gcs.js:105
- * overrides updateTagsMapping() to be buffer-only, so the base version never runs
- * on this path.
- *
- * So init is a VICTIM of whatever is breaking these connections, not a participant.
- * What 0.11.0 does is move init's unbounded GCS calls onto the request path; under
- * the connection failures in the log, any of them can hang a request that 0.9.0
- * would have served uncached. Same I/O, same failures, different blast radius.
- *
- * The platform could not see it: Next binds :3000 before any cache code runs, so
- * "STARTUP TCP probe succeeded" logged 25 times, every time. Restart reason was
- * always AUTOSCALING, never a failed health check — unanswered requests read as
- * demand, so the platform added instances, i.e. added writers to the one object.
- *
- * Deliberately NOT cited: the route-cache delete sweep. Investigated and ruled
- * out — live's route-cache/ holds tens of objects, and the sweep is identical in
- * 0.9.0. See DEPLOYMENT.md. (Separately, invalidateRouteCache() never calls
- * tagsBuffer.deleteKeys(), so tags.json accrues dead references and grows without
- * bound — that inflates the object being contended, but it is not the mechanism.)
- *
- * WHAT THIS DOES: restores 0.9.0's property — GCS is off the request path — while
- * staying on 0.11.0. If init has not finished within the bound, serve from the
- * PREVIOUS BUILD'S CACHE rather than not serving at all.
- *
- * Not "serve uncached" — that wording was wrong and the distinction is the whole
- * risk. Past the bound, get() falls through to readCacheEntry() (gcs.js:123),
- * which reads route-cache entries that checkBuildInvalidation() has not wiped
- * yet. Bounding the wait therefore knowingly re-opens the cross-build staleness
- * race that 0.11.0 added initPromise to close — upstream documents that race at
- * base.js:44-50 and again at base.js:233-237. It is a defensible trade (a stale
- * page beats a 502) but it is a trade, not a free win.
- *
- * CONCRETE HAZARD when interpreting multidev results: previous-build HTML/RSC can
- * reference /_next/static/<old-buildId>/… assets absent from the deployed image.
- * That presents as static assets 404ing — the same symptom as the outage this is
- * meant to address. If 404s appear after a deploy, THIS CHANGE is a candidate
- * cause, not only the thing being tested.
- *
- * ALSO UNBOUNDED: readCacheEntry() itself — file.exists() then file.download(),
- * neither bounded. And because Promise.race does not cancel the loser, the init
- * I/O keeps running after the bound expires. Since init does not perform the
- * contended write (see above), bounding it cannot relieve contention — it only
- * stops requests waiting on a hung read, i.e. it relocates where they queue.
- * Measure on the multidev rather than assuming the bound is sufficient.
- *
- * Do NOT cite "5000 requests in-flight" as a measured peak. That is teeny-request's
- * DEFAULT_WARN_CONCURRENT_REQUESTS, and requestStarting() latches
- * _didConcurrentRequestWarn on first emission, so it fires once per process ever and
- * never reports a maximum. N occurrences means N processes each crossed the
- * threshold once; the true ceiling is unknown and unbounded above.
- *
- * WHAT THIS DOES NOT FIX: Promise.race does not cancel the loser, and
- * super.ensureInitialized() only clears initPromise after its await resolves. So
- * while init is pending EVERY request pays the full bound, not just the first.
- * If init never settles this converts "hard down" into "permanently slower by the
- * bound, and uncached" — a large improvement, not a repair. Each timed-out request
- * also leaves a suspended async frame that never drains. The real fix is upstream:
- * keep the tags flush off the request path, and stop holding a global mutable
- * index in a single rate-limited object.
- *
- * Upstream already bounds its edge-purge calls with an AbortController and a
- * timeout (edge/edge-cache-clear.js); the GCS path simply does not. If that is
- * fixed upstream, this subclass can be deleted.
+ * 0.11.0 made get()/set() await ensureInitialized() (base.js:237/:323), where 0.9.0
+ * discarded the init promise. Init's GCS reads are unbounded, so when they hang the
+ * site stops serving rather than serving uncached.
  */
 class BoundedGcsCacheHandler extends GcsCacheHandler {
+  constructor(...args) {
+    super(...args)
+
+    this.boundExceededCount = 0
+
+    // Captured before the fault swap below, so this times the real init.
+    observeInitDuration(this.initPromise, Date.now(), () => this.boundExceededCount)
+
+    if (INIT_FAULT === 'hang') {
+      console.warn(
+        '[BoundedGcsCacheHandler] FAULT INJECTION ACTIVE (CACHE_INIT_FAULT=hang): ' +
+          'init will never settle. This is a deliberate test of the timeout bound. ' +
+          'Unset CACHE_INIT_FAULT for normal operation.'
+      )
+      this.initPromise = new Promise(() => {})
+    }
+  }
+
+  /**
+   * Disable resumable uploads on the tag-map write.
+   *
+   * @google-cloud/storage enables resumable by default and recommends against it
+   * below 10MB (file.js:3164-3175) because of the per-upload overhead on "a series
+   * of small files". tags.json is ~100KB rewritten every second by every instance.
+   *
+   * This removes an amplifier, not the cause: writeCacheEntry() uses the same
+   * file.save() with resumable equally enabled across ~18k objects and never failed.
+   * The cause is per-object write frequency against a ~1 write/sec/object limit.
+   *
+   * The re-throw is load-bearing — TagsBuffer.doFlush() catches it to retry.
+   */
+  async writeTagsMapping(tagsMapping) {
+    try {
+      const file = this.bucket.file(this.tagsMapKey)
+      await file.save(JSON.stringify(tagsMapping, null, 2), {
+        resumable: false,
+        metadata: { contentType: 'application/json' },
+      })
+    } catch (error) {
+      this.log.error('Error writing tags mapping:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Bound the wait on init.
+   *
+   * Two things this does NOT do. Promise.race does not cancel the loser and super
+   * only nulls initPromise after its own await resolves, so while init is pending
+   * EVERY request pays the full bound, not just the first. And past the bound get()
+   * falls through to readCacheEntry(), which returns PREVIOUS BUILD entries that
+   * checkBuildInvalidation() has not wiped — reopening the staleness race
+   * initPromise exists to close (base.js:44-50). That can surface as /_next/static/
+   * 404s, so INIT_BOUND_EXCEEDED is the signal that distinguishes it from a genuine
+   * asset problem.
+   */
   async ensureInitialized() {
     if (!this.initPromise) {
       return
     }
 
     let timer
+    let timedOut = false
+
     try {
       await Promise.race([
         super.ensureInitialized(),
         new Promise((resolve) => {
-          timer = setTimeout(resolve, INIT_TIMEOUT_MS)
+          timer = setTimeout(() => {
+            timedOut = true
+            resolve()
+          }, INIT_TIMEOUT_MS)
         }),
       ])
     } finally {
       clearTimeout(timer)
     }
+
+    if (timedOut) {
+      this.boundExceededCount += 1
+      // Throttled: every request pays the bound while init is pending, so one line
+      // per request would bury the signal.
+      const n = this.boundExceededCount
+      if (n === 1 || n === 10 || n === 100 || n % 1000 === 0) {
+        console.warn(
+          `[BoundedGcsCacheHandler] INIT_BOUND_EXCEEDED count=${n} bound=${INIT_TIMEOUT_MS}ms — ` +
+            'serving without completed init. Cache reads may return PREVIOUS BUILD entries, ' +
+            'which can reference stale /_next/static/<buildId>/ assets.'
+        )
+      }
+    }
   }
 }
 
-/**
- * Mirrors upstream's `shouldUseGcs('auto')`: GCS when a bucket is configured,
- * file-based otherwise. Inlined rather than calling createCacheHandler() because
- * that returns the unbounded GcsCacheHandler. This is a copy, so it will not
- * track upstream if they add a condition to shouldUseGcs().
- */
+// Mirrors upstream shouldUseGcs('auto'). Inlined because createCacheHandler()
+// returns the unbounded GcsCacheHandler; will not track upstream changes.
 const CacheHandler = process.env.CACHE_BUCKET ? BoundedGcsCacheHandler : FileCacheHandler
 
-export { BoundedGcsCacheHandler, INIT_TIMEOUT_MS }
+export { BoundedGcsCacheHandler, INIT_TIMEOUT_MS, INIT_FAULT, observeInitDuration }
 export default CacheHandler
