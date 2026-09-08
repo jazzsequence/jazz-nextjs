@@ -2,8 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Image Rendering', () => {
   test('featured images should load successfully on post cards', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // Find post cards with images
     const images = page.locator('article img');
@@ -15,12 +14,12 @@ test.describe('Image Rendering', () => {
       // Check image is visible
       await expect(firstImage).toBeVisible();
 
-      // Check image actually loaded (not broken)
-      const isLoaded = await firstImage.evaluate((img: HTMLImageElement) => {
-        return img.complete && img.naturalWidth > 0;
-      });
-
-      expect(isLoaded).toBe(true);
+      // Poll this image rather than riding on the page load event. Navigation now
+      // stops at domcontentloaded, so decoding may still be in flight here — and
+      // waiting for load would block on unrelated third-party subresources.
+      await expect.poll(() =>
+        firstImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
+      ).toBe(true);
 
       // Get image dimensions to verify it rendered
       const box = await firstImage.boundingBox();
@@ -42,25 +41,22 @@ test.describe('Image Rendering', () => {
   });
 
   test('featured images should load on individual posts', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     // PostCard: title is inside the image link (a > h2); find first post with a card image
     const postLink = page.locator('article:has(img) a[href^="/posts/"]').first()
     const href = await postLink.getAttribute('href')
     expect(href, 'Expected at least one post card with a featured image on the homepage').toBeTruthy()
 
-    await page.goto(href!)
-    await page.waitForLoadState('domcontentloaded')
+    await page.goto(href!, { waitUntil: 'domcontentloaded' })
 
     // On the individual post, verify the featured image loads if present
     const featuredImage = page.locator('article img').first()
     if (await featuredImage.count() > 0) {
       await expect(featuredImage).toBeVisible()
-      const isLoaded = await featuredImage.evaluate((img: HTMLImageElement) =>
-        img.complete && img.naturalWidth > 0
-      )
-      expect(isLoaded).toBe(true)
+      await expect.poll(() =>
+        featuredImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
+      ).toBe(true)
       const box = await featuredImage.boundingBox()
       expect(box).not.toBeNull()
       expect(box?.width).toBeGreaterThan(0)
@@ -69,8 +65,7 @@ test.describe('Image Rendering', () => {
   });
 
   test('images should have proper Next.js Image optimization attributes', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     const images = page.locator('article img');
     const imageCount = await images.count();
@@ -95,8 +90,7 @@ test.describe('Image Rendering', () => {
   });
 
   test('images should not show broken image icon', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     const images = page.locator('article img');
     const imageCount = await images.count();
@@ -105,14 +99,16 @@ test.describe('Image Rendering', () => {
       for (let i = 0; i < Math.min(imageCount, 3); i++) {
         const img = images.nth(i);
 
-        // Check naturalWidth and naturalHeight (broken images have 0x0)
+        await expect.poll(() =>
+          img.evaluate((el: HTMLImageElement) => el.complete)
+        ).toBe(true);
+
+        // Broken images report 0x0 once complete
         const dimensions = await img.evaluate((el: HTMLImageElement) => ({
           naturalWidth: el.naturalWidth,
-          naturalHeight: el.naturalHeight,
-          complete: el.complete
+          naturalHeight: el.naturalHeight
         }));
 
-        expect(dimensions.complete).toBe(true);
         expect(dimensions.naturalWidth).toBeGreaterThan(0);
         expect(dimensions.naturalHeight).toBeGreaterThan(0);
       }
@@ -120,8 +116,7 @@ test.describe('Image Rendering', () => {
   });
 
   test('CDN image URLs should be accessible', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     const images = page.locator('article img');
     const imageCount = await images.count();
