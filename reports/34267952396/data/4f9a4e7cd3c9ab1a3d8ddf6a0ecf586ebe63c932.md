@@ -1,0 +1,359 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: embeds.spec.ts >> Embed — error resilience >> Spotify post renders without console errors
+- Location: tests/e2e/embeds.spec.ts:288:3
+
+# Error details
+
+```
+Error: expect(received).toHaveLength(expected)
+
+Expected length: 0
+Received length: 3
+Received array:  ["Failed to load resource: the server responded with a status of 500 ()", "Failed to load resource: the server responded with a status of 500 ()", "Failed to load resource: the server responded with a status of 500 ()"]
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "jazzsequence" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - navigation "Main navigation" [ref=e6]:
+        - search [ref=e7]:
+          - button "Search" [ref=e8]:
+            - generic [aria-hidden] [ref=e9]: 
+        - list [ref=e11]:
+          - listitem [ref=e12]:
+            - link "Home" [ref=e13] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e14]:
+            - link "Music" [ref=e15] [cursor=pointer]:
+              - /url: /music
+          - listitem [ref=e18]:
+            - link "Code" [ref=e19] [cursor=pointer]:
+              - /url: https://github.com/jazzsequence
+          - listitem [ref=e22]:
+            - link "Games" [ref=e23] [cursor=pointer]:
+              - /url: /games
+          - listitem [ref=e26]:
+            - link "Articles" [ref=e27] [cursor=pointer]:
+              - /url: /articles
+          - listitem [ref=e28]:
+            - link "Media" [ref=e29] [cursor=pointer]:
+              - /url: /media
+          - listitem [ref=e30]:
+            - link "About" [ref=e31] [cursor=pointer]:
+              - /url: /about
+          - listitem [ref=e32]:
+            - link "Now" [ref=e33] [cursor=pointer]:
+              - /url: /now
+  - main [ref=e34]:
+    - article [ref=e35]:
+      - generic [ref=e36]:
+        - heading "Gene" [level=1] [ref=e37]
+        - time [ref=e38]: December 3, 2025
+      - img "Gene" [ref=e40]
+      - generic [ref=e43]:
+        - paragraph [ref=e44]: I apologize in advance for this post which is going to be all over the place.
+        - paragraph [ref=e45]:
+          - text: Yesterday, the latest major version of WordPress was released. WordPress names each version after a jazz musician and this release was named after
+          - link "Gene Harris" [ref=e46] [cursor=pointer]:
+            - /url: https://en.wikipedia.org/wiki/Gene_Harris
+          - text: . Gene.
+        - paragraph [ref=e47]: But naming a piece of software that I have worked in and around for 20+ years “Gene” does not make me think about new features. It only tangentially makes me think about WordPress at all.
+        - paragraph [ref=e48]:
+          - text: Gene was my dad’s name. A name he got from
+          - emphasis [ref=e49]: his
+          - text: dad, my grandfather, Eugene. And this release is the first major release of a piece of software I’ve dedicated close to half of my life on since he died almost 2 months ago.
+        - figure [ref=e50]
+        - paragraph [ref=e51]:
+          - text: So, instead, I’m feeling hollow every time I read the release name. I could care less about what’s in this version of WordPress. I’m thinking about how I haven’t written anything about his death (besides a short
+          - link "post on Instagram" [ref=e52] [cursor=pointer]:
+            - /url: https://www.instagram.com/p/DPbsCECkUb0/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==
+          - text: ). I’m wondering whether I just wasn’t paying enough attention to WordPress release names to notice that it alternated from last names (e.g.
+          - link "6.7 “Rollins”" [ref=e53] [cursor=pointer]:
+            - /url: https://wordpress.org/news/2024/11/rollins/
+          - text: ","
+          - link "6.6 “Dorsey”" [ref=e54] [cursor=pointer]:
+            - /url: https://wordpress.org/news/2024/07/dorsey/
+          - text: ) and first names (
+          - link "6.5 “Regina”" [ref=e55] [cursor=pointer]:
+            - /url: https://wordpress.org/news/2024/04/regina/
+          - text: ","
+          - link "6.7 “Cecil”" [ref=e56] [cursor=pointer]:
+            - /url: https://wordpress.org/news/2025/04/cecil/
+          - text: ). I’m wishing that
+          - link "Ma.tt" [ref=e57] [cursor=pointer]:
+            - /url: https://ma.tt
+          - text: had chosen literally
+          - emphasis [ref=e58]: any
+          - text: other jazz musician for this release. I’m thinking about the time he asked me to build a website for him and, obviously, I did it in WordPress (this is where the tangential relationship to WordPress comes in, by the way).
+        - paragraph [ref=e59]:
+          - text: I took a
+          - link "long hike" [ref=e60] [cursor=pointer]:
+            - /url: https://www.instagram.com/p/DPc_KCkAIvj/?utm_source=ig_web_copy_link&igsh=MzRlODBiNWFlZA==
+          - text: after he died. I needed to feel something in my body. Process the pain and loss by feeling it in my muscles. And, in the process, I discovered for the first time parts of the place that he called home his whole life (and so did I, for the first half of mine). I “borrowed” a hat from him to take on the hike (so my head wouldn’t get sunburned). Now, despite not particularly being a SF Giants fan, I wear that hat to remember him. In that way that you feel like your loved ones are looking over your shoulder, I felt like we were experiencing the hike together. And we saw coyotes along the way.
+        - list "Image gallery" [ref=e61]:
+          - listitem "Image 1 of 6 — click to enlarge" [ref=e62]
+          - listitem "Image 2 of 6 — click to enlarge" [ref=e63]
+          - listitem "Image 3 of 6 — click to enlarge" [ref=e64]
+          - listitem "Image 4 of 6 — click to enlarge" [ref=e65]
+          - listitem "Image 5 of 6 — click to enlarge" [ref=e66]
+          - listitem "Image 6 of 6 — click to enlarge" [ref=e67]
+        - paragraph [ref=e68]:
+          - text: We haven’t had a service yet for…reasons (that I’m not going to go into here), but I did write a eulogy when I was in the hospital with him and my mom. I’m not sure if I will ever get a chance to read it, so I’m posting it here.
+          - emphasis [ref=e69]: This
+          - text: is the Gene that I am honoring today. Not a jazz pianist I don’t know and never listened to.
+        - figure [ref=e70]
+        - paragraph [ref=e71]:
+          - emphasis [ref=e72]: My dad was always the “cool dad”. When I was old enough to care about such things, I always remembered how old he was by adding 21 years to my own age. Among my peers, he was always far younger – and by consequence, far hipper – than my friends’ parents. I never had the “ew, doing stuff with mom and dad” reaction as a teenager.
+        - paragraph [ref=e73]:
+          - emphasis [ref=e74]: My childhood had a soundtrack. A mix of 70s rock, 80s modern rock and new wave. I experienced the world through my dad’s record collection. He once told me that before he got married, he wanted to be a DJ. Maybe I was fulfilling his dream a little bit, then, when, years later, I would start DJing.
+        - paragraph [ref=e75]:
+          - emphasis [ref=e76]: Music is a language that we shared more than spoken words. A language I learned to speak before I knew the meaning of the words being sung (sometimes before I knew the actual song lyrics — as an adult I understand that indeed Iran is “so far away”, but A Flock of Seagulls was not singing about the Middle East; and while “only the lonely can play”, only bologna can not). My dad used to tell me about the concerts he took me to when I was still in my mom’s womb. And I’ve always wondered if those shows influenced how I still experience music.
+        - paragraph [ref=e77]:
+          - emphasis [ref=e78]: As I learned this language of music from my dad, I began to want to share the new dialects I was learning with him. “Dad’s Father’s Day Tape” became an annual tradition and a way of sharing where I was in my life, even when the medium changed.
+        - paragraph [ref=e79]:
+          - emphasis [ref=e80]: I realize now that a lot of things that make me who I am are extensions of who he was. You’re all here today because people gravitated towards him. He never sought out the spotlight, his spotlight just glowed naturally. But it was always one he was willing to share. He cared deeply about people, and in turn people cared about him. And he used humor to make people feel at ease and to not take things too seriously.
+        - paragraph [ref=e81]:
+          - emphasis [ref=e82]: He and I never shared a lot of words about our feelings which is why I am thinking about this language of music. When I first flew out to see him after he went into the hospital, I was almost afraid I wouldn’t feel anything. That it would come later or that I would just feel numb. I didn’t expect that watching my dad tell jokes while he’s dying of cancer would be the thing that ripped my grief out of me and made me appreciate the person he was.
+        - paragraph [ref=e83]:
+          - emphasis [ref=e84]: The hospice nurse was asking him questions like “do you remember what year it is?” and “do you remember what day it is?”, and he finally asked my dad “do you know where you are?” and after answering all the other questions, my dad said “Hell.” Then he added “that was a joke.” Regardless of what your faith tells you happens to us after we pass on from this world, there’s pretty much only one way to go from there.
+        - paragraph [ref=e85]:
+          - emphasis [ref=e86]: This exchange made me appreciate how much he put others before himself and how much of that I pulled from him as well. He was still trying to entertain us even when it was hard for him to communicate.
+        - paragraph [ref=e87]:
+          - emphasis [ref=e88]: I hate that so much time was stolen from him by this disease, that he’ll no longer be around to make us laugh. But I also know how to talk to him, how to listen to him and I know he’s not far away.
+        - figure [ref=e89]:
+          - iframe [ref=e91]:
+            - generic [ref=f1e1]:
+              - generic [ref=f1e6]:
+                - img "Love Reign O'er Me cover" [ref=f1e9] [cursor=pointer]
+                - button "Play on Spotify" [ref=f1e11] [cursor=pointer]
+                - generic [ref=f1e14]:
+                  - heading [level=1] [ref=f1e15]:
+                    - link "Love Reign O'er Me" [ref=f1e19] [cursor=pointer]:
+                      - /url: https://open.spotify.com/track/4Mqs0h95KAeNiGp7u4udlt?go=1&sp_cid=4b99b209a409b7bd325d1aee80294158&utm_source=embed_player_p&utm_medium=desktop&si=5b20868b54e04594
+                  - generic [ref=f1e20]:
+                    - list "Tags" [ref=f1e21]:
+                      - generic "Preview" [ref=f1e22]
+                    - heading [level=2] [ref=f1e23]:
+                      - link "The Who" [ref=f1e28] [cursor=pointer]:
+                        - /url: https://open.spotify.com/artist/67ea9eGLXYMsO2eYQRui3w?go=1&sp_cid=4b99b209a409b7bd325d1aee80294158
+                - generic [ref=f1e29]:
+                  - button "Save on Spotify" [ref=f1e31] [cursor=pointer]
+                  - button "More" [ref=f1e37] [cursor=pointer]
+                  - button "Play" [ref=f1e41] [cursor=pointer]
+              - alert [ref=f1e44]
+      - generic [ref=e93]:
+        - generic [ref=e94]: Categories
+        - link "ministry of music" [ref=e95] [cursor=pointer]:
+          - /url: /category/ministry-of-music
+        - link "subdivision of random" [ref=e96] [cursor=pointer]:
+          - /url: /category/subdivision-of-random
+    - region [ref=e97]:
+      - heading "No comments yet" [level=2] [ref=e99]
+      - generic [ref=e101]:
+        - heading "Leave a Reply" [level=3] [ref=e102]
+        - paragraph [ref=e103]:
+          - text: Fields marked *
+          - generic [ref=e104]: with an asterisk
+          - text: are required. Your email address will not be published.
+        - generic [ref=e105]:
+          - generic [ref=e106]: Name *
+          - textbox "Name" [ref=e107]
+        - generic [ref=e108]:
+          - generic [ref=e109]: Email *
+          - textbox "Email" [ref=e110]
+        - generic [ref=e111]:
+          - generic [ref=e112]: Comment *
+          - textbox "Comment" [ref=e113]
+        - button "Post Comment" [ref=e114]
+  - contentinfo [ref=e115]:
+    - generic [ref=e116]:
+      - generic [ref=e117]:
+        - generic [ref=e119]:
+          - paragraph [ref=e120]: jazzsequence
+          - paragraph [ref=e121]: "@jazzsequence@jazzsequence.com"
+          - paragraph [ref=e122]: I make websites and things.
+          - generic [ref=e123]:
+            - button "Follow on the Open Social Web" [ref=e124]:
+              - generic [aria-hidden] [ref=e125]: 
+              - text: Follow on the Open Social Web
+            - link "View profile" [ref=e126] [cursor=pointer]:
+              - /url: https://jazzsequence.com/@jazzsequence
+        - paragraph [ref=e127]:
+          - text: Want to know what makes this site go?
+          - link "Check out the GitHub repo" [ref=e128] [cursor=pointer]:
+            - /url: https://github.com/jazzsequence/jazz-nextjs
+          - text: "!"
+      - generic [ref=e129]:
+        - link "Personal site" [ref=e130] [cursor=pointer]:
+          - /url: https://chrisreynolds.io
+          - generic [aria-hidden] [ref=e131]: 
+        - link "Newsletter" [ref=e132] [cursor=pointer]:
+          - /url: https://us1.campaign-archive.com/home/?u=4085972eca88b58d063f1b9a5&id=85460dd934
+          - generic [aria-hidden] [ref=e133]: 
+        - link "Bluesky" [ref=e134] [cursor=pointer]:
+          - /url: https://bsky.app/profile/jazzsequence.com
+          - generic [aria-hidden] [ref=e135]: 
+        - link "GitHub" [ref=e136] [cursor=pointer]:
+          - /url: https://github.com/jazzsequence
+          - generic [aria-hidden] [ref=e137]: 
+        - link "Instagram" [ref=e138] [cursor=pointer]:
+          - /url: https://instagram.com/jazzs3quence
+          - generic [aria-hidden] [ref=e139]: 
+        - link "Spotify" [ref=e140] [cursor=pointer]:
+          - /url: https://open.spotify.com/user/jazzsequence
+          - generic [aria-hidden] [ref=e141]: 
+        - link "LinkedIn" [ref=e142] [cursor=pointer]:
+          - /url: https://linkedin.com/in/chrissreynolds
+          - generic [aria-hidden] [ref=e143]: 
+        - link "YouTube" [ref=e144] [cursor=pointer]:
+          - /url: https://www.youtube.com/c/chrisreynoldsjazzsequence
+          - generic [aria-hidden] [ref=e145]: 
+        - link "Bandcamp" [ref=e146] [cursor=pointer]:
+          - /url: https://music.jazzsequence.com/
+          - generic [aria-hidden] [ref=e147]: 
+        - link "SoundCloud" [ref=e148] [cursor=pointer]:
+          - /url: https://soundcloud.com/jazzs3quence
+          - generic [aria-hidden] [ref=e149]: 
+        - link "Twitch" [ref=e150] [cursor=pointer]:
+          - /url: https://twitch.tv/jazzsequence
+          - generic [aria-hidden] [ref=e151]: 
+        - link "Mastodon" [ref=e152] [cursor=pointer]:
+          - /url: https://mstdn.social/@jazzsequence
+          - generic [aria-hidden] [ref=e153]: 
+        - link "WordPress.org" [ref=e154] [cursor=pointer]:
+          - /url: https://profiles.wordpress.org/jazzs3quence
+          - generic [aria-hidden] [ref=e155]: 
+        - link "Etsy" [ref=e156] [cursor=pointer]:
+          - /url: https://possibleoctopus.com
+          - generic [aria-hidden] [ref=e157]: 
+      - generic [ref=e158]:
+        - generic [ref=e159]: jazzsequence
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - text: "Last Built: 9/8/2026, 10:50:56 AM MT •"
+            - link "f327ba1" [ref=e162] [cursor=pointer]:
+              - /url: https://github.com/jazzsequence/jazz-nextjs/commit/f327ba1d446e5ad8dae229ae7d3694af071dc387
+          - generic [ref=e163]: © 2026 Chris Reynolds
+```
+
+# Test source
+
+```ts
+  200 |   // is-type-wp-embed figures are intercepted by PostContent and replaced with
+  201 |   // WPEmbedCard → ArticleCard. We verify the ArticleCard rendered correctly.
+  202 |   test('disclosing-ai-use renders wp-embed as an ArticleCard', async ({ page }) => {
+  203 |     await page.goto('/posts/disclosing-ai-use', { waitUntil: 'domcontentloaded' });
+  204 |     await page.waitForLoadState('domcontentloaded');
+  205 | 
+  206 |     // WPEmbedCard shows a loading skeleton first, then the card
+  207 |     // Wait for the card's article element (not the loading skeleton)
+  208 |     await page.waitForSelector('article', { timeout: 10000 });
+  209 |     const card = page.locator('article').first();
+  210 |     await expect(card).toBeAttached();
+  211 |     // Card should contain a link to the external article
+  212 |     const link = card.locator('a[href*="communitycode.dev"], a[href*="community"]').first();
+  213 |     await expect(link).toBeAttached();
+  214 |   });
+  215 | 
+  216 |   test('wp-tavern podcast post renders wp-embed as an ArticleCard', async ({ page }) => {
+  217 |     await page.goto('/posts/i-was-on-the-wp-tavern-podcast', { waitUntil: 'domcontentloaded' });
+  218 |     await page.waitForLoadState('domcontentloaded');
+  219 | 
+  220 |     await page.waitForSelector('article', { timeout: 10000 });
+  221 |     const card = page.locator('article').first();
+  222 |     await expect(card).toBeAttached();
+  223 |     // Card should link to the WP Tavern post
+  224 |     const link = card.locator('a[href*="wptavern.com"]').first();
+  225 |     await expect(link).toBeAttached();
+  226 |   });
+  227 | });
+  228 | 
+  229 | // ── General embed structure ─────────────────────────────────────────────────────
+  230 | 
+  231 | test.describe('Embed — figure class hierarchy', () => {
+  232 |   test('wp-block-embed figures in article use the standard wrapper structure', async ({ page }) => {
+  233 |     await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
+  234 |     await page.waitForLoadState('domcontentloaded');
+  235 | 
+  236 |     // At least one embed should have the standard wp-block-embed__wrapper child structure
+  237 |     const embedWithWrapper = page.locator('article .wp-block-embed .wp-block-embed__wrapper').first();
+  238 |     await expect(embedWithWrapper).toBeAttached();
+  239 |   });
+  240 | 
+  241 |   test('video embeds have wp-has-aspect-ratio class', async ({ page }) => {
+  242 |     await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
+  243 |     await page.waitForLoadState('domcontentloaded');
+  244 | 
+  245 |     const videoEmbed = page.locator('article .wp-block-embed-youtube.wp-has-aspect-ratio').first();
+  246 |     await expect(videoEmbed).toBeAttached();
+  247 |   });
+  248 | });
+  249 | 
+  250 | // ── Error resilience ─────────────────────────────────────────────────────────────
+  251 | 
+  252 | test.describe('Embed — error resilience', () => {
+  253 |   test('posts with embeds do not produce first-party console errors', async ({ page }) => {
+  254 |     const consoleErrors: string[] = [];
+  255 |     page.on('console', msg => {
+  256 |       if (msg.type() === 'error') {
+  257 |         const text = msg.text();
+  258 |         const isThirdParty = [
+  259 |           'platform.twitter.com', 'instagram.com', 'tiktok.com',
+  260 |           'assets.tumblr.com', 'open.spotify.com', 'youtube.com',
+  261 |         ].some(d => text.includes(d));
+  262 |         if (!isThirdParty) consoleErrors.push(text);
+  263 |       }
+  264 |     });
+  265 | 
+  266 |     await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
+  267 |     await page.waitForLoadState('load');
+  268 |     expect(consoleErrors).toHaveLength(0);
+  269 |   });
+  270 | 
+  271 |   test('embed iframes do not return 4xx errors', async ({ page }) => {
+  272 |     const failedIframes: string[] = [];
+  273 |     page.on('response', response => {
+  274 |       const url = response.url();
+  275 |       if (url.includes('/embed') && response.status() >= 400 && response.status() < 500) {
+  276 |         failedIframes.push(`${response.status()} ${url}`);
+  277 |       }
+  278 |     });
+  279 | 
+  280 |     await page.goto('/posts/binary-jazz', { waitUntil: 'domcontentloaded' });
+  281 |     // 'load', not 'domcontentloaded': this test observes subresource responses, so it
+  282 |     // must not assert before they have been made. At DCL the listener has seen 0 of the
+  283 |     // ~55 /embed responses, which would make the assertion vacuously true.
+  284 |     await page.waitForLoadState('load');
+  285 |     expect(failedIframes).toHaveLength(0);
+  286 |   });
+  287 | 
+  288 |   test('Spotify post renders without console errors', async ({ page }) => {
+  289 |     const consoleErrors: string[] = [];
+  290 |     page.on('console', msg => {
+  291 |       if (msg.type() === 'error') {
+  292 |         const text = msg.text();
+  293 |         const isThirdParty = ['open.spotify.com', 'spotify.com'].some(d => text.includes(d));
+  294 |         if (!isThirdParty) consoleErrors.push(text);
+  295 |       }
+  296 |     });
+  297 | 
+  298 |     await page.goto('/posts/gene', { waitUntil: 'domcontentloaded' });
+  299 |     await page.waitForLoadState('load');
+> 300 |     expect(consoleErrors).toHaveLength(0);
+      |                           ^ Error: expect(received).toHaveLength(expected)
+  301 |   });
+  302 | });
+  303 | 
+```
