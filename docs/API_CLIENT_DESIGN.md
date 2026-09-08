@@ -366,6 +366,8 @@ export interface FetchOptions {
   search?: string
   categories?: number[]
   tags?: number[]
+  series?: number[]
+  mediaTypes?: number[]  // Sent as `media-type` — the taxonomy's rest_base
   orderBy?: 'date' | 'title' | 'modified'
   order?: 'asc' | 'desc'
   isr?: ISROptions

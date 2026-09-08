@@ -84,6 +84,13 @@ test.describe('Accessibility — WCAG 2.1 AA', () => {
     expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
   })
 
+  test('filtered media listing has no critical/serious a11y violations', async ({ page }) => {
+    // The filtered view, not bare /media: it is the state that adds the filter nav
+    // with an aria-current link, and it exercises the unfiltered markup as well.
+    const results = await auditPage(page, '/media?type=podcast')
+    expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)
+  })
+
   test('tag archive has no critical/serious a11y violations', async ({ page }) => {
     const results = await auditPage(page, '/tag/teh-s3quence')
     expect(results.violations.filter(v => v.impact === 'critical' || v.impact === 'serious')).toHaveLength(0)

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import * as wpClient from '@/lib/wordpress/client'
 
@@ -7,6 +7,7 @@ vi.mock('@/lib/wordpress/client', async (importOriginal) => {
   return {
     ...actual,
     fetchPostsWithPagination: vi.fn(),
+    fetchMediaTypes: vi.fn(),
     fetchMenuItems: vi.fn().mockResolvedValue([]),
     fetchPost: vi.fn().mockResolvedValue({
       id: 16084, slug: 'videos', type: 'page',
@@ -29,7 +30,11 @@ vi.mock('@/lib/build-info', () => ({
 }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn(), forbidden: vi.fn() }))
 vi.mock('@/components/Footer', () => ({ default: () => <footer data-testid="footer" /> }))
-vi.mock('@/components/Pagination', () => ({ default: () => null }))
+vi.mock('@/components/Pagination', () => ({
+  default: ({ basePath }: { basePath: string }) => (
+    <div data-testid="pagination" data-basepath={basePath} />
+  ),
+}))
 
 const mockPaginatedResult = (items = [mockMediaItem()]) => ({
   data: items,
@@ -37,6 +42,25 @@ const mockPaginatedResult = (items = [mockMediaItem()]) => ({
   totalPages: 1,
   currentPage: 1,
 })
+
+function mockMediaType(overrides = {}) {
+  return {
+    id: 5319,
+    count: 45,
+    description: '',
+    link: 'https://jazzsequence.com/media-type/podcast/',
+    name: 'Podcast',
+    slug: 'podcast',
+    taxonomy: 'media_type' as const,
+    meta: {},
+    ...overrides,
+  }
+}
+
+const mediaTypes = [
+  mockMediaType(),
+  mockMediaType({ id: 5321, count: 11, name: 'Video', slug: 'video' }),
+]
 
 function mockMediaItem(overrides = {}) {
   return {
@@ -55,10 +79,14 @@ function mockMediaItem(overrides = {}) {
 }
 
 describe('Media listing page', () => {
+  beforeEach(() => {
+    vi.mocked(wpClient.fetchMediaTypes).mockResolvedValue(mediaTypes)
+  })
+
   it('renders the page heading', async () => {
     vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
     const MediaPage = (await import('@/app/media/page')).default
-    render(await MediaPage())
+    render(await MediaPage({ searchParams: Promise.resolve({}) }))
     expect(screen.getByRole('heading', { name: /Media/i })).toBeInTheDocument()
   })
 
@@ -68,7 +96,7 @@ describe('Media listing page', () => {
       mockMediaItem({ id: 2, slug: 'video-two', title: { rendered: 'Video Two' } }),
     ]))
     const MediaPage = (await import('@/app/media/page')).default
-    render(await MediaPage())
+    render(await MediaPage({ searchParams: Promise.resolve({}) }))
     expect(screen.getByText('Video One')).toBeInTheDocument()
     expect(screen.getByText('Video Two')).toBeInTheDocument()
   })
@@ -76,28 +104,28 @@ describe('Media listing page', () => {
   it('renders gracefully when no media items are returned', async () => {
     vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult([]))
     const MediaPage = (await import('@/app/media/page')).default
-    render(await MediaPage())
+    render(await MediaPage({ searchParams: Promise.resolve({}) }))
     expect(screen.getByRole('heading', { name: /Media/i })).toBeInTheDocument()
   })
 
   it('calls fetchPostsWithPagination with media post type', async () => {
     vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult([]))
     const MediaPage = (await import('@/app/media/page')).default
-    await MediaPage()
+    await MediaPage({ searchParams: Promise.resolve({}) })
     expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith('media', expect.objectContaining({ embed: true }))
   })
 
   it('renders intro content from the videos page', async () => {
     vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult([]))
     const MediaPage = (await import('@/app/media/page')).default
-    const { container } = render(await MediaPage())
+    const { container } = render(await MediaPage({ searchParams: Promise.resolve({}) }))
     expect(container.innerHTML).toContain('I was doing developer relations long before joining Pantheon.')
   })
 
   it('renders the featured image from the videos page', async () => {
     vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult([]))
     const MediaPage = (await import('@/app/media/page')).default
-    const { container } = render(await MediaPage())
+    const { container } = render(await MediaPage({ searchParams: Promise.resolve({}) }))
     expect(container.querySelector('img[src*="chris-wordcamp"]')).toBeInTheDocument()
   })
 
@@ -106,15 +134,115 @@ describe('Media listing page', () => {
       mockMediaItem({ title: { rendered: 'My Talk Title' } }),
     ]))
     const MediaPage = (await import('@/app/media/page')).default
-    const { container } = render(await MediaPage())
+    const { container } = render(await MediaPage({ searchParams: Promise.resolve({}) }))
     const img = container.querySelector('img[src*="cdn.example.com/thumb"]')
     expect(img).toBeInTheDocument()
     expect(img?.getAttribute('alt')).toBe('My Talk Title')
   })
 
-  it('exports metadata with short title (no site suffix) and canonical', async () => {
-    const { metadata } = await import('@/app/media/page')
-    expect((metadata as { title: string }).title).toBe('Media')
-    expect((metadata as { alternates?: { canonical?: string } }).alternates?.canonical).toBe('/media')
+  it('renders a filter pill for every media type', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
+    const MediaPage = (await import('@/app/media/page')).default
+    render(await MediaPage({ searchParams: Promise.resolve({}) }))
+    expect(screen.getByTestId('media-filters')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Podcast' })).toBeInTheDocument()
+  })
+
+  it('filters by the matching term id when ?type= names a known slug', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
+    const MediaPage = (await import('@/app/media/page')).default
+    await MediaPage({ searchParams: Promise.resolve({ type: 'podcast' }) })
+    expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith(
+      'media',
+      expect.objectContaining({ mediaTypes: [5319] })
+    )
+  })
+
+  it('renders unfiltered when ?type= names an unknown slug', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
+    const MediaPage = (await import('@/app/media/page')).default
+    render(await MediaPage({ searchParams: Promise.resolve({ type: 'not-a-real-type' }) }))
+    expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith(
+      'media',
+      expect.not.objectContaining({ mediaTypes: expect.anything() })
+    )
+    expect(screen.getByRole('heading', { name: /Media/i })).toBeInTheDocument()
+  })
+
+  it('requests the page named by ?page=', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
+    const MediaPage = (await import('@/app/media/page')).default
+    await MediaPage({ searchParams: Promise.resolve({ type: 'podcast', page: '3' }) })
+    expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith(
+      'media',
+      expect.objectContaining({ page: 3 })
+    )
+  })
+
+  it('gives pagination a query-string basePath while a filter is active', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
+    const MediaPage = (await import('@/app/media/page')).default
+    render(await MediaPage({ searchParams: Promise.resolve({ type: 'podcast' }) }))
+    expect(screen.getByTestId('pagination')).toHaveAttribute('data-basepath', '/media?type=podcast')
+  })
+
+  it('gives pagination the path basePath when no filter is active', async () => {
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
+    const MediaPage = (await import('@/app/media/page')).default
+    render(await MediaPage({ searchParams: Promise.resolve({}) }))
+    expect(screen.getByTestId('pagination')).toHaveAttribute('data-basepath', '/media')
+  })
+
+  it('renders without pills and unfiltered when the media types fetch fails', async () => {
+    vi.mocked(wpClient.fetchMediaTypes).mockRejectedValue(new Error('boom'))
+    vi.mocked(wpClient.fetchPostsWithPagination).mockResolvedValue(mockPaginatedResult())
+    const MediaPage = (await import('@/app/media/page')).default
+    render(await MediaPage({ searchParams: Promise.resolve({ type: 'podcast' }) }))
+    expect(screen.queryByTestId('media-filters')).not.toBeInTheDocument()
+    expect(wpClient.fetchPostsWithPagination).toHaveBeenCalledWith(
+      'media',
+      expect.not.objectContaining({ mediaTypes: expect.anything() })
+    )
+    expect(screen.getByRole('heading', { name: /Media/i })).toBeInTheDocument()
+  })
+})
+
+describe('Media listing page metadata', () => {
+  beforeEach(() => {
+    vi.mocked(wpClient.fetchMediaTypes).mockResolvedValue(mediaTypes)
+  })
+
+  it('uses the short title and the canonical /media when unfiltered', async () => {
+    const { generateMetadata } = await import('@/app/media/page')
+    const meta = await generateMetadata({ searchParams: Promise.resolve({}) })
+    expect(meta.title).toBe('Media')
+    expect(meta.alternates?.canonical).toBe('/media')
+  })
+
+  it('names the active type and self-references its canonical when filtered', async () => {
+    const { generateMetadata } = await import('@/app/media/page')
+    const meta = await generateMetadata({ searchParams: Promise.resolve({ type: 'podcast' }) })
+    expect(meta.title).toContain('Podcast')
+    expect(meta.alternates?.canonical).toBe('/media?type=podcast')
+  })
+
+  it('keeps a filtered view out of the index so it does not compete with /media', async () => {
+    const { generateMetadata } = await import('@/app/media/page')
+    const meta = await generateMetadata({ searchParams: Promise.resolve({ type: 'podcast' }) })
+    expect(meta.robots).toMatchObject({ index: false, follow: true })
+  })
+
+  it('falls back to the unfiltered canonical for an unknown slug', async () => {
+    const { generateMetadata } = await import('@/app/media/page')
+    const meta = await generateMetadata({ searchParams: Promise.resolve({ type: 'nope' }) })
+    expect(meta.title).toBe('Media')
+    expect(meta.alternates?.canonical).toBe('/media')
+  })
+
+  it('falls back to the unfiltered canonical when the media types fetch fails', async () => {
+    vi.mocked(wpClient.fetchMediaTypes).mockRejectedValue(new Error('boom'))
+    const { generateMetadata } = await import('@/app/media/page')
+    const meta = await generateMetadata({ searchParams: Promise.resolve({ type: 'podcast' }) })
+    expect(meta.alternates?.canonical).toBe('/media')
   })
 })

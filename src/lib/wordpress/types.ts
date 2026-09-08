@@ -250,6 +250,18 @@ export interface WPSeries {
   meta: Record<string, unknown>
 }
 
+// Media type (media_type taxonomy on the media CPT — rest_base is `media-type`)
+export interface WPMediaType {
+  id: number
+  count: number
+  description: string
+  link: string
+  name: string
+  slug: string
+  taxonomy: 'media_type'
+  meta: Record<string, unknown>
+}
+
 // Menu
 export interface WPMenu {
   id: number
@@ -331,4 +343,5 @@ export type WPTaxonomy =
   | WPCategory
   | WPTag
   | WPSeries
+  | WPMediaType
   | WPTerm

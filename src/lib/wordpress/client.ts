@@ -27,6 +27,7 @@ import {
   WPTagsSchema,
   WPCategoriesSchema,
   WPSeriesListSchema,
+  WPMediaTypesSchema,
 } from './schemas'
 import type {
   WPPost,
@@ -45,6 +46,7 @@ import type {
   WPTag,
   WPCategory,
   WPSeries,
+  WPMediaType,
 } from './types'
 
 // ===== Configuration =====
@@ -133,6 +135,7 @@ export interface FetchOptions {
   categories?: number[]
   tags?: number[]
   series?: number[]
+  mediaTypes?: number[]
   orderBy?: 'date' | 'title' | 'modified'
   order?: 'asc' | 'desc'
   isr?: ISROptions
@@ -411,6 +414,9 @@ function buildQueryParams(options: Omit<FetchOptions, 'isr'> = {}): string {
     params.append('categories', options.categories.join(','))
   if (options.tags) params.append('tags', options.tags.join(','))
   if (options.series) params.append('series', options.series.join(','))
+  // `media-type` (hyphen) is the taxonomy's rest_base, not its slug
+  if (options.mediaTypes)
+    params.append('media-type', options.mediaTypes.join(','))
   if (options.orderBy) params.append('orderby', options.orderBy)
   if (options.order) params.append('order', options.order)
 
@@ -993,5 +999,37 @@ export async function fetchSeriesBySlug(
     }
     const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
     throw new WPAPIError(`Failed to fetch series: ${slug}`, statusCode, 'series')
+  }
+}
+
+/**
+ * Fetch every media_type term used by the media CPT.
+ *
+ * `hide_empty=true` so a taxonomy term with no published media never renders as
+ * a dead filter. Returns terms in the API's default order (name, ascending).
+ *
+ * @see GET /wp-json/wp/v2/media-type?per_page=100&hide_empty=true
+ */
+export async function fetchMediaTypes(
+  options: Pick<FetchOptions, 'isr' | 'cache'> = {}
+): Promise<WPMediaType[]> {
+  const { isr, cache } = options
+  const url = `${API_BASE_URL}/media-type?per_page=100&hide_empty=true`
+
+  const isrOptions = cache || isr || {}
+  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+    isrOptions.tags = ['media-type']
+  }
+
+  const cacheOptions = buildISROptions(isrOptions)
+
+  try {
+    return (await fetchAndValidate(url, WPMediaTypesSchema, cacheOptions)) as WPMediaType[]
+  } catch (error) {
+    if (error instanceof WPValidationError) {
+      throw error
+    }
+    const statusCode = error instanceof WPAPIError ? error.statusCode : undefined
+    throw new WPAPIError('Failed to fetch media types', statusCode, 'media-type')
   }
 }
