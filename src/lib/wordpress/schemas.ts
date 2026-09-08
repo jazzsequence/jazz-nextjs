@@ -232,6 +232,19 @@ export const WPSeriesSchema = z.object({
   meta: z.union([z.record(z.string(), z.any()), z.array(z.any())]),
 }).passthrough()
 
+// Media type schema (media_type taxonomy on the media CPT, rest_base media-type)
+// — meta is [] for terms with no metadata; passthrough for _links etc.
+export const WPMediaTypeSchema = z.object({
+  id: z.number(),
+  count: z.number(),
+  description: z.string(),
+  link: z.string(),
+  name: z.string(),
+  slug: z.string(),
+  taxonomy: z.literal('media_type'),
+  meta: z.union([z.record(z.string(), z.any()), z.array(z.any())]),
+}).passthrough()
+
 // API error schema
 export const WPAPIErrorSchema = z.object({
   code: z.string(),
@@ -282,6 +295,7 @@ export const WPAddressesSchema = z.array(WPAddressSchema)
 export const WPCategoriesSchema = z.array(WPCategorySchema)
 export const WPTagsSchema = z.array(WPTagSchema)
 export const WPSeriesListSchema = z.array(WPSeriesSchema)
+export const WPMediaTypesSchema = z.array(WPMediaTypeSchema)
 
 // Menu schemas
 export const WPMenuSchema = z.object({
@@ -348,5 +362,6 @@ export type InferredWPAddress = z.infer<typeof WPAddressSchema>
 export type InferredWPCategory = z.infer<typeof WPCategorySchema>
 export type InferredWPTag = z.infer<typeof WPTagSchema>
 export type InferredWPSeries = z.infer<typeof WPSeriesSchema>
+export type InferredWPMediaType = z.infer<typeof WPMediaTypeSchema>
 export type InferredWPMenu = z.infer<typeof WPMenuSchema>
 export type InferredWPMenuItem = z.infer<typeof WPMenuItemSchema>
