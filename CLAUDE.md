@@ -239,7 +239,7 @@ Key facts:
 - `/posts/page/[page]` — paginated posts archive pages
 - `/[slug]`, `/[slug]/[child]` — WordPress pages
 - `/games` — game collection with filtering + modal (ISR)
-- `/media` — media CPT listing (paginated, 12/page) + `/media/[slug]` detail pages
+- `/media` — media CPT listing (paginated, 12/page) + `/media/[slug]` detail pages. `?type=<slug>` filters by the `media_type` taxonomy (`rest_base: media-type`, term IDs only — slugs return 400); an unknown slug renders unfiltered
 - `/media/page/[page]` — paginated media archive pages
 - `/tag/[slug]` — tag archives
 - `/category/[slug]` — category archives

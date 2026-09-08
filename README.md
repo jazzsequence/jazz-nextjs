@@ -37,7 +37,7 @@ This is a headless Next.js frontend for jazzsequence.com, consuming content from
 | `/[slug]` | WordPress pages (e.g. `/music`, `/about`) |
 | `/[slug]/[child]` | Child pages (e.g. `/music/loafmen`) |
 | `/games` | Board game collection with filtering and modal detail view |
-| `/media` | Media CPT listing (paginated, 12/page) |
+| `/media` | Media CPT listing (paginated, 12/page); `?type=<slug>` filters by media type |
 | `/media/[slug]` | Individual media detail pages |
 | `/media/page/[page]` | Paginated media archive pages |
 | `/tag/[slug]` | Tag archive pages |
