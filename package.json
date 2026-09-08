@@ -74,7 +74,7 @@
     "@types/react-dom": "^19.2.7",
     "@types/sanitize-html": "^2.16.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "@vitest/browser-playwright": "^4.1.11",
+    "@vitest/browser-playwright": "^5.0.0",
     "@vitest/coverage-v8": "^4.1.11",
     "@vitest/ui": "^4.1.11",
     "autoprefixer": "^10.5.4",
