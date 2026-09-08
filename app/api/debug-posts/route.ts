@@ -8,6 +8,11 @@ export async function GET() {
       page: 1,
       perPage: 3,
       embed: true,
+      // The point of this endpoint is seeing what WordPress returns right now.
+      // Without this it would inherit the client's one-hour default and report
+      // hour-old data while still sending Cache-Control: no-store — defeating
+      // itself. Low traffic, so opting out costs nothing.
+      isr: { revalidate: 0 },
     });
 
     // Extract debug info from first post

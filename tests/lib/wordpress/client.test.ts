@@ -1495,10 +1495,13 @@ describe('WordPress API Client', () => {
 
       await fetchPosts('posts', { cache: { tags: ['posts', 'content'] } })
 
+      // Tags now come with the default revalidate. Previously this asserted tags
+      // alone, which meant a tagged fetch was still uncached in Next 16 — a tag
+      // you can purge on a response that was never stored.
       expect(mockFetch).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          next: { tags: ['posts', 'content'] },
+          next: { revalidate: 3600, tags: ['posts', 'content'] },
         })
       )
     })
@@ -1772,5 +1775,71 @@ describe('WordPress API Client', () => {
       const result = await fetchMenus()
       expect(Array.isArray(result)).toBe(true)
     })
+  })
+})
+
+describe('default caching — an unspecified fetch must not hit WordPress every time', () => {
+  // Next 16 does not cache fetches by default, and buildISROptions returned {}
+  // when no ISR options were passed. Every call site that omitted them — app/sitemap.ts
+  // among them — therefore went to WordPress on every single request: every dev page
+  // load and every E2E test. That is the demand side of the origin saturation that
+  // took jazzsequence.com down on 2026-09-08.
+  it('applies a default revalidate when none is given', async () => {
+    const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+
+    await fetchPosts('posts')
+
+    const init = mockFetch.mock.calls[0][1] as RequestInit & { next?: { revalidate?: number } }
+    expect(init?.next?.revalidate).toBeGreaterThan(0)
+  })
+
+  it('still honours an explicit revalidate of 0 for always-fresh routes', async () => {
+    // /search sets revalidate = 0 deliberately. A default must not override it.
+    const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+
+    await fetchPosts('posts', { isr: { revalidate: 0 } })
+
+    const init = mockFetch.mock.calls[0][1] as RequestInit & { next?: { revalidate?: number } }
+    expect(init?.next?.revalidate).toBe(0)
+  })
+
+  it('preserves an explicit revalidate and tags alongside a cache mode', async () => {
+    // Pins the behaviour, not the absence of it. An earlier revision of this
+    // branch silently discarded a caller's explicit revalidate and the whole
+    // suite still passed — so nothing here could detect a regression in it.
+    const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+
+    await fetchPosts('posts', { cache: { cache: 'force-cache', revalidate: 7200, tags: ['x'] } })
+
+    const init = mockFetch.mock.calls[0][1] as RequestInit & {
+      next?: { revalidate?: number; tags?: string[] }
+    }
+    expect(init?.cache).toBe('force-cache')
+    expect(init?.next?.revalidate).toBe(7200)
+    expect(init?.next?.tags).toEqual(['x'])
+  })
+
+  it('does not inject the default revalidate alongside an explicit cache mode', async () => {
+    // A caller asking for a specific fetch cache mode has opted out of the
+    // default. An explicit revalidate would still be preserved.
+    const mockFetch = vi.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response)
+
+    await fetchPosts('posts', { cache: { cache: 'no-store' } })
+
+    const init = mockFetch.mock.calls[0][1] as RequestInit & { next?: { revalidate?: number } }
+    expect(init?.cache).toBe('no-store')
+    expect(init?.next?.revalidate).toBeUndefined()
   })
 })
