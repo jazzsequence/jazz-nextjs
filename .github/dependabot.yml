@@ -87,6 +87,31 @@ updates:
       - dependency-name: "eslint"
         versions: ["10.x"]
 
+      # BLOCKER: vitest 5 cannot be installed at all. Every @vitest/* 5.0.0 package
+      #   peer-requires an exact `"vitest": "5.0.0"` (not a range), while
+      #   @storybook/addon-vitest peer-requires `vitest: "^3.0.0 || ^4.0.0"` — true of
+      #   10.6.0, the latest stable, and of 11.0.0-alpha.0. `npm install` of the four
+      #   packages together fails ERESOLVE against @storybook/addon-vitest.
+      #   Dependabot opened one PR per package (#114-#117) and all four went green:
+      #   it wrote peer-invalid lockfiles pairing vitest@5.0.0 with @vitest/*@4.1.11,
+      #   and `npm ci` installs a recorded tree without re-resolving peers. Nothing
+      #   caught it because `npm test` does not run coverage and the storybook browser
+      #   project lives in the root vitest.config.ts, which no npm script invokes.
+      # LIFT WHEN: @storybook/addon-vitest widens its `vitest` peer range to include
+      #   ^5. That is a one-command check, so run it rather than guessing:
+      #     npm view @storybook/addon-vitest@latest peerDependencies.vitest
+      #   Then bump all four together and verify with `npm install` (NOT `npm ci` —
+      #   it does not re-resolve peers and will happily install an invalid tree),
+      #   `npm test -- --run`, and `npm run build-storybook`.
+      # SCOPE: "5.x" only. vitest 6 will still open a PR, by design.
+      # SECURITY: a `versions:` ignore also suppresses security-update PRs in this
+      #   range. Accepted — vitest and its satellites are dev-only and never ship to
+      #   the browser or the Pantheon runtime. Alerts still fire and remain the signal.
+      - dependency-name: "vitest"
+        versions: ["5.x"]
+      - dependency-name: "@vitest/*"
+        versions: ["5.x"]
+
     groups:
       # Group minor/patch updates to reduce PR noise
       production-dependencies:
@@ -99,6 +124,18 @@ updates:
         update-types:
           - "minor"
           - "patch"
+      # Vitest's satellite packages peer-require an EXACT vitest version, so a vitest
+      # major can only ever be installed as a complete set. The two groups above are
+      # scoped to minor/patch, and Dependabot drops a major from a group whose
+      # update-types omit it — so a vitest major escapes them and arrives as one PR
+      # per package, each individually unresolvable. This group exists purely to keep
+      # the set together when the 5.x ignore above is eventually lifted.
+      vitest:
+        patterns:
+          - "vitest"
+          - "@vitest/*"
+        update-types:
+          - "major"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"

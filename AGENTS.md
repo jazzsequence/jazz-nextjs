@@ -443,6 +443,7 @@ with the config, the config wins.
 | `next` | `16.3.x` | Pantheon buildpack ENOENT on the file-tracing manifest | PR environment build — read the **Pantheon** build log, not the CI status |
 | `typescript` | `7.x` | Next build worker crash | `npm run build`, then a PR environment |
 | `eslint` | `10.x` | `eslint-plugin-react` incompatible | `npm run lint` — must exit 0 |
+| `vitest`, `@vitest/*` | `5.x` | `@storybook/addon-vitest` peer-requires vitest `^3.0.0 \|\| ^4.0.0`, while every `@vitest/*` 5.0.0 pins vitest `5.0.0` exactly | `npm install` (**not** `npm ci` — it skips peer resolution) must resolve, then `npm run build-storybook` |
 
 **A `versions:` ignore also suppresses security-update PRs.** This is not documented by
 GitHub, and `update-types:` does *not* behave this way — see
@@ -472,7 +473,8 @@ the default recommendation), so it is normally a maintainer action in the UI.
    audit below for each ignored package. A cleared queue with three stale ignores is not
    clear, and saying so without checking is the failure this protocol exists to prevent.
 2. **When the upstream cause moves.** An `eslint-config-next` bump is the likely carrier
-   of the ESLint 10 fix; a Next minor may carry TypeScript 7 support.
+   of the ESLint 10 fix; a Next minor may carry TypeScript 7 support; a Storybook
+   release is the carrier for vitest 5.
 3. **Whenever a Dependabot alert names an ignored package.** No PR will be opened, so
    query alerts yourself as part of the audit — do not tell the maintainer to go look.
    If the alert is already dismissed as tolerable risk, confirm the rationale still
@@ -495,6 +497,11 @@ for p in next typescript eslint; do
   echo "== $p"
   npm view "$p" versions --json | jq -r '.[] | select(test("-")|not)' | tail -5
 done
+
+# The vitest 5 hold is not about vitest's own releases — a newer 5.x changes nothing.
+# It lifts when Storybook's vitest addon widens its peer range, so check the
+# constraint rather than the version list. Anything containing ^5 clears the hold.
+npm view @storybook/addon-vitest@latest peerDependencies.vitest
 ```
 
 Compare against the re-validation log in `@docs/configuration/DEPLOYMENT.md`. Any release
