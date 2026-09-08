@@ -658,6 +658,256 @@ describe('BoundedGcsCacheHandler.ensureInitialized() — blast-radius bound', ()
   })
 })
 
+describe('hardenTagsFlush() — stop the retry storm', () => {
+  // Written before the implementation. Measured 2026-09-08 against the test
+  // environment, which already carries every other workaround in this file: a
+  // two-minute crawl tripped upstream's flush retry and it never recovered.
+  // 404 "exceeded the rate limit for object mutation operations" on
+  // cache/tags/tags.json were still firing 15 minutes after the last request,
+  // with the site completely quiet. Write and retry lines ran exactly 1:1.
+  //
+  // Upstream's doFlush (dist/utils/tags-buffer.js:121-133) has three problems:
+  //   1. The comment says "Schedule a retry with backoff"; the code is a CONSTANT
+  //      setTimeout(..., flushIntervalMs * 2). Against a per-object rate limit a
+  //      fixed interval can never recover — it just keeps hitting the ceiling.
+  //   2. pendingUpdates is requeued and never dropped or capped, so the payload
+  //      grows monotonically and each retry is likelier to fail than the last.
+  //   3. No circuit breaker and no attempt cap, so nothing ever gives up.
+  //
+  // Widening flushIntervalMs cannot fix any of that — it only raises the load at
+  // which the loop trips. This replaces the failure path, not the success path.
+
+  function makeBuffer(overrides = {}) {
+    return {
+      pendingUpdates: [],
+      flushTimer: null,
+      isFlushing: false,
+      lastFlushTime: 0,
+      flushIntervalMs: 5000,
+      readTagsMapping: vi.fn(async () => ({})),
+      writeTagsMapping: vi.fn(async () => {}),
+      applyUpdates: vi.fn(),
+      log: { error: vi.fn(), warn: vi.fn(), debug: vi.fn(), info: vi.fn() },
+      ...overrides,
+    }
+  }
+
+  async function harden(buffer: Record<string, unknown>) {
+    const { BoundedGcsCacheHandler: Handler } = await import('../../cacheHandler.mjs')
+    Handler.prototype.hardenTagsFlush.call({ tagsBuffer: buffer })
+    return buffer
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('does not throw when there is no buffer', async () => {
+    const { BoundedGcsCacheHandler: Handler } = await import('../../cacheHandler.mjs')
+    expect(() => Handler.prototype.hardenTagsFlush.call({})).not.toThrow()
+  })
+
+  it('still writes the mapping on the success path', async () => {
+    // The failure path is what changes; a healthy flush must behave as before.
+    const buffer = await harden(makeBuffer({ pendingUpdates: [{ type: 'add', cacheKey: 'a', tags: ['t'] }] }))
+
+    await buffer.doFlush()
+
+    expect(buffer.writeTagsMapping).toHaveBeenCalledTimes(1)
+    expect(buffer.pendingUpdates).toEqual([])
+    expect(buffer.lastFlushTime).toBeGreaterThan(0)
+  })
+
+  it('backs off exponentially instead of retrying on a fixed delay', async () => {
+    // The defect: upstream waits flushIntervalMs * 2 forever. Attempt 1 and
+    // attempt 500 wait the same, so a rate-limited object is hammered until it
+    // relents — which, with the payload growing each round, it does not.
+    const buffer = await harden(
+      makeBuffer({
+        writeTagsMapping: vi.fn(async () => {
+          throw new Error('exceeded the rate limit for object mutation operations')
+        }),
+      })
+    )
+
+    const delays: number[] = []
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, ms: number) => {
+      delays.push(ms)
+      return 0 as unknown as NodeJS.Timeout
+    }) as typeof setTimeout)
+
+    for (let i = 0; i < 3; i++) {
+      buffer.pendingUpdates = [{ type: 'add', cacheKey: `k${i}`, tags: ['t'] }]
+      buffer.flushTimer = null
+      await buffer.doFlush()
+    }
+
+    expect(delays.length).toBe(3)
+    expect(delays[1]).toBeGreaterThan(delays[0])
+    expect(delays[2]).toBeGreaterThan(delays[1])
+  })
+
+  it('caps the retry delay so it cannot grow without bound', async () => {
+    const { TAGS_MAX_RETRY_MS } = await import('../../cacheHandler.mjs')
+    const buffer = await harden(
+      makeBuffer({
+        writeTagsMapping: vi.fn(async () => {
+          throw new Error('boom')
+        }),
+      })
+    )
+
+    const delays: number[] = []
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, ms: number) => {
+      delays.push(ms)
+      return 0 as unknown as NodeJS.Timeout
+    }) as typeof setTimeout)
+
+    for (let i = 0; i < 20; i++) {
+      buffer.pendingUpdates = [{ type: 'add', cacheKey: `k${i}`, tags: ['t'] }]
+      buffer.flushTimer = null
+      buffer.circuitOpenUntil = 0
+      await buffer.doFlush()
+    }
+
+    expect(Math.max(...delays)).toBeLessThanOrEqual(TAGS_MAX_RETRY_MS)
+  })
+
+  it('opens a circuit after repeated failures and stops touching storage', async () => {
+    // This is the property that ends the storm. While the circuit is open the
+    // buffer must not issue a single write — that is the difference between
+    // "degraded" and "still hammering a rate-limited object 15 minutes later".
+    const { TAGS_CIRCUIT_TRIP_FAILURES } = await import('../../cacheHandler.mjs')
+    const buffer = await harden(
+      makeBuffer({
+        writeTagsMapping: vi.fn(async () => {
+          throw new Error('exceeded the rate limit for object mutation operations')
+        }),
+      })
+    )
+
+    for (let i = 0; i < TAGS_CIRCUIT_TRIP_FAILURES; i++) {
+      buffer.pendingUpdates = [{ type: 'add', cacheKey: `k${i}`, tags: ['t'] }]
+      buffer.flushTimer = null
+      await buffer.doFlush()
+    }
+
+    const writesBefore = (buffer.writeTagsMapping as ReturnType<typeof vi.fn>).mock.calls.length
+
+    buffer.pendingUpdates = [{ type: 'add', cacheKey: 'after', tags: ['t'] }]
+    buffer.flushTimer = null
+    await buffer.doFlush()
+
+    expect((buffer.writeTagsMapping as ReturnType<typeof vi.fn>).mock.calls.length).toBe(writesBefore)
+  })
+
+  it('closes the circuit again once the cooldown has elapsed', async () => {
+    // A permanently open circuit would be its own outage: tags would never be
+    // recorded again for the life of the process.
+    const { TAGS_CIRCUIT_TRIP_FAILURES, TAGS_CIRCUIT_COOLDOWN_MS } = await import(
+      '../../cacheHandler.mjs'
+    )
+    let fail = true
+    const buffer = await harden(
+      makeBuffer({
+        writeTagsMapping: vi.fn(async () => {
+          if (fail) throw new Error('rate limit')
+        }),
+      })
+    )
+
+    for (let i = 0; i < TAGS_CIRCUIT_TRIP_FAILURES; i++) {
+      buffer.pendingUpdates = [{ type: 'add', cacheKey: `k${i}`, tags: ['t'] }]
+      buffer.flushTimer = null
+      await buffer.doFlush()
+    }
+
+    fail = false
+    vi.setSystemTime(Date.now() + TAGS_CIRCUIT_COOLDOWN_MS + 1)
+
+    const before = (buffer.writeTagsMapping as ReturnType<typeof vi.fn>).mock.calls.length
+    buffer.pendingUpdates = [{ type: 'add', cacheKey: 'recovered', tags: ['t'] }]
+    buffer.flushTimer = null
+    await buffer.doFlush()
+
+    expect((buffer.writeTagsMapping as ReturnType<typeof vi.fn>).mock.calls.length).toBe(before + 1)
+  })
+
+  it('resets the failure count after a success, so one bad patch is not permanent', async () => {
+    let fail = true
+    const buffer = await harden(
+      makeBuffer({
+        writeTagsMapping: vi.fn(async () => {
+          if (fail) throw new Error('rate limit')
+        }),
+      })
+    )
+
+    buffer.pendingUpdates = [{ type: 'add', cacheKey: 'a', tags: ['t'] }]
+    await buffer.doFlush()
+    expect(buffer.consecutiveFlushFailures).toBeGreaterThan(0)
+
+    fail = false
+    buffer.pendingUpdates = [{ type: 'add', cacheKey: 'b', tags: ['t'] }]
+    buffer.flushTimer = null
+    await buffer.doFlush()
+
+    expect(buffer.consecutiveFlushFailures).toBe(0)
+  })
+
+  it('bounds the pending queue so the payload cannot grow forever', async () => {
+    // Upstream prepends failed updates back with no cap. Because the whole
+    // mapping is rewritten to ONE object each flush, an unbounded queue means
+    // every retry sends a larger payload than the one that just failed.
+    const { TAGS_MAX_PENDING_UPDATES } = await import('../../cacheHandler.mjs')
+    const buffer = await harden(
+      makeBuffer({
+        writeTagsMapping: vi.fn(async () => {
+          throw new Error('rate limit')
+        }),
+      })
+    )
+
+    for (let round = 0; round < 3; round++) {
+      buffer.pendingUpdates = Array.from({ length: TAGS_MAX_PENDING_UPDATES }, (_, i) => ({
+        type: 'add',
+        cacheKey: `r${round}-k${i}`,
+        tags: ['t'],
+      }))
+      buffer.flushTimer = null
+      buffer.circuitOpenUntil = 0
+      await buffer.doFlush()
+      expect(buffer.pendingUpdates.length).toBeLessThanOrEqual(TAGS_MAX_PENDING_UPDATES)
+    }
+  })
+
+  it('coalesces repeat updates for the same key rather than dropping information', async () => {
+    // Dedupe before the cap: collapsing duplicates shrinks the payload without
+    // losing any mapping, so it is strictly better than discarding entries.
+    const buffer = await harden(
+      makeBuffer({
+        writeTagsMapping: vi.fn(async () => {
+          throw new Error('rate limit')
+        }),
+      })
+    )
+
+    buffer.pendingUpdates = [
+      { type: 'add', cacheKey: 'same', tags: ['t'] },
+      { type: 'add', cacheKey: 'same', tags: ['t'] },
+      { type: 'add', cacheKey: 'same', tags: ['t'] },
+    ]
+    await buffer.doFlush()
+
+    expect(buffer.pendingUpdates.length).toBeLessThan(3)
+  })
+})
+
 describe('capPendingUpdates() / coalesceTagUpdates() — the claims the comments make', () => {
   // These two helpers were previously exercised only through doFlush(), so the
   // retention policy and the collision-safety of the signature were asserted by
@@ -719,3 +969,105 @@ describe('capPendingUpdates() / coalesceTagUpdates() — the claims the comments
     expect(out.length).toBe(2)
   })
 })
+
+describe('retry delay outlasts an open circuit', () => {
+  // TAGS_MAX_RETRY_MS and TAGS_CIRCUIT_COOLDOWN_MS are independently overridable
+  // and default to the same value. If the retry were allowed to fire while the
+  // circuit is still open it would hit the early return, schedule nothing, and
+  // strand the buffer until the next addTags(). The delay is clamped so that
+  // cannot happen at any configuration.
+  it('never schedules a retry that lands before the circuit closes', async () => {
+    const { BoundedGcsCacheHandler: Handler, TAGS_CIRCUIT_TRIP_FAILURES } = await import(
+      '../../cacheHandler.mjs'
+    )
+    const buffer: Record<string, unknown> = {
+      pendingUpdates: [],
+      flushTimer: null,
+      isFlushing: false,
+      lastFlushTime: 0,
+      flushIntervalMs: 5000,
+      readTagsMapping: vi.fn(async () => ({})),
+      writeTagsMapping: vi.fn(async () => {
+        throw new Error('rate limit')
+      }),
+      applyUpdates: vi.fn(),
+      log: { error: vi.fn(), warn: vi.fn(), debug: vi.fn(), info: vi.fn() },
+    }
+    Handler.prototype.hardenTagsFlush.call({ tagsBuffer: buffer })
+
+    const delays: number[] = []
+    vi.useFakeTimers()
+    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, ms: number) => {
+      delays.push(ms)
+      return 0 as unknown as NodeJS.Timeout
+    }) as typeof setTimeout)
+
+    for (let i = 0; i < TAGS_CIRCUIT_TRIP_FAILURES; i++) {
+      buffer.pendingUpdates = [{ type: 'add', cacheKey: `k${i}`, tags: ['t'] }]
+      buffer.flushTimer = null
+      await buffer.doFlush()
+    }
+
+    const remaining = (buffer.circuitOpenUntil as number) - Date.now()
+    expect(delays[delays.length - 1]).toBeGreaterThanOrEqual(remaining)
+
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+})
+
+describe('an open circuit must not strand the queue', () => {
+  // Found by review, by running against the real upstream TagsBuffer rather than
+  // reasoning about it. The circuit-open early return scheduled no timer. Under
+  // load that matters, because upstream scheduleFlush() (tags-buffer.js:89-102)
+  // is called by every addTags()/deleteKey() and computes its delay as
+  // max(0, flushIntervalMs - timeSinceLastFlush) — and lastFlushTime only
+  // advances on SUCCESS. During a sustained failure that delay is 0ms. The 0ms
+  // timer fires into the early return, clears itself, and leaves pending updates
+  // with no live timer and no log line until the next addTags() happens by.
+  //
+  // Every other test in this file sets flushTimer = null before each doFlush(),
+  // so none of them could ever observe this — the vanity-test shape checklist
+  // item 32 exists to reject.
+  it('schedules a retry when it returns early, rather than clearing the timer and stopping', async () => {
+    const { BoundedGcsCacheHandler: Handler, TAGS_CIRCUIT_TRIP_FAILURES } = await import(
+      '../../cacheHandler.mjs'
+    )
+    vi.useFakeTimers()
+    const buffer: Record<string, unknown> = {
+      pendingUpdates: [],
+      flushTimer: null,
+      isFlushing: false,
+      lastFlushTime: 0,
+      flushIntervalMs: 5000,
+      readTagsMapping: vi.fn(async () => ({})),
+      writeTagsMapping: vi.fn(async () => {
+        throw new Error('rate limit')
+      }),
+      applyUpdates: vi.fn(),
+      flush: vi.fn(async () => {}),
+      log: { error: vi.fn(), warn: vi.fn(), debug: vi.fn(), info: vi.fn() },
+    }
+    Handler.prototype.hardenTagsFlush.call({ tagsBuffer: buffer })
+
+    for (let i = 0; i < TAGS_CIRCUIT_TRIP_FAILURES; i++) {
+      buffer.pendingUpdates = [{ type: 'add', cacheKey: `k${i}`, tags: ['t'] }]
+      buffer.flushTimer = null
+      await buffer.doFlush()
+    }
+    expect(buffer.circuitOpenUntil as number).toBeGreaterThan(Date.now())
+
+    // A fired timer has already nulled itself; work is still queued.
+    buffer.flushTimer = null
+    buffer.pendingUpdates = [{ type: 'add', cacheKey: 'stranded', tags: ['t'] }]
+
+    await buffer.doFlush()
+
+    expect(buffer.pendingUpdates.length).toBeGreaterThan(0)
+    expect(buffer.flushTimer).not.toBeNull()
+
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+})
+
