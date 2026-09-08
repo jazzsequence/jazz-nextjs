@@ -115,6 +115,7 @@ Tags used across the codebase for grouped invalidation:
 | `game-<slug>` | Individual game (not a separate route, but tagged for future use) |
 | `media` | Media archive pages (`/media`, `/media/page/[page]`) |
 | `media-<slug>` | Individual media item page (`/media/[slug]`) |
+| `media-type` | The media type filter pills on `/media` — bust this after adding, renaming or emptying a `media_type` term |
 | `menu`, `header` | All pages that include navigation |
 | `tag-<slug>` | Tag archive page |
 | `category-<slug>` | Category archive page |
