@@ -657,3 +657,65 @@ describe('BoundedGcsCacheHandler.ensureInitialized() — blast-radius bound', ()
     expect(vi.getTimerCount()).toBe(0)
   })
 })
+
+describe('capPendingUpdates() / coalesceTagUpdates() — the claims the comments make', () => {
+  // These two helpers were previously exercised only through doFlush(), so the
+  // retention policy and the collision-safety of the signature were asserted by
+  // comments and by nothing executable.
+
+  it('keeps the NEWEST updates when it trims, not the oldest', async () => {
+    // The comment claims newest are kept because they match the most recently
+    // published content. Nothing pinned that, so a slice() off the wrong end
+    // would have silently inverted the policy.
+    const { capPendingUpdates, TAGS_MAX_PENDING_UPDATES } = await import('../../cacheHandler.mjs')
+    const over = Array.from({ length: TAGS_MAX_PENDING_UPDATES + 50 }, (_, i) => ({
+      type: 'add',
+      cacheKey: `k${i}`,
+      tags: ['t'],
+    }))
+
+    const kept = capPendingUpdates(over)
+
+    expect(kept.length).toBe(TAGS_MAX_PENDING_UPDATES)
+    expect(kept[kept.length - 1].cacheKey).toBe(`k${over.length - 1}`)
+    expect(kept[0].cacheKey).toBe(`k${over.length - TAGS_MAX_PENDING_UPDATES}`)
+  })
+
+  it('does not collide tags that differ only by where the commas are', async () => {
+    // Signature fields are NUL-separated including the tag join. Joining tags on
+    // a comma would make ['a,b'] and ['a','b'] produce the same signature, so one
+    // distinct update would be dropped as a duplicate.
+    const { coalesceTagUpdates } = await import('../../cacheHandler.mjs')
+
+    const out = coalesceTagUpdates([
+      { type: 'add', cacheKey: 'k', tags: ['a,b'] },
+      { type: 'add', cacheKey: 'k', tags: ['a', 'b'] },
+    ])
+
+    expect(out.length).toBe(2)
+  })
+
+  it('collapses genuinely identical updates', async () => {
+    const { coalesceTagUpdates } = await import('../../cacheHandler.mjs')
+
+    const out = coalesceTagUpdates([
+      { type: 'add', cacheKey: 'k', tags: ['a'] },
+      { type: 'add', cacheKey: 'k', tags: ['a'] },
+    ])
+
+    expect(out.length).toBe(1)
+  })
+
+  it('keeps adds and deletes for the same key distinct', async () => {
+    // Deduping must never collapse an add into a delete or vice versa — they are
+    // different operations on the same key and both have to reach applyUpdates().
+    const { coalesceTagUpdates } = await import('../../cacheHandler.mjs')
+
+    const out = coalesceTagUpdates([
+      { type: 'add', cacheKey: 'k', tags: ['a'] },
+      { type: 'delete', cacheKey: 'k' },
+    ])
+
+    expect(out.length).toBe(2)
+  })
+})

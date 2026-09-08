@@ -82,6 +82,87 @@ const INIT_FAULT = resolveInitFault()
 const TAGS_FLUSH_INTERVAL_MS = Number(process.env.CACHE_TAGS_FLUSH_MS) || 5000
 
 /**
+ * Bounds on the tag-flush FAILURE path. Upstream has none of these.
+ *
+ * Measured 2026-09-08 on the test environment, which already carried every other
+ * workaround in this file: a two-minute crawl tripped upstream's retry and it
+ * never recovered. 404 "exceeded the rate limit for object mutation operations"
+ * on cache/tags/tags.json were still firing 15 minutes after the last request,
+ * with the site quiet. Write and retry log lines ran exactly 1:1.
+ *
+ * Upstream's doFlush (dist/utils/tags-buffer.js:121-133) retries on a CONSTANT
+ * `flushIntervalMs * 2` — the comment says "backoff", the code has none — and
+ * requeues failed updates uncapped. Since the whole mapping is rewritten to ONE
+ * object per flush, each retry carries a larger payload than the one that just
+ * failed. That is a positive feedback loop against a per-object rate limit.
+ *
+ * Widening flushIntervalMs cannot fix it; that only raises the load at which the
+ * loop trips. These bound what happens once it has.
+ */
+const TAGS_MAX_RETRY_MS = Number(process.env.CACHE_TAGS_MAX_RETRY_MS) || 60_000
+const TAGS_CIRCUIT_TRIP_FAILURES = Number(process.env.CACHE_TAGS_CIRCUIT_TRIP) || 5
+const TAGS_CIRCUIT_COOLDOWN_MS = Number(process.env.CACHE_TAGS_CIRCUIT_COOLDOWN_MS) || 60_000
+const TAGS_MAX_PENDING_UPDATES = Number(process.env.CACHE_TAGS_MAX_PENDING) || 2_000
+
+/**
+ * Bound the pending queue: coalesce first, then drop the OLDEST if still over.
+ *
+ * Dropping is a real loss, and asymmetric. A dropped ADD means revalidateTag()
+ * will not purge that key and it falls back to its ISR TTL. A dropped DELETE is
+ * worse: the mapping keeps pointing at a key whose object is gone, inflating the
+ * very object under contention — the same rot pruneRouteKeysFromTagMap() exists
+ * to clean up. Both are accepted deliberately, because an unbounded queue does
+ * not preserve either, it just guarantees every subsequent write is larger and
+ * likelier to fail. Newest are kept: they match the most recently published
+ * content, and a stale mapping still expires by TTL.
+ *
+ * Pure by design — takes the array rather than the buffer — so the retention
+ * policy can be asserted directly rather than only through doFlush().
+ */
+function capPendingUpdates(updates) {
+  let next = coalesceTagUpdates(updates)
+  if (next.length > TAGS_MAX_PENDING_UPDATES) {
+    const dropped = next.length - TAGS_MAX_PENDING_UPDATES
+    next = next.slice(next.length - TAGS_MAX_PENDING_UPDATES)
+    console.warn(
+      `[BoundedGcsCacheHandler] TAGS_QUEUE_TRIMMED dropped ${dropped} buffered tag ` +
+        `update(s) over the ${TAGS_MAX_PENDING_UPDATES} cap; those keys will fall ` +
+        `back to ISR expiry instead of explicit revalidation.`
+    )
+  }
+  return next
+}
+
+/**
+ * Collapse repeat updates sharing a (type, key, tags) signature, keeping the LAST.
+ *
+ * Deduping before capping shrinks the payload without discarding any mapping, so
+ * it is strictly better than dropping entries.
+ *
+ * Why it is safe is stronger than an ordering argument: upstream's applyUpdates()
+ * (tags-buffer.js:139-168) collects every delete in the batch into a Set and
+ * applies them all before any add, and each add is guarded by includes() before
+ * push. Deletes are therefore duplicate-free and adds are idempotent, so
+ * collapsing identical signatures is result-preserving for ANY batch — it does
+ * not depend on upstream staying order-insensitive.
+ *
+ * Fields are NUL-separated including the tag join: joining tags on a comma would
+ * make ['a,b'] and ['a','b'] collide and silently drop a distinct update.
+ */
+function coalesceTagUpdates(updates) {
+  const seen = new Set()
+  const out = []
+  for (let i = updates.length - 1; i >= 0; i--) {
+    const u = updates[i]
+    const signature = `${u.type}\u0000${u.cacheKey}\u0000${(u.tags || []).join('\u0000')}`
+    if (seen.has(signature)) continue
+    seen.add(signature)
+    out.push(u)
+  }
+  return out.reverse()
+}
+
+/**
  * Report real wall-clock init duration, once.
  *
  * Must be anchored to the promise, not to a request. Timing from inside
@@ -354,6 +435,12 @@ export {
   INIT_TIMEOUT_MS,
   INIT_FAULT,
   TAGS_FLUSH_INTERVAL_MS,
+  TAGS_MAX_RETRY_MS,
+  TAGS_CIRCUIT_TRIP_FAILURES,
+  TAGS_CIRCUIT_COOLDOWN_MS,
+  TAGS_MAX_PENDING_UPDATES,
+  coalesceTagUpdates,
+  capPendingUpdates,
   observeInitDuration,
 }
 export default CacheHandler
