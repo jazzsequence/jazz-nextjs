@@ -73,6 +73,32 @@ jobs:
           pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
           site-name: ${{ env.PANTHEON_SITE_NAME }}
           environment: ${{ steps.tag.outputs.env }}
+          # Redundant here: the cache handler purges the whole edge itself when the
+          # buildId changes (checkBuildInvalidation -> invalidateRouteCache ->
+          # nukeCache). This action's step is a second full GCDN purge of the same
+          # scope, via POST /v0/sites/{id}/environments/{env}/cache/clear — it does
+          # NOT use Terminus, despite the name suggesting a CLI call.
+          #
+          # On live the duplicate is worse than wasteful. Traffic is continuous, so
+          # the handler's purge fires on the first request and traffic repopulates;
+          # this step polls for up to 150s and can land afterwards, discarding fresh
+          # entries and forcing another round of origin renders when the environment
+          # can least absorb it. On a quiet environment the order reverses and it is
+          # merely redundant — which is why this is set on promote only. Leave it on
+          # in test-pantheon.yml: a cold edge is desirable there for E2E determinism.
+          #
+          # This does NOT stop the edge going cold on deploy. The handler's own purge
+          # does that, and it is the condition the bounded init has to survive.
+          #
+          # Kept reachable, not deleted, because the handler has several silent
+          # no-purge paths: init failing before checkBuildInvalidation runs;
+          # invalidateRouteCache swallowing a getFiles() throw before nukeCache is
+          # reached; and edgeCacheClearer being null when OUTBOUND_PROXY_ENDPOINT is
+          # unset. A failed nukeCache is a warn only. In all of those the API purge
+          # is the sole one that does not depend on the app being healthy, and the
+          # detection is a human noticing stale content. Flip back to 'true' if that
+          # ever happens.
+          clear-cache: 'false'
 
       - name: Warm ISR cache
         continue-on-error: true  # Cold starts can exceed any reasonable timeout — not a deployment failure
