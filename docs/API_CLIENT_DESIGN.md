@@ -197,7 +197,7 @@ async function fetchPostTypeList<T>(
 
   // Auto-generate cache tags if ISR enabled but no tags provided
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = createCacheTags(config.endpoint)
   }
 
@@ -230,7 +230,7 @@ async function fetchPostTypeItem<T>(
 
   // Auto-generate cache tags if ISR enabled but no tags provided
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = createCacheTags(config.endpoint, slug)
   }
 
@@ -398,19 +398,37 @@ createCacheTags('gc_game', 'monopoly', ['featured'])  // ['gc_game', 'gc_game:mo
 
 ### Next.js Configuration
 
+**Fetches are cached by default.** Next does not cache `fetch` by default, so a
+call that passes no ISR options would otherwise reach WordPress on every request —
+every dev page load and every E2E test. `buildISROptions()` therefore applies a
+one-hour revalidate unless the caller specifies otherwise, and tags are attached
+whenever the caller supplies none so `revalidateTag()` can still purge the entry.
+A caller needing freshness passes `isr: { revalidate: 0 }` explicitly; note that a
+route segment's `export const revalidate = 0` does **not** opt its fetches out of
+the Data Cache.
+
 ```typescript
+const DEFAULT_REVALIDATE_SECONDS = 3600
+
 function buildISROptions(options: ISROptions = {}): RequestInit {
   const cacheOptions: RequestInit = {}
 
-  if (options.revalidate !== undefined || options.tags) {
-    cacheOptions.next = {
+  // An explicit cache mode suppresses the default, but keeps an explicit revalidate.
+  if (options.cache !== undefined) {
+    cacheOptions.cache = options.cache
+    const next = {
       ...(options.revalidate !== undefined && { revalidate: options.revalidate }),
       ...(options.tags && { tags: options.tags }),
     }
+    if (Object.keys(next).length > 0) {
+      cacheOptions.next = next
+    }
+    return cacheOptions
   }
 
-  if (options.cache !== undefined) {
-    cacheOptions.cache = options.cache
+  cacheOptions.next = {
+    revalidate: options.revalidate !== undefined ? options.revalidate : DEFAULT_REVALIDATE_SECONDS,
+    ...(options.tags && { tags: options.tags }),
   }
 
   return cacheOptions

@@ -427,18 +427,51 @@ function buildQueryParams(options: Omit<FetchOptions, 'isr'> = {}): string {
 /**
  * Build Next.js cache options for fetch
  */
+/**
+ * Seconds a WordPress response may be reused when a caller does not say.
+ *
+ * Next 16 does not cache fetches by default, and this function used to return an
+ * empty object when given no ISR options — so every call site that omitted them
+ * went to WordPress on every single request. app/sitemap.ts was one. In practice
+ * that meant every dev page load and every E2E test hit the origin directly.
+ * (Build-time export workers already share uncached fetch results between
+ * themselves, so builds were not affected the same way.)
+ *
+ * That is the demand side of the origin saturation that took jazzsequence.com
+ * down on 2026-09-08: PHP workers exhausted, REST timing out entirely, and
+ * builds failing because /, /games and /sitemap.xml each exceeded 60 seconds.
+ * Caching at the origin is the other half; not asking for the same data
+ * repeatedly is this half.
+ *
+ * An hour matches the revalidate the routes already set explicitly. Callers that
+ * need freshness still say so — /search passes 0 — and an explicit 0 is honoured
+ * rather than overridden.
+ */
+const DEFAULT_REVALIDATE_SECONDS = 3600
+
 function buildISROptions(options: ISROptions = {}): RequestInit {
   const cacheOptions: RequestInit = {}
 
-  if (options.revalidate !== undefined || options.tags) {
-    cacheOptions.next = {
+  // An explicit fetch cache mode suppresses the DEFAULT revalidate, but keeps an
+  // explicit one. Next does not throw when both are present — patch-fetch.js
+  // warns, and only for genuinely conflicting pairs such as no-store with a
+  // positive revalidate, then unsets both itself. Silently dropping a caller's
+  // explicit revalidate would be the worse behaviour.
+  if (options.cache !== undefined) {
+    cacheOptions.cache = options.cache
+    const next = {
       ...(options.revalidate !== undefined && { revalidate: options.revalidate }),
       ...(options.tags && { tags: options.tags }),
     }
+    if (Object.keys(next).length > 0) {
+      cacheOptions.next = next
+    }
+    return cacheOptions
   }
 
-  if (options.cache !== undefined) {
-    cacheOptions.cache = options.cache
+  cacheOptions.next = {
+    revalidate: options.revalidate !== undefined ? options.revalidate : DEFAULT_REVALIDATE_SECONDS,
+    ...(options.tags && { tags: options.tags }),
   }
 
   return cacheOptions
@@ -563,7 +596,7 @@ async function fetchPostTypeList<T>(
 
   // Auto-generate cache tags if ISR enabled but no tags provided
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = createCacheTags(config.endpoint)
   }
 
@@ -614,7 +647,7 @@ async function fetchPostTypeItem<T>(
 
   // Auto-generate cache tags if ISR enabled but no tags provided
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = createCacheTags(config.endpoint, slug)
   }
 
@@ -713,7 +746,7 @@ export async function fetchPostsWithPagination<T = WPContent>(
 
   // Auto-generate cache tags if ISR enabled but no tags provided
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = createCacheTags(config.endpoint)
   }
 
@@ -789,7 +822,7 @@ export async function fetchMenus(
 
   // Auto-generate cache tags if ISR enabled but no tags provided
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = createCacheTags('menus')
   }
 
@@ -837,7 +870,7 @@ export async function fetchMenuItems(
 
   // Auto-generate cache tags if ISR enabled but no tags provided
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = createCacheTags('menu-items', `menu-${menuId}`)
   }
 
@@ -882,7 +915,7 @@ export async function fetchGames(
   const url = `${GC_API_BASE_URL}/games?per_page=500&orderby=title&order=ASC`
 
   const isrOptions = cache || isr || { revalidate: 3600 }
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = ['gc_game', 'games']
   }
 
@@ -913,7 +946,7 @@ export async function fetchTagBySlug(
   const url = `${API_BASE_URL}/tags?slug=${encodeURIComponent(slug)}`
 
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = [`tag-${slug}`]
   }
 
@@ -947,7 +980,7 @@ export async function fetchCategoryBySlug(
   const url = `${API_BASE_URL}/categories?slug=${encodeURIComponent(slug)}`
 
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = [`category-${slug}`]
   }
 
@@ -981,7 +1014,7 @@ export async function fetchSeriesBySlug(
   const url = `${API_BASE_URL}/series?slug=${encodeURIComponent(slug)}`
 
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = [`series-${slug}`]
   }
 
@@ -1017,7 +1050,7 @@ export async function fetchMediaTypes(
   const url = `${API_BASE_URL}/media-type?per_page=100&hide_empty=true`
 
   const isrOptions = cache || isr || {}
-  if (isrOptions.revalidate !== undefined && !isrOptions.tags) {
+  if (!isrOptions.tags) {
     isrOptions.tags = ['media-type']
   }
 

@@ -53,6 +53,12 @@ async function fetchSearchResults(
     perPage: 12,
     page,
     embed: true,
+    // Explicit, not inherited. `export const revalidate = 0` above is a route
+    // segment setting: it makes this route render dynamically, but it does NOT
+    // opt its fetches out of Next's Data Cache. Without this the client's default
+    // would cache search results for an hour, reintroducing at the data layer the
+    // staleness next.config.ts deliberately excludes /search from at the CDN.
+    isr: { revalidate: 0 },
   }
 
   try {
