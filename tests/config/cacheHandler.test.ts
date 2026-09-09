@@ -97,10 +97,12 @@ describe('fault injection — must be structurally impossible on live', () => {
   // every process — an origin-load failure rather than the stale-asset one this used
   // to cause, and no less catastrophic.
   //
-  // A console.warn is a notice, not a control. And the propagation behaviour makes
-  // it worse: setting the flag on pr-109 took ~30 minutes to take effect, and
-  // clearing it had not confirmed at last check. A switch that is slow and
-  // unreliable to turn OFF must be prevented from applying where it would hurt.
+  // A console.warn is a notice, not a control. And the timing makes it worse: on
+  // pr-109, ~30 minutes elapsed between setting the flag and seeing it take effect,
+  // and clearing it had not confirmed at last check. That interval covers a rebuild
+  // — a secret reaches a running app no other way — rather than anything propagating
+  // on its own. A switch that is slow and unreliable to turn OFF must be prevented
+  // from applying where it would hurt.
   it('is inert on live even when the flag is set', async () => {
     const { resolveInitFault } = await import('../../cacheHandler.mjs')
     expect(resolveInitFault({ PANTHEON_ENVIRONMENT: 'live', CACHE_INIT_FAULT: 'hang' })).toBe('')

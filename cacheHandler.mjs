@@ -137,9 +137,13 @@ async function raceAgainstBound(promise, ms) {
  *
  * Arming requires an explicitly non-live PANTHEON_ENVIRONMENT, so an unset or
  * unrecognised environment stays inert rather than being treated as "not live".
- * Observed on pr-109: the flag took ~30 minutes to propagate on, and clearing it had
- * not confirmed at last check. A switch that is slow and unreliable to turn OFF must
- * be structurally prevented from applying where it would do damage.
+ * Observed on pr-109: ~30 minutes elapsed between setting the flag and seeing it take
+ * effect, and clearing it had not confirmed at last check. That elapsed time is not
+ * evidence of anything propagating on its own — a secret reaches a running app only
+ * through a rebuild (see DEPLOYMENT.md, "Tunable without a code change"), so the
+ * interval covers whatever rebuild occurred. What matters here is only that the
+ * switch is slow and unreliable to turn OFF, so it must be structurally prevented
+ * from applying where it would do damage.
  */
 function resolveInitFault(env = process.env) {
   const requested = env.CACHE_INIT_FAULT || ''
