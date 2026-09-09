@@ -29,6 +29,7 @@
 - ✅ Tests written first
 - ✅ All tests passing
 - ✅ ESLint clean
+- ✅ Build succeeds
 - ✅ E2E tests passing
 
 ## Test Commands
@@ -56,7 +57,7 @@ npm run test:e2e:standalone
 npm run start:test
 
 # Coverage
-npm test -- --coverage
+npm test -- --run --coverage
 ```
 
 ## Test Infrastructure

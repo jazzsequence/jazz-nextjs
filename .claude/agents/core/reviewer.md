@@ -340,7 +340,7 @@ When reviewing code for commit approval:
    ```
    Read({ file_path: "docs/REVIEWER_CHECKLIST.md" })
    ```
-   It is the authoritative list — 45 numbered items across two sections, including the
+   It is the authoritative list — numbered items across two sections, including the
    commit-size hard block, the documentation-staleness items, the dependency/registry
    checks, and the E2E flake-triage protocol. Report every item explicitly. Do not
    substitute the summary below for reading it.
@@ -352,15 +352,20 @@ When reviewing code for commit approval:
    - **E2E: `npm run test:e2e`** — this is the check the pre-commit hook actually gates on,
      and the one most likely to catch runtime and routing breakage. Never approve without it.
 
-   Skip all four only when every staged file is `.md` or `.txt`, matching the blocklist in
-   `.githooks/pre-commit`.
+   Skip all four when the staged set is text-only — every file left is `.md` or `.txt` after
+   the lock files in `REVIEWER_EXCLUDED_FILES` are removed from the count, so a lock-file-only
+   stage such as a Dependabot merge qualifies too. See "Text-only commits" in
+   `docs/configuration/build-and-test.md`.
 
-   **CRITICAL — no compound commands**: Each command must be a separate Bash call. Commands chained with `&&`, `;`, or `|` require manual human approval in this project and will block the workflow. Run them one at a time.
+   **CRITICAL — no compound commands**: Each command must be a separate Bash call. Commands chained with `&&` or `;` require manual human approval in this project and will block the workflow. Run them one at a time. A single command containing pipes is fine — the skip check in `docs/configuration/build-and-test.md` is a pipeline and runs without a prompt.
 
 4. **If all checks PASS**:
-   - Write the approval flag using the Write tool:
-     - Get timestamp: `Bash({ command: "date +%s" })`
-     - Write: `Write({ file_path: "<project-root>/reviewer-approved", content: "<timestamp>" })`
+   - Write the approval flag using the Write tool, as your LAST action. The flag is
+     `<unix-timestamp> <index-fingerprint>` — the fingerprint binds the approval to the exact
+     staged content, so staging or unstaging anything afterwards invalidates it. A bare
+     timestamp is the retired v1 format and `approval.sh` rejects it.
+     - Build it: `Bash({ command: 'printf "%s %s" "$(date +%s)" "$(bash .githooks/lib/approval.sh fingerprint)"' })`
+     - Write: `Write({ file_path: "<project-root>/reviewer-approved", content: "<that exact string>" })`
    - Respond with: **"✅ APPROVED"** and confirm the flag was written
 
 5. **If any checks FAIL**:

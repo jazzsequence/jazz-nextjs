@@ -25,16 +25,21 @@ updates:
       #   awaited by get() (base.js:237) and set() (base.js:323) — and initialize()
       #   awaits initializeTagsMapping() first (base.js:79), which reads and rewrites
       #   cache/tags/tags.json.
-      #   Live crash-looped every 1-4 minutes: requests queued behind the unresolved
-      #   init, health probes failed, the container was killed and restarted. 0.9.0
-      #   ran the same work fire-and-forget, so identical conditions merely served
+      #   Live restarted every 1-4 minutes: requests queued behind the unresolved
+      #   init. The health probe never failed — Next binds port 3000 before any
+      #   cache code runs, so the probe always succeeded — and the restart reason
+      #   was always AUTOSCALING, the platform reading stalled requests as demand.
+      #   See DEPLOYMENT.md, which lists "the health probe killed the process"
+      #   among the explanations since ruled out.
+      #   0.9.0 ran the same work fire-and-forget, so identical conditions merely served
       #   uncached — degraded, but up. Rolling live back restored service.
       #   NOT EXPLAINED: the log showed thousands of concurrent GCS requests and
       #   socket exhaustion. The init path issues only tens of requests (the route
       #   sweep enumerates route-cache/, which holds tens of objects on live, not the
-      #   ~18k under fetch-cache/), so init is not the source. Three explanations were
-      #   investigated and are wrong: an unreachable bucket, 0.11.0's image cache, and
-      #   a large route-cache sweep. Do not repeat them.
+      #   ~18k under fetch-cache/), so init is not the source. Three further
+      #   explanations were investigated and are wrong: an unreachable bucket,
+      #   0.11.0's image cache, and a large route-cache sweep — as is the health
+      #   probe above. Do not repeat them.
       # LIFT WHEN: a release survives a deploy on an environment carrying a cache
       #   comparable to live's, across BOTH prefixes since which one matters is
       #   unresolved. A green CI run does NOT qualify: the handler is inert unless

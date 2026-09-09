@@ -6,6 +6,7 @@ import {
   INIT_TIMEOUT_MS,
   INIT_BUILD_TIMEOUT_MS,
   observeInitDuration,
+  shouldSuppressRouteEntry,
 } from '../../cacheHandler.mjs'
 
 /**
@@ -91,14 +92,17 @@ describe('BoundedGcsCacheHandler.writeTagsMapping() — removes a write amplifie
 describe('fault injection — must be structurally impossible on live', () => {
   // Written before the implementation. CACHE_INIT_FAULT=hang replaces initPromise
   // with one that never settles. That is exactly right on a PR environment and
-  // catastrophic on live: every instance would sit permanently past the bound,
-  // serving PREVIOUS BUILD cache entries, which presents as /_next/static/ 404s —
-  // the same symptom as the outage this branch exists to address.
+  // catastrophic on live: every instance would sit permanently past the bound with
+  // page entries suppressed, so the whole site would render uncached for the life of
+  // every process — an origin-load failure rather than the stale-asset one this used
+  // to cause, and no less catastrophic.
   //
-  // A console.warn is a notice, not a control. And the propagation behaviour makes
-  // it worse: setting the flag on pr-109 took ~30 minutes to take effect, and
-  // clearing it had not confirmed at last check. A switch that is slow and
-  // unreliable to turn OFF must be prevented from applying where it would hurt.
+  // A console.warn is a notice, not a control. And the timing makes it worse: on
+  // pr-109, ~30 minutes elapsed between setting the flag and seeing it take effect,
+  // and clearing it had not confirmed at last check. That interval covers a rebuild
+  // — a secret reaches a running app no other way — rather than anything propagating
+  // on its own. A switch that is slow and unreliable to turn OFF must be prevented
+  // from applying where it would hurt.
   it('is inert on live even when the flag is set', async () => {
     const { resolveInitFault } = await import('../../cacheHandler.mjs')
     expect(resolveInitFault({ PANTHEON_ENVIRONMENT: 'live', CACHE_INIT_FAULT: 'hang' })).toBe('')
@@ -1276,6 +1280,134 @@ describe('invalidateRouteCache flags itself as in flight', () => {
     await BoundedGcsCacheHandler.prototype.invalidateRouteCache.call(ctx)
 
     expect(ctx.buildInvalidationInFlight).toBe(false)
+  })
+})
+
+describe('shouldSuppressRouteEntry() — do not serve previous-build pages', () => {
+  /**
+   * The 2026-09-09 live outage, from the runtime log rather than from reasoning.
+   *
+   * Deploy succeeded, then one instance logged INIT_BOUND_EXTENDED followed by
+   * INIT_BOUND_EXCEEDED at the long bound. The eventual INIT_OBSERVED durations for
+   * that window were 15561ms, 15577ms and 22369ms — init did finish, well past the
+   * bound it was given. Within about half a minute later instances were back to
+   * ~100-250ms, so the origin recovered on its own.
+   *
+   * The site did not. Under the code as it then stood, get() past the bound fell
+   * through to readCacheEntry() and returned previous-build entries, whose HTML
+   * referenced /_next/static/<buildId>/ assets the running build no longer had.
+   * Those responses were cacheable, so a brief origin fault was written into the
+   * edge and outlived it by hours. Clearing the edge cache — which touches nothing
+   * in the origin — fixed it immediately.
+   *
+   * So the durable damage is not the timeout, it is that a broken response gets
+   * stored. Returning a miss instead makes the same window render fresh from the
+   * current build: slower, and correct.
+   */
+
+  it('suppresses a route entry read before init completed', () => {
+    expect(shouldSuppressRouteEntry(true, 'route')).toBe(true)
+  })
+
+  it('serves route entries normally once init has completed', () => {
+    // The whole point of the bound is that the common path is unaffected.
+    expect(shouldSuppressRouteEntry(false, 'route')).toBe(false)
+  })
+
+  it('never suppresses fetch entries, even before init completes', () => {
+    // Fetch entries hold WordPress JSON. They carry no asset hashes, so a
+    // previous-build one is harmless — and suppressing them would turn every
+    // request in the window into an origin fetch, which is the flooding this
+    // handler exists to prevent.
+    expect(shouldSuppressRouteEntry(true, 'fetch')).toBe(false)
+  })
+
+  it('never suppresses image entries, even before init completes', () => {
+    // Optimized image bytes, likewise hash-free and expensive to regenerate.
+    expect(shouldSuppressRouteEntry(true, 'image')).toBe(false)
+  })
+})
+
+describe('get() — wiring the suppression to a real read', () => {
+  function makeCtx(cacheType: string, initPromise: unknown) {
+    return {
+      initPromise,
+      // super.get() calls this; stubbed so these cases test get()'s decision
+      // rather than re-testing the bound, which has its own describe block.
+      ensureInitialized: async () => {},
+      determineCacheType: () => cacheType,
+      readCacheEntry: async () => ({ value: 'cached' }),
+      getBuildPrerender: async () => null,
+      log: { debug: () => {}, error: () => {}, info: () => {}, warn: () => {} },
+    }
+  }
+
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('returns a miss for a route entry while init is still pending', async () => {
+    const ctx = makeCtx('route', Promise.resolve())
+
+    const entry = await BoundedGcsCacheHandler.prototype.get.call(ctx, 'k', {})
+
+    expect(entry).toBeNull()
+  })
+
+  it('returns the entry for a route once init has completed', async () => {
+    // initPromise is nulled by the base class exactly when init finishes, so a
+    // null here is the signal that the entry is from the current build.
+    const ctx = makeCtx('route', null)
+
+    const entry = await BoundedGcsCacheHandler.prototype.get.call(ctx, 'k', {})
+
+    expect(entry).toEqual({ value: 'cached' })
+  })
+
+  it('returns the entry for a fetch while init is still pending', async () => {
+    const ctx = makeCtx('fetch', Promise.resolve())
+
+    const entry = await BoundedGcsCacheHandler.prototype.get.call(ctx, 'k', {})
+
+    expect(entry).toEqual({ value: 'cached' })
+  })
+
+  it('passes a genuine miss through untouched', async () => {
+    const ctx = makeCtx('route', null)
+    ctx.readCacheEntry = async () => null
+
+    const entry = await BoundedGcsCacheHandler.prototype.get.call(ctx, 'k', {})
+
+    expect(entry).toBeNull()
+  })
+
+  it('reports the running suppression count, throttled', async () => {
+    // Asserts what the line SAYS, not merely that one was emitted. The last commit
+    // shipped an INIT_BOUND_EXCEEDED that reported the wrong bound, and DEPLOYMENT.md
+    // tells operators to grep these strings to judge whether the mechanism engaged —
+    // a warning carrying the wrong number argues the opposite of what happened.
+    const ctx = makeCtx('route', Promise.resolve())
+    const warn = console.warn as unknown as ReturnType<typeof vi.fn>
+
+    await BoundedGcsCacheHandler.prototype.get.call(ctx, 'k', {})
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenLastCalledWith(expect.stringContaining('ROUTE_ENTRY_SUPPRESSED count=1'))
+
+    // Every request in the window suppresses; one line each would bury the signal.
+    for (let i = 2; i <= 9; i++) {
+      await BoundedGcsCacheHandler.prototype.get.call(ctx, 'k', {})
+    }
+    expect(warn).toHaveBeenCalledTimes(1)
+
+    await BoundedGcsCacheHandler.prototype.get.call(ctx, 'k', {})
+    expect(warn).toHaveBeenCalledTimes(2)
+    expect(warn).toHaveBeenLastCalledWith(
+      expect.stringContaining('ROUTE_ENTRY_SUPPRESSED count=10')
+    )
   })
 })
 

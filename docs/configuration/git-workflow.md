@@ -23,7 +23,7 @@ git commit -m "message"
 
 **WRONG** (do not do this):
 ```bash
-npm test && git add . && git commit -m "message"  # ❌ Don't chain
+npm test -- --run && git add . && git commit -m "message"  # ❌ Don't chain
 ```
 
 ## Commit Standards
@@ -57,10 +57,10 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 ```bash
 git commit -m "feat: add new feature
 
-Co-Authored-By: Claude <claude@anthropic.com>"
+Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
-**Note**: Use `claude@anthropic.com`, NOT `claude-flow@anthropic.com`
+**Note**: Use `noreply@anthropic.com` — not `claude@anthropic.com` or `claude-flow@anthropic.com`. The reviewer checklist rejects the others.
 
 ### Commit Message Format
 
@@ -71,7 +71,7 @@ git commit -m "feat(api): add WordPress MCP integration" \
   -m "- Add stdio-to-HTTP proxy for MCP server
 - Configure Claude Code MCP client
 - Document MCP workflow in CLAUDE.md" \
-  -m "Co-Authored-By: Claude <claude@anthropic.com>"
+  -m "Co-Authored-By: Claude <noreply@anthropic.com>"
 ```
 
 ## Incremental Commits
@@ -100,7 +100,7 @@ git commit -m "feat(api): add WordPress MCP integration" \
 ### ALWAYS
 
 - ✅ Get reviewer agent approval before committing
-- ✅ Run all tests before staging files
+- ✅ Run all tests before staging files — unless the staged set is text-only (see "Pre-Commit Hook Notes" below)
 - ✅ Stage specific files by name
 - ✅ Create new commits (not amend)
 - ✅ Include co-author attribution
@@ -108,27 +108,33 @@ git commit -m "feat(api): add WordPress MCP integration" \
 
 ## Allowed Prompts
 
-**Project-specific auto-approved commands** (`.claude/settings.json`):
+**Project-specific auto-approved commands** (`.claude/settings.json`). The allow list is longer
+than this; these are the entries the commit and review flow depends on:
 
 ```json
 {
   "permissions": {
     "allow": [
       "Bash(git commit*)",
-      "Bash(git add*)"
+      "Bash(git add*)",
+      "Write(*)",
+      "Agent(subagent_type=reviewer)"
     ]
   }
 }
 ```
 
-Both `git add` and `git commit` are auto-approved for smooth TDD workflow in this project only.
+`git add` and `git commit` are auto-approved for a smooth TDD workflow in this project only.
+`Write(*)` is what lets the reviewer agent write the approval flag without a prompt — see the
+note below on why that is a discipline boundary rather than a technical one. Read the real
+file rather than this excerpt: it is gitignored and machine-local, so any list here goes stale.
 
 ## Reviewer Workflow Integration
 
 ### Complete Flow
 
 1. **Make changes** - Edit files, write code
-2. **Run tests locally** - Verify all pass
+2. **Run tests locally** - Verify all pass; skip them entirely for a text-only staged set (see "Pre-Commit Hook Notes" below)
 3. **Spawn reviewer agent** - Get approval BEFORE staging
 4. **Reviewer writes the approval flag** - never the main agent
 5. **Stage files** - `git add specific-file.ts`
@@ -162,8 +168,8 @@ one diff from authorising a different one.
 
 ## Pre-Commit Hook Notes
 
-- `package-lock.json` is excluded from the file count and insertion count — lockfile changes are always large on dependency installs and are not meaningful to review for size.
-- Commits where **every staged file** is `.md` or `.txt` skip the test suite entirely (blocklist approach — all other file types run tests). Safe by default: new/unknown file types trigger tests.
+- Lock files (`REVIEWER_EXCLUDED_FILES` in `.reviewer-config.sh` — `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) are left out of every size count: files, renames and insertions. Lockfile changes are always large on dependency installs and are not meaningful to review for size.
+- Commits with a **text-only** staged set skip the test suite entirely — every file left is `.md` or `.txt` after those lock files are removed from the count, so a lock-file-only stage qualifies too. Blocklist by extension, so new or unknown file types run the full suite by default.
 
 ## User Bypass
 

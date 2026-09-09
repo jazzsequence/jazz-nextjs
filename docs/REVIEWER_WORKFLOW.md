@@ -99,9 +99,13 @@ implementations in agreement was manual and kept failing; there is now one.
 they disagree):
 - ✅ Re-validates the approval flag, and **deletes it immediately** (single-use). Note it
   is deleted in check 1, so a later failure means a fresh review is required.
-- ✅ Checks commit size (AI commits only: ≤5 files, ≤500 insertions; `package-lock.json` excluded)
+- ✅ Checks commit size (AI commits only) against `REVIEWER_MAX_FILES`, `REVIEWER_MAX_RENAMES`
+  and `REVIEWER_MAX_INSERTIONS` in `.reviewer-config.sh` — read the values there rather than
+  from this page. The lock files in `REVIEWER_EXCLUDED_FILES` are left out of every one of
+  those counts.
 - ✅ **Runs the full suite** — `npm test -- --run`, `npm run lint`, `npm run build`,
-  `npm run test:e2e`. Skipped only when every staged file is `.md` or `.txt`.
+  `npm run test:e2e`. Skipped when every staged file is `.md` or `.txt` once lock files
+  (`REVIEWER_EXCLUDED_FILES`) are removed from the count — a lock-file-only stage skips too.
 - ✅ Checks for secrets in staged files
 - ✅ Prints an advisory reminder about reviewer oversight (no prompt — nothing reads stdin)
 
@@ -136,7 +140,12 @@ reviewer, wait for it to write the flag, then commit.
 
 ## Pre-Commit Requirements (Enforced by Hooks)
 
-Before ANY commit is allowed, all of these checks must pass:
+Before ANY commit is allowed, all of these checks must pass — **except that the test suite
+(unit, lint, build, E2E) is skipped entirely when every staged file is `.md` or `.txt`**
+(`REVIEWER_TEXT_ONLY_PATTERN` in `.reviewer-config.sh`, with `package-lock.json` and the other
+`REVIEWER_EXCLUDED_FILES` removed from the count first). The hook skips it and so should you;
+see "Text-only commits" in `@docs/configuration/build-and-test.md` for the check to run first.
+Commit size, secret scanning and reviewer approval apply to every commit regardless.
 
 ### 0. Commit Size (AI commits only — hard block)
 
@@ -543,12 +552,14 @@ This would make the workflow fully automatic, but requires IPC between hook and 
 
 ## Summary
 
-**Before every commit:**
+**Before every commit that changes source:**
 1. ✅ Unit tests must pass
 2. ✅ Linter must pass
 3. ✅ Build must succeed
 4. ✅ **E2E tests must pass** ← Critical for catching runtime errors
 5. ✅ Reviewer agent approves AND writes the `reviewer-approved` flag
+
+**Text-only commits run none of 1–4** — neither the hook nor you. Item 5 still applies.
 
 **Token ownership — the integrity guarantee:**
 - The **reviewer agent** writes `reviewer-approved` on APPROVE (not the main agent)
@@ -559,7 +570,7 @@ This would make the workflow fully automatic, but requires IPC between hook and 
 **What this system actually ensures — one enforced layer:**
 - ✅ A commit without a fresh reviewer-written approval flag fails at the pre-commit hook
 - ✅ The approval token is written by the reviewer, never self-approved by the main agent
-- ✅ The full suite runs at commit time; the reviewer's own run is not trusted
+- ✅ The full suite runs at commit time (except on a text-only staged set, where neither the hook nor the reviewer runs it); the reviewer's own run is not trusted
 - ✅ Clear, actionable error messages guide the user
 - ✅ `USER_COMMIT=1` is respected for human commits
 - ⚠️ Layer 1 fails *earlier* than the hook when installed and exiting 2 — but it is

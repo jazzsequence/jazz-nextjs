@@ -138,7 +138,7 @@ The notification script uses the following environment variables:
 Run the test suite:
 
 ```bash
-npm test -- tests/scripts/slack-notify.test.ts
+npm test -- --run tests/scripts/slack-notify.test.ts
 ```
 
 ### Test Coverage

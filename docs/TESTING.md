@@ -68,7 +68,7 @@ npm run test:e2e:standalone
 npm run start:test
 
 # Coverage
-npm test -- --coverage
+npm test -- --run --coverage
 ```
 
 ### Standalone Build Testing
@@ -233,7 +233,7 @@ describe('fetchPost', () => {
 })
 ```
 
-**Run test**: `npm test` → Fails (function doesn't exist yet)
+**Run test**: `npm test -- --run` → Fails (function doesn't exist yet)
 
 ### 2. Green Phase (Make It Pass)
 
@@ -245,7 +245,7 @@ export async function fetchPost(slug: string): Promise<WPPost> {
 }
 ```
 
-**Run test**: `npm test` → Passes
+**Run test**: `npm test -- --run` → Passes
 
 ### 3. Refactor Phase (Improve Code)
 
@@ -261,7 +261,7 @@ export async function fetchPost(slug: string): Promise<WPPost> {
 }
 ```
 
-**Run test**: `npm test` → Still passes, code is better
+**Run test**: `npm test -- --run` → Still passes, code is better
 
 ## Continuous Testing
 

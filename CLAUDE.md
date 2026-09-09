@@ -26,7 +26,7 @@ This document is a **digest** - detailed documentation is in `@docs/`. Load rele
 ### Essential Commands
 
 ```bash
-npm test              # Unit tests
+npm test -- --run     # Unit tests (bare `npm test` is watch mode)
 npm run lint          # Linter
 npm run build         # Build
 npm run test:e2e      # E2E tests (MANDATORY)
@@ -38,9 +38,20 @@ npm run revalidate    # Force ISR cache revalidation (all tags, dev env)
 Use `BASE_URL=https://... npm run revalidate` to target another environment.
 Needed after: WordPress menu changes, any content edits not auto-revalidated via webhook.
 
-**All 5 commands MUST pass before committing** + Reviewer agent approval
+**Unit tests, lint, build and E2E must pass before committing** + Reviewer agent approval — **unless the staged set is text-only.**
 
-**Exception**: commits whose staged files all match `REVIEWER_TEXT_ONLY_PATTERN` in `.reviewer-config.sh` skip the test suite automatically. It is a blocklist by extension, not a path allowlist, so a new file type runs the full suite by default rather than being silently exempt.
+**Text-only commits: do not run any of them.** If every staged file is `.md` or `.txt` once lock files (`REVIEWER_EXCLUDED_FILES`) are removed from the count — so a lock-file-only stage counts too — the pre-commit hook skips the entire suite, and so should you. Check before running, never assume:
+
+```bash
+source .reviewer-config.sh
+git diff --cached --name-only \
+  | grep -Ev "$REVIEWER_EXCLUDED_FILES" \
+  | grep -Ev "$REVIEWER_TEXT_ONLY_PATTERN" | wc -l   # 0 = skip everything
+```
+
+Tell the Reviewer agent to skip them too, or it will run the suite itself.
+
+**Keep documentation in its own commit.** One `.mjs` staged alongside — even a two-line comment — makes that count non-zero and forces the full suite onto a prose change. The pattern is a blocklist by extension, not a path allowlist, so a new file type runs the full suite by default rather than being silently exempt.
 
 **E2E test output**: Always redirect E2E output to a file for efficient debugging:
 ```bash
@@ -256,13 +267,13 @@ Key facts:
 
 **WRONG**:
 ```bash
-npm test && git add . && git commit  # ❌ Harder to auto-approve
+npm test -- --run && git add . && git commit  # ❌ Harder to auto-approve
 cmd1 && cmd2 && cmd3                 # ❌ Chains require manual approval
 ```
 
 **RIGHT**:
 ```bash
-npm test                             # ✅ Separate commands
+npm test -- --run                    # ✅ Separate commands
 git add src/file.ts                  # ✅ Auto-approved individually
 git commit -m "message"              # ✅ Clean approval flow
 ```
@@ -338,7 +349,7 @@ See: `@docs/AI_USAGE.md` for full AI tool usage
 4. **YAGNI**: Don't build for hypothetical future requirements
 5. **Documentation**: Keep docs updated with code changes
 6. **Security**: No secrets in code, validate at boundaries
-7. **Quality**: All tests + lint + build must pass before commit
+7. **Quality**: Unit tests + lint + build + E2E must pass before a commit that changes source; text-only commits skip them all
 8. **Commands**: Run separately, avoid `&&` chaining
 9. **Automation**: Use Write() for auto-approved file creation
 

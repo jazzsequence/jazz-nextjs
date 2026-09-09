@@ -11,12 +11,13 @@
 ```
 
 This installs a pre-commit hook that automatically:
-- ✅ Runs all unit tests before every commit (npm test)
-- ✅ Runs linter before every commit (npm run lint)
+- ✅ Runs unit tests (npm test -- --run --reporter=dot, per `REVIEWER_TEST_CMD`)
+- ✅ Runs linter (npm run lint)
 - ✅ Validates build succeeds (npm run build)
-- ✅ **Runs E2E tests before every commit (npm run test:e2e)** ← CRITICAL
+- ✅ **Runs E2E tests (npm run test:e2e)** ← CRITICAL
+- ⏭️ **Skips all four** when every staged file is `.md` or `.txt` (`REVIEWER_TEXT_ONLY_PATTERN` in `.reviewer-config.sh`, with `package-lock.json` and the other `REVIEWER_EXCLUDED_FILES` removed from the count first) — do not run them yourself on such a commit either
 - ✅ Blocks commits containing secrets
-- ⚠️ Reminds you to get reviewer agent approval (manual gate)
+- ⚠️ Reminds you to get reviewer agent approval (manual gate, required on every commit)
 
 **Why E2E tests are mandatory:**
 E2E tests catch runtime errors that unit tests miss, including:
@@ -49,8 +50,11 @@ Then either APPROVE (write the reviewer-approved flag as instructed in the check
 or REJECT (list every failing item with its number and required fix).
 
 CRITICAL: Tests and lint are run by YOU — the pre-commit hook only validates that
-you wrote the approval flag.`
-}))
+you wrote the approval flag. The exception is a text-only staged set — every staged
+file .md or .txt once lock files (REVIEWER_EXCLUDED_FILES) are removed from the
+count, so a lock-file-only stage qualifies too. The hook skips the suite then, and
+so must you. Do not run tests on such a commit.`
+})
 ```
 
 **IMPORTANT: Use Claude Code's `Agent` tool, NOT `mcp__claude-flow__*` tools**
@@ -63,7 +67,7 @@ you wrote the approval flag.`
 
 **Layer 1 - Manual Oversight (Reviewer Agent) - RUNS FIRST:**
 - Spawned BEFORE staging/committing
-- Runs tests, lint, build, and E2E — see `docs/REVIEWER_CHECKLIST.md` for all 45 items
+- Runs tests, lint, build, and E2E — skipped for a text-only staged set, exactly as the hook skips them. See `docs/REVIEWER_CHECKLIST.md` for the full item list
 - Comprehensive review of ALL rules
 - Checks documentation updates, TDD methodology, file organization, license compatibility
 - Writes the approval flag itself if everything passes — never the main agent
@@ -73,8 +77,9 @@ you wrote the approval flag.`
 **Layer 2 - Automated Gate (Pre-commit Hook) - RUNS SECOND:**
 - Checks for reviewer approval flag file
 - Blocks commit if no approval or approval expired
-- **Re-runs the full suite** — unit tests, lint, build and E2E. It does not trust that
-  the reviewer ran them, and it is the layer that actually gates the commit
+- **Re-runs the full suite** — unit tests, lint, build and E2E, except on a text-only
+  staged set, where it runs none of them. It does not trust that the reviewer ran them,
+  and it is the layer that actually gates the commit
 - Enforces the commit-size caps from `.reviewer-config.sh` — **except on merge commits**,
   which are exempt because a merge stages every file the incoming branch touched and
   cannot be split. Audit a merge with `git diff --cached $(cat .git/MERGE_HEAD)`, which
@@ -82,11 +87,11 @@ you wrote the approval flag.`
   (budgeted separately) and inserted lines, with lock files excluded from the counts.
   Read the values there rather than restating them
 - Checks for secrets
-- Skips the suite only when every staged file matches `REVIEWER_TEXT_ONLY_PATTERN`
+- Skips the suite when every staged file is `.md` or `.txt` once lock files (`REVIEWER_EXCLUDED_FILES`) are removed from the count — so a lock-file-only stage skips too
 
 **The reviewer agent will check:**
 See `docs/REVIEWER_CHECKLIST.md` for the full checklist the reviewer works through.
-Section A items run on every commit. Section B items are conditional (skipped with ⏭️ when not applicable).
+Section A items run on every commit, except items 1-4 (unit, lint, build, E2E), which are skipped for a text-only staged set. Section B items are conditional (skipped with ⏭️ when not applicable).
 
 **CRITICAL WORKFLOW:**
 1. Make changes (edit files, write code)
@@ -108,7 +113,7 @@ Section A items run on every commit. Section B items are conditional (skipped wi
 - If reviewer says REJECT, fix violations then spawn reviewer again
 - Approval expires after `REVIEWER_APPROVAL_TIMEOUT` (prevents stale approvals) and is
   invalidated by restaging (prevents an approval for one diff authorising another)
-- Hook re-runs the full suite; the reviewer's own run is not trusted
+- Hook re-runs the full suite (neither it nor the reviewer runs it on a text-only staged set); the reviewer's own run is not trusted
 
 **TRANSPARENCY:**
 Both the main agent and the reviewer agent must surface what they are doing to the
@@ -123,17 +128,19 @@ verdict with specific findings, and confirm explicitly that you wrote (or did no
 write) the reviewer-approved flag.
 
 **REVIEWER — NO COMPOUND COMMANDS:**
-Run each validation step as a separate Bash call. Never chain commands with `&&`,
-`;`, or pipes. Compound commands require manual human approval in this project and
-will stall the workflow. Correct pattern:
+Run each validation step as a separate Bash call. Never chain commands with `&&`
+or `;` — those require manual human approval in this project and will stall the
+workflow. A single command containing pipes is fine: the text-only skip check in
+`docs/configuration/build-and-test.md` is a pipeline and runs without a prompt.
+Correct pattern:
 ```
-Bash({ command: "npm test" })         // ✅ separate call
+Bash({ command: "npm test -- --run" }) // ✅ separate call (bare `npm test` is watch mode)
 Bash({ command: "npm run lint" })     // ✅ separate call
 Bash({ command: "npm run build" })    // ✅ separate call
 ```
 Not:
 ```
-Bash({ command: "npm test && npm run lint && npm run build" })  // ❌ blocked
+Bash({ command: "npm test -- --run && npm run lint && npm run build" })  // ❌ blocked
 ```
 
 ---
@@ -179,7 +186,7 @@ mcp-adapter-discover-abilities
 mcp-adapter-get-ability-info({ ability_name: "..." })
 
 // Execute WordPress abilities
-mcp-adapter-execute-ability({ ability_name: "...", params: {...} })
+mcp-adapter-execute-ability({ ability_name: "...", parameters: {...} })  // key is `parameters`, not `params`
 ```
 
 **Content Abilities** (via jazzsequence-mcp-abilities plugin):
@@ -205,10 +212,17 @@ mcp-adapter-execute-ability({ ability_name: "...", params: {...} })
 ```
 User asks: "What custom post types exist?"
 
-AI: Use mcp-adapter-discover-abilities or mcp-adapter-execute-ability
-→ Result: gc_game, rb_recipe, plague-artist, movie, ab_address, media
+AI: Use jazzsequence-mcp-discover-post-types (or execute ability
+    "jazzsequence-mcp/discover-post-types" via mcp-adapter-execute-ability — note the
+    slash form: the hyphenated tool name is not a valid ability_name)
+→ Result (non-core types on jazzsequence.com): ab_address, gc_game, media, plus
+  plugin-registered types (ap_*, audience, broadcast, nf_sub, series_grouping, …)
 
-AI: "jazzsequence.com has these custom post types: games (gc_game), recipes (rb_recipe), artists (plague-artist), movies (movie), addresses (ab_address), and media."
+AI: "jazzsequence.com registers ab_address, gc_game and media alongside a number of
+plugin types. Only gc_game (`/games`) and media (`/media`) are in scope for this frontend.
+ab_address is registered but has `rest_base: false`, so `/wp/v2/ab_address` 404s and there
+is no route for it. Note that rb_recipe, plague-artist and movie are NOT returned here —
+they are not registered on this install; see the Custom Post Types list below."
 ```
 
 **Example 2: Understand Post Type Schema**
@@ -300,9 +314,10 @@ If MCP server not available:
 5. Refactor if needed
 6. Repeat
 
-# Before ANY commit:
+# Before any commit that changes source (text-only commits run none of these):
 npm test -- --run     # All unit tests must pass
 npm run lint          # No ESLint errors
+npm run build         # Build must succeed
 npm run test:e2e      # E2E tests must pass
 ```
 
@@ -310,6 +325,7 @@ npm run test:e2e      # E2E tests must pass
 - ✅ Tests written first
 - ✅ All tests passing (`npm test -- --run`)
 - ✅ ESLint clean
+- ✅ Build succeeds (`npm run build`)
 - ✅ E2E tests passing (`npm run test:e2e`)
 
 Counts are deliberately not recorded here — they go stale on every test-adding commit.
@@ -376,13 +392,14 @@ User asks: "Fetch WordPress posts"
 - Rate limiting: 10 req/sec, burst of 20
 - CDN images: `sfo2.digitaloceanspaces.com/cdn.jazzsequence/`
 
-**Custom Post Types:**
-- `gc_game` - Games
-- `rb_recipe` - Recipes
-- `plague-artist` - Artists
-- `movie` - Movies
-- `ab_address` - Address book
-- `media` - YouTube/WordPress.tv
+**Custom Post Types** referenced across the multisite network. Only two are in scope for this
+frontend — see CLAUDE.md, which is authoritative on scope:
+- `gc_game` - Games — **in scope**, `/games`
+- `media` - YouTube/WordPress.tv — **in scope**, `/media`
+- `rb_recipe` - Recipes — **out of scope**, registered on a multisite subsite, not on jazzsequence.com; do not build routes
+- `plague-artist` - Artists — **out of scope**, same
+- `movie` - Movies — **out of scope**, same
+- `ab_address` - Address book — registered here, but not exposed over REST: `/wp/v2/ab_address` 404s, so this frontend has no route for it. No code path reaches it — `ADDRESS_CONFIG` in `src/lib/wordpress/client.ts` targets that endpoint but nothing calls it
 
 **File Organization:**
 - `/src` - Source code ONLY (no tests)
@@ -444,6 +461,7 @@ with the config, the config wins.
 | `typescript` | `7.x` | Next build worker crash | `npm run build`, then a PR environment |
 | `eslint` | `10.x` | `eslint-plugin-react` incompatible | `npm run lint` — must exit 0 |
 | `vitest`, `@vitest/*` | `5.x` | `@storybook/addon-vitest` peer-requires vitest `^3.0.0 \|\| ^4.0.0`, while every `@vitest/*` 5.0.0 pins vitest `5.0.0` exactly | `npm install` (**not** `npm ci` — it skips peer resolution) must resolve, then `npm run build-storybook` |
+| `@pantheon-systems/nextjs-cache-handler` | `>0.9.0` | Took the live site down; the only pin here with an outage behind it | A deploy survives on an environment carrying a live-comparable cache, across both prefixes — green CI and PR environments explicitly do **not** qualify. See **LIFT WHEN** in `dependabot.yml` |
 
 **A `versions:` ignore also suppresses security-update PRs.** This is not documented by
 GitHub, and `update-types:` does *not* behave this way — see
