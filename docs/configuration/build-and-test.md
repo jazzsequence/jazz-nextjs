@@ -21,23 +21,43 @@ npm run start:test
 
 ## Pre-Commit Quality Checks
 
-**CRITICAL**: ALWAYS run ALL tests before committing (unit + E2E)
+**CRITICAL**: run these before committing — **unless the staged set is text-only**, in which
+case run none of them. See "Text-only commits" below.
 
-**All FIVE commands must pass before any commit:**
+**These must pass before any commit that is not a text-only staged set (defined below):**
 
-1. `npm test -- --run` - Unit tests
-2. `npm run lint` - Linter
-3. `npm run build` - Build validation
-4. `npm run test:e2e` - E2E tests (catches routing conflicts)
-5. Reviewer agent approval
+- `npm test -- --run` - Unit tests
+- `npm run lint` - Linter
+- `npm run build` - Build validation
+- `npm run test:e2e` - E2E tests (catches routing conflicts)
+- Reviewer agent approval (required for every commit, text-only included)
 
-### Why All Five Are Required
+### Why Each Is Required
 
 - **Unit tests** validate individual components and functions
 - **Linter** enforces code style and catches potential bugs
 - **Build** ensures production build succeeds
 - **E2E tests** validate entire application runtime (catches issues unit tests miss)
 - **Reviewer agent** validates compliance with all project standards
+
+### Text-only commits
+
+A staged set is **text-only** when every file left is `.md` or `.txt` after the lock files in
+`REVIEWER_EXCLUDED_FILES` are removed from the count — so a lock-file-only stage, such as a
+Dependabot merge, qualifies as well. When it is, the
+pre-commit hook skips the whole suite — and so should you. Prose cannot break a build, and
+running E2E on it wastes minutes per commit. Check before running:
+
+```bash
+source .reviewer-config.sh
+git diff --cached --name-only \
+  | grep -Ev "$REVIEWER_EXCLUDED_FILES" \
+  | grep -Ev "$REVIEWER_TEXT_ONLY_PATTERN" | wc -l   # 0 = skip everything
+```
+
+Tell the Reviewer agent to skip them too, or it will run the suite itself. And keep
+documentation in its own commit: one source file staged alongside makes that count non-zero
+and forces the full suite onto a prose change.
 
 ### Pre-Commit Hook
 
@@ -49,7 +69,8 @@ The project uses `.githooks/pre-commit` to enforce these checks automatically.
 ```
 
 **What it checks**: a fresh reviewer-written approval flag, the commit-size cap, the full
-test suite (unit, lint, build, E2E), and staged secrets — five checks in that order.
+test suite (unit, lint, build, E2E — skipped entirely for a text-only staged set, as above),
+and staged secrets, in that order.
 
 Deliberately not restated in detail here. `@docs/REVIEWER_WORKFLOW.md` owns the
 authoritative list, and `.githooks/pre-commit` is the source of truth if the two ever

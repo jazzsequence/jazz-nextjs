@@ -74,11 +74,11 @@ This project follows **TDD London School** (mockist approach):
    - Green: Write minimal code to pass
    - Refactor: Improve code while keeping tests green
 3. **Mock-First**: Use mocks for external dependencies (API calls, database)
-4. **Never Commit Failing Tests**: All tests must pass before commit
+4. **Never Commit Failing Tests**: tests that run must pass — see the text-only exception below
 
 ### Pre-Commit Checklist
 
-**MANDATORY** before every commit:
+**MANDATORY** before any commit that is not a text-only staged set (see "Text-only commits" in `@docs/configuration/build-and-test.md` for what counts):
 ```bash
 npm test            # All unit tests must pass
 npm run lint        # No linting errors
@@ -86,13 +86,16 @@ npm run build       # Build must succeed
 npm run test:e2e    # All E2E tests must pass
 ```
 
-After all checks pass, obtain **reviewer agent approval** before committing.
+**Text-only commits skip all of these** — the pre-commit hook does, and so should you. See
+"Text-only commits" in `@docs/configuration/build-and-test.md` for the check to run first.
+
+Reviewer agent approval is required for **every** commit, text-only included.
 
 If any command fails, fix the issues before committing. Never:
 - Disable/whitelist linting rules to bypass errors
 - Comment out failing tests
 - Commit with build failures
-- Skip running tests
+- Skip running tests on a commit that changes source
 
 ### Dependency Management
 
@@ -132,7 +135,7 @@ When dependencies are updated:
 4. **Background Execution**: Long-running tasks use `run_in_background: true`
 5. **No Polling**: Trust agents to return results rather than checking status
 6. **Incremental Commits**: Small, focused commits with clear messages
-7. **Never Skip Quality Checks**: Always run test, lint, and build before commit
+7. **Never Skip Quality Checks**: Run test, lint, build and E2E before any commit that changes source — and skip all of them when the staged set is text-only
 8. **Error Handling**: Use `error.name` instead of `instanceof` for production compatibility
 
 ## Session Management
@@ -150,7 +153,7 @@ See [TESTING.md](TESTING.md) for complete testing guide.
 - E2E testing: Playwright 1.62.1
 - API mocking: MSW 2.15.0
 - Always write tests before implementation (TDD)
-- All tests must pass before commit
+- All tests must pass before commit (text-only commits run none)
 - Test standalone builds with `npm run start:test` before deploying
 - Use `error.name` checks instead of `instanceof` for production compatibility
 
