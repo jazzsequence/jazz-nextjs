@@ -28,7 +28,11 @@ import { GcsCacheHandler, FileCacheHandler } from '@pantheon-systems/nextjs-cach
 // ~1200ms without re-measuring, or normal inits start tripping it.
 //
 // Re-measure by reading INIT_OBSERVED from the runtime log. Overridable per
-// environment for tuning without a deploy.
+// environment via CACHE_INIT_TIMEOUT_MS, which saves a code change but not a
+// build: the read happens at module load, and a --scope=web value belongs to the
+// deployed build's environment, so only a rebuild applies a new one. No Terminus
+// command acts on a running process — the log commands read but cannot change it.
+// See DEPLOYMENT.md.
 const INIT_TIMEOUT_MS = Number(process.env.CACHE_INIT_TIMEOUT_MS) || 2000
 
 /**

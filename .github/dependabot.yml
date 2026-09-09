@@ -25,8 +25,12 @@ updates:
       #   awaited by get() (base.js:237) and set() (base.js:323) — and initialize()
       #   awaits initializeTagsMapping() first (base.js:79), which reads and rewrites
       #   cache/tags/tags.json.
-      #   Live crash-looped every 1-4 minutes: requests queued behind the unresolved
-      #   init, health probes failed, the container was killed and restarted. 0.9.0
+      #   Live restarted every 1-4 minutes: requests queued behind the unresolved
+      #   init. The health probe never failed — Next binds port 3000 before any
+      #   cache code runs, so the probe always succeeded — and the restart reason
+      #   was always AUTOSCALING, the platform reading stalled requests as demand.
+      #   See DEPLOYMENT.md, which lists "the health probe killed the process"
+      #   among the explanations since ruled out. 0.9.0
       #   ran the same work fire-and-forget, so identical conditions merely served
       #   uncached — degraded, but up. Rolling live back restored service.
       #   NOT EXPLAINED: the log showed thousands of concurrent GCS requests and
