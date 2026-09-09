@@ -326,7 +326,7 @@ The `next.config.ts` includes:
 
 ## Environment Variables
 
-Environment variables should be configured in the Pantheon dashboard, never committed to the repository.
+Environment variables should be configured as Pantheon secrets, never committed to the repository. Changing one takes a rebuild before the application sees it — see `docs/configuration/DEPLOYMENT.md`.
 
 Required variables:
 - `WORDPRESS_API_URL` - WordPress REST API endpoint (e.g. `https://jazzsequence.com/wp-json/wp/v2`)

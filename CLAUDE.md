@@ -267,7 +267,7 @@ Key facts:
 
 **WRONG**:
 ```bash
-npm test && git add . && git commit  # ❌ Harder to auto-approve
+npm test -- --run && git add . && git commit  # ❌ Harder to auto-approve
 cmd1 && cmd2 && cmd3                 # ❌ Chains require manual approval
 ```
 

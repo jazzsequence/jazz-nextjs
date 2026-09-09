@@ -140,7 +140,7 @@ Bash({ command: "npm run build" })    // ✅ separate call
 ```
 Not:
 ```
-Bash({ command: "npm test && npm run lint && npm run build" })  // ❌ blocked
+Bash({ command: "npm test -- --run && npm run lint && npm run build" })  // ❌ blocked
 ```
 
 ---
@@ -213,9 +213,14 @@ mcp-adapter-execute-ability({ ability_name: "...", params: {...} })
 User asks: "What custom post types exist?"
 
 AI: Use mcp-adapter-discover-abilities or mcp-adapter-execute-ability
-→ Result: gc_game, rb_recipe, plague-artist, movie, ab_address, media
+→ Result (non-core types on jazzsequence.com): ab_address, gc_game, media, plus
+  plugin-registered types (ap_*, audience, broadcast, nf_sub, series_grouping, …)
 
-AI: "jazzsequence.com has these custom post types: games (gc_game), recipes (rb_recipe), artists (plague-artist), movies (movie), addresses (ab_address), and media. Only gc_game and media are in scope for this frontend — recipes, artists and movies belong to multisite subsites, and addresses are not exposed over REST, so there is no route; see the Custom Post Types list below."
+AI: "jazzsequence.com registers ab_address, gc_game and media alongside a number of
+plugin types. Only gc_game (`/games`) and media (`/media`) are in scope for this frontend.
+ab_address is registered but has `rest_base: false`, so `/wp/v2/ab_address` 404s and there
+is no route for it. Note that rb_recipe, plague-artist and movie are NOT returned here —
+they are not registered on this install; see the Custom Post Types list below."
 ```
 
 **Example 2: Understand Post Type Schema**
