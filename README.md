@@ -84,11 +84,11 @@ The `start:test` script starts the standalone server on port 3000 and runs E2E t
 **Current Status**: ✅ All tests passing
 
 ```bash
-# Unit and integration tests (Vitest)
-npm test
+# Unit and integration tests (Vitest), single run
+npm test -- --run
 
-# Watch mode
-npm run test:watch
+# Watch mode — bare `npm test` is `vitest` with no `run`, so it watches and never exits
+npm test
 
 # End-to-end tests (Playwright — runs against live Pantheon dev site)
 npm run test:e2e
@@ -347,10 +347,10 @@ Create a `.env.local` file for local development (excluded from git). See [confi
 
 ### Commit Standards
 
-- Use co-authoring: `Co-Authored-By: Claude <claude@anthropic.com>`
+- Use co-authoring: `Co-Authored-By: Claude <noreply@anthropic.com>`
 - Keep commits small and focused
 - Update documentation in the same commit as code changes
-- Always run tests before committing
+- Run tests before committing anything that changes source; a text-only staged set skips them (see `docs/configuration/build-and-test.md`)
 
 ## License
 

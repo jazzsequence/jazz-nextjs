@@ -8,7 +8,7 @@ This document tracks how AI tools are used in this project, specifically Claude 
 - **Purpose**: Primary development assistant for code generation, refactoring, and problem-solving
 - **Model**: Claude Sonnet 4.6 (primary)
 - **Usage**: Interactive development, code reviews, documentation updates
-- **Co-authoring**: Commits are co-authored with `Claude <claude@anthropic.com>`
+- **Co-authoring**: Commits are co-authored with `Claude <noreply@anthropic.com>`
 
 ### Claude Flow V3
 - **Purpose**: Multi-agent orchestration and workflow automation
@@ -80,7 +80,7 @@ This project follows **TDD London School** (mockist approach):
 
 **MANDATORY** before any commit that is not a text-only staged set (see "Text-only commits" in `@docs/configuration/build-and-test.md` for what counts):
 ```bash
-npm test            # All unit tests must pass
+npm test -- --run   # All unit tests must pass (bare `npm test` is watch mode and never exits)
 npm run lint        # No linting errors
 npm run build       # Build must succeed
 npm run test:e2e    # All E2E tests must pass
@@ -163,7 +163,7 @@ GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests again
 - **On push to main**: Tests run against `dev-jazz-nextjs15.pantheonsite.io`
 - **On pull requests**: Tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
 - **Wait strategy**: `jazzsequence/pantheon-wait-for-build@v1` reports build/deploy status, then an HTTP 200 check (12 attempts, 5s apart) before E2E
-- **Test types**: Lint (`npm run lint`), unit tests (`npm test`), and E2E tests (`npm run test:e2e`) — all three gate the workflow
+- **Test types**: Lint (`npm run lint`), unit tests (`npm test -- --run`), and E2E tests (`npm run test:e2e`) — all three gate the workflow
 - **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
 
 **Required GitHub Secrets**: `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action) and `REVALIDATE_SECRET` — without the latter the E2E spec throws at collection time and the entire run aborts. `WORDPRESS_USERNAME` / `WORDPRESS_APP_PASSWORD` are not workflow secrets; they are server-runtime vars supplied by Pantheon on deployed environments. See `@docs/configuration/DEPLOYMENT.md`.

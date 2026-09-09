@@ -11,7 +11,7 @@
 ```
 
 This installs a pre-commit hook that automatically:
-- ✅ Runs unit tests (npm test)
+- ✅ Runs unit tests (npm test -- --run --reporter=dot, per `REVIEWER_TEST_CMD`)
 - ✅ Runs linter (npm run lint)
 - ✅ Validates build succeeds (npm run build)
 - ✅ **Runs E2E tests (npm run test:e2e)** ← CRITICAL
@@ -54,7 +54,7 @@ you wrote the approval flag. The exception is a text-only staged set — every s
 file .md or .txt once lock files (REVIEWER_EXCLUDED_FILES) are removed from the
 count, so a lock-file-only stage qualifies too. The hook skips the suite then, and
 so must you. Do not run tests on such a commit.`
-}))
+})
 ```
 
 **IMPORTANT: Use Claude Code's `Agent` tool, NOT `mcp__claude-flow__*` tools**
@@ -128,11 +128,13 @@ verdict with specific findings, and confirm explicitly that you wrote (or did no
 write) the reviewer-approved flag.
 
 **REVIEWER — NO COMPOUND COMMANDS:**
-Run each validation step as a separate Bash call. Never chain commands with `&&`,
-`;`, or pipes. Compound commands require manual human approval in this project and
-will stall the workflow. Correct pattern:
+Run each validation step as a separate Bash call. Never chain commands with `&&`
+or `;` — those require manual human approval in this project and will stall the
+workflow. A single command containing pipes is fine: the text-only skip check in
+`docs/configuration/build-and-test.md` is a pipeline and runs without a prompt.
+Correct pattern:
 ```
-Bash({ command: "npm test" })         // ✅ separate call
+Bash({ command: "npm test -- --run" }) // ✅ separate call (bare `npm test` is watch mode)
 Bash({ command: "npm run lint" })     // ✅ separate call
 Bash({ command: "npm run build" })    // ✅ separate call
 ```
@@ -308,6 +310,7 @@ If MCP server not available:
 # Before any commit that changes source (text-only commits run none of these):
 npm test -- --run     # All unit tests must pass
 npm run lint          # No ESLint errors
+npm run build         # Build must succeed
 npm run test:e2e      # E2E tests must pass
 ```
 
@@ -315,6 +318,7 @@ npm run test:e2e      # E2E tests must pass
 - ✅ Tests written first
 - ✅ All tests passing (`npm test -- --run`)
 - ✅ ESLint clean
+- ✅ Build succeeds (`npm run build`)
 - ✅ E2E tests passing (`npm run test:e2e`)
 
 Counts are deliberately not recorded here — they go stale on every test-adding commit.
