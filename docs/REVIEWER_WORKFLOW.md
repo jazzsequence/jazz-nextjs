@@ -99,7 +99,10 @@ implementations in agreement was manual and kept failing; there is now one.
 they disagree):
 - ✅ Re-validates the approval flag, and **deletes it immediately** (single-use). Note it
   is deleted in check 1, so a later failure means a fresh review is required.
-- ✅ Checks commit size (AI commits only: ≤5 files, ≤500 insertions; `package-lock.json` excluded)
+- ✅ Checks commit size (AI commits only) against `REVIEWER_MAX_FILES`, `REVIEWER_MAX_RENAMES`
+  and `REVIEWER_MAX_INSERTIONS` in `.reviewer-config.sh` — read the values there rather than
+  from this page. The lock files in `REVIEWER_EXCLUDED_FILES` are left out of every one of
+  those counts.
 - ✅ **Runs the full suite** — `npm test -- --run`, `npm run lint`, `npm run build`,
   `npm run test:e2e`. Skipped when every staged file is `.md` or `.txt` once lock files
   (`REVIEWER_EXCLUDED_FILES`) are removed from the count — a lock-file-only stage skips too.

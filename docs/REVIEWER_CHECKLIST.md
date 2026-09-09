@@ -32,9 +32,11 @@ Only proceed if no queued messages.
 ## Section A — Always run
 
 These checks apply to every commit, except that items 1-4 are skipped when **every**
-staged file is `.md` or `.txt` — matching the blocklist in `.githooks/pre-commit`
-(`package-lock.json` is excluded from the count first). Any other file type, including
-unknown extensions, runs the full suite.
+staged file is `.md` or `.txt` — matching `REVIEWER_TEXT_ONLY_PATTERN` in
+`.reviewer-config.sh`, which overrides the default in `.githooks/pre-commit`
+(the lock files in `REVIEWER_EXCLUDED_FILES` — `package-lock.json`, `yarn.lock`,
+`pnpm-lock.yaml` — are removed from the count first, so a lock-file-only stage skips
+too). Any other file type, including unknown extensions, runs the full suite.
 
 ### Tests & build
 
@@ -175,9 +177,12 @@ If the condition does not apply, output `⏭️ N: [condition not met]`.
 
 28. New dependencies have compatible licences (no GPL/AGPL unless explicitly approved)
 29. Registry check — HARD BLOCK if violated:
-    Run: `grep "resolved" package-lock.json | grep -v "registry.npmjs.org"`
-    Any non-public registry (e.g. `npm.fontawesome.com`, `npm.pkg.github.com`) will
+    Run: `grep "resolved" package-lock.json | grep -vE "registry\.npmjs\.org|^\s*\"resolved\": \"git\+"`
+    Any non-public *registry* (e.g. `npm.fontawesome.com`, `npm.pkg.github.com`) will
     cause E401 on Pantheon CI. REJECT unless a corresponding secret is confirmed in CI.
+    Git-sourced dependencies are **not** in this class and must not be rejected for it —
+    this repo has one (`git+ssh://…/pantheon-api-helper.git`), and the naive grep without
+    the `git+` exclusion matches it and would block every lockfile commit here.
 
 ### E2E test coverage
 **Condition:** files staged under `app/` or `src/components/`

@@ -23,7 +23,7 @@ git commit -m "message"
 
 **WRONG** (do not do this):
 ```bash
-npm test && git add . && git commit -m "message"  # ❌ Don't chain
+npm test -- --run && git add . && git commit -m "message"  # ❌ Don't chain
 ```
 
 ## Commit Standards
@@ -168,7 +168,7 @@ one diff from authorising a different one.
 
 ## Pre-Commit Hook Notes
 
-- Lock files (`REVIEWER_EXCLUDED_FILES` in `.reviewer-config.sh` — `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) are excluded from the file count and insertion count. Lockfile changes are always large on dependency installs and are not meaningful to review for size.
+- Lock files (`REVIEWER_EXCLUDED_FILES` in `.reviewer-config.sh` — `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`) are left out of every size count: files, renames and insertions. Lockfile changes are always large on dependency installs and are not meaningful to review for size.
 - Commits with a **text-only** staged set skip the test suite entirely — every file left is `.md` or `.txt` after those lock files are removed from the count, so a lock-file-only stage qualifies too. Blocklist by extension, so new or unknown file types run the full suite by default.
 
 ## User Bypass

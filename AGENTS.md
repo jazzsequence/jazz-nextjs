@@ -186,7 +186,7 @@ mcp-adapter-discover-abilities
 mcp-adapter-get-ability-info({ ability_name: "..." })
 
 // Execute WordPress abilities
-mcp-adapter-execute-ability({ ability_name: "...", params: {...} })
+mcp-adapter-execute-ability({ ability_name: "...", parameters: {...} })  // key is `parameters`, not `params`
 ```
 
 **Content Abilities** (via jazzsequence-mcp-abilities plugin):
@@ -212,7 +212,9 @@ mcp-adapter-execute-ability({ ability_name: "...", params: {...} })
 ```
 User asks: "What custom post types exist?"
 
-AI: Use mcp-adapter-discover-abilities or mcp-adapter-execute-ability
+AI: Use jazzsequence-mcp-discover-post-types (or execute ability
+    "jazzsequence-mcp/discover-post-types" via mcp-adapter-execute-ability — note the
+    slash form: the hyphenated tool name is not a valid ability_name)
 → Result (non-core types on jazzsequence.com): ab_address, gc_game, media, plus
   plugin-registered types (ap_*, audience, broadcast, nf_sub, series_grouping, …)
 
