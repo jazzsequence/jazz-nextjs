@@ -82,6 +82,87 @@ const INIT_FAULT = resolveInitFault()
 const TAGS_FLUSH_INTERVAL_MS = Number(process.env.CACHE_TAGS_FLUSH_MS) || 5000
 
 /**
+ * Bounds on the tag-flush FAILURE path. Upstream has none of these.
+ *
+ * Measured 2026-09-08 on the test environment, which already carried every other
+ * workaround in this file: a two-minute crawl tripped upstream's retry and it
+ * never recovered. 404 "exceeded the rate limit for object mutation operations"
+ * on cache/tags/tags.json were still firing 15 minutes after the last request,
+ * with the site quiet. Write and retry log lines ran exactly 1:1.
+ *
+ * Upstream's doFlush (dist/utils/tags-buffer.js:121-133) retries on a CONSTANT
+ * `flushIntervalMs * 2` — the comment says "backoff", the code has none — and
+ * requeues failed updates uncapped. Since the whole mapping is rewritten to ONE
+ * object per flush, each retry carries a larger payload than the one that just
+ * failed. That is a positive feedback loop against a per-object rate limit.
+ *
+ * Widening flushIntervalMs cannot fix it; that only raises the load at which the
+ * loop trips. These bound what happens once it has.
+ */
+const TAGS_MAX_RETRY_MS = Number(process.env.CACHE_TAGS_MAX_RETRY_MS) || 60_000
+const TAGS_CIRCUIT_TRIP_FAILURES = Number(process.env.CACHE_TAGS_CIRCUIT_TRIP) || 5
+const TAGS_CIRCUIT_COOLDOWN_MS = Number(process.env.CACHE_TAGS_CIRCUIT_COOLDOWN_MS) || 60_000
+const TAGS_MAX_PENDING_UPDATES = Number(process.env.CACHE_TAGS_MAX_PENDING) || 2_000
+
+/**
+ * Bound the pending queue: coalesce first, then drop the OLDEST if still over.
+ *
+ * Dropping is a real loss, and asymmetric. A dropped ADD means revalidateTag()
+ * will not purge that key and it falls back to its ISR TTL. A dropped DELETE is
+ * worse: the mapping keeps pointing at a key whose object is gone, inflating the
+ * very object under contention — the same rot pruneRouteKeysFromTagMap() exists
+ * to clean up. Both are accepted deliberately, because an unbounded queue does
+ * not preserve either, it just guarantees every subsequent write is larger and
+ * likelier to fail. Newest are kept: they match the most recently published
+ * content, and a stale mapping still expires by TTL.
+ *
+ * Pure by design — takes the array rather than the buffer — so the retention
+ * policy can be asserted directly rather than only through doFlush().
+ */
+function capPendingUpdates(updates) {
+  let next = coalesceTagUpdates(updates)
+  if (next.length > TAGS_MAX_PENDING_UPDATES) {
+    const dropped = next.length - TAGS_MAX_PENDING_UPDATES
+    next = next.slice(next.length - TAGS_MAX_PENDING_UPDATES)
+    console.warn(
+      `[BoundedGcsCacheHandler] TAGS_QUEUE_TRIMMED dropped ${dropped} buffered tag ` +
+        `update(s) over the ${TAGS_MAX_PENDING_UPDATES} cap; those keys will fall ` +
+        `back to ISR expiry instead of explicit revalidation.`
+    )
+  }
+  return next
+}
+
+/**
+ * Collapse repeat updates sharing a (type, key, tags) signature, keeping the LAST.
+ *
+ * Deduping before capping shrinks the payload without discarding any mapping, so
+ * it is strictly better than dropping entries.
+ *
+ * Why it is safe is stronger than an ordering argument: upstream's applyUpdates()
+ * (tags-buffer.js:139-168) collects every delete in the batch into a Set and
+ * applies them all before any add, and each add is guarded by includes() before
+ * push. Deletes are therefore duplicate-free and adds are idempotent, so
+ * collapsing identical signatures is result-preserving for ANY batch — it does
+ * not depend on upstream staying order-insensitive.
+ *
+ * Fields are NUL-separated including the tag join: joining tags on a comma would
+ * make ['a,b'] and ['a','b'] collide and silently drop a distinct update.
+ */
+function coalesceTagUpdates(updates) {
+  const seen = new Set()
+  const out = []
+  for (let i = updates.length - 1; i >= 0; i--) {
+    const u = updates[i]
+    const signature = `${u.type}\u0000${u.cacheKey}\u0000${(u.tags || []).join('\u0000')}`
+    if (seen.has(signature)) continue
+    seen.add(signature)
+    out.push(u)
+  }
+  return out.reverse()
+}
+
+/**
  * Report real wall-clock init duration, once.
  *
  * Must be anchored to the promise, not to a request. Timing from inside
@@ -121,6 +202,7 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
 
     this.boundExceededCount = 0
     this.widenTagsFlushInterval()
+    this.hardenTagsFlush()
 
     // Captured before the fault swap below, so this times the real init.
     observeInitDuration(this.initPromise, Date.now(), () => this.boundExceededCount)
@@ -194,6 +276,131 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
   widenTagsFlushInterval() {
     if (this.tagsBuffer) {
       this.tagsBuffer.flushIntervalMs = TAGS_FLUSH_INTERVAL_MS
+    }
+  }
+
+  /**
+   * Replace TagsBuffer.doFlush()'s failure handling with something that can end.
+   *
+   * The success path is unchanged — read, apply, write. Only what happens after a
+   * failed write differs, because that is where upstream spirals: constant-delay
+   * retries against a rate-limited object, an uncapped requeue that makes every
+   * retry heavier than the last, and nothing that ever gives up.
+   *
+   * Three bounds, in the order they matter:
+   *   - a circuit breaker, so a sustained failure stops issuing writes entirely
+   *     rather than hammering a refusing object indefinitely;
+   *   - exponential backoff with jitter, so retries spread out instead of
+   *     repeating at a fixed cadence — jitter because every instance shares the
+   *     one object and lockstep retries are part of the pressure;
+   *   - a cap on the queue, after coalescing, so the payload cannot grow forever.
+   *
+   * Mutates the buffer instance rather than subclassing TagsBuffer: super already
+   * handed its read/write callbacks to this exact object, and replacing it would
+   * orphan queued updates. Same reasoning as widenTagsFlushInterval().
+   *
+   * DELETE THIS when upstream's doFlush grows real backoff and a breaker.
+   */
+  hardenTagsFlush() {
+    const buffer = this.tagsBuffer
+    if (!buffer) {
+      return
+    }
+
+    buffer.consecutiveFlushFailures = 0
+    buffer.circuitOpenUntil = 0
+
+    buffer.doFlush = async () => {
+      if (buffer.isFlushing || buffer.pendingUpdates.length === 0) {
+        return
+      }
+
+      // Circuit open: keep buffering (bounded) but do not touch storage. This is
+      // the property that ends the storm — without it the retry timer and
+      // flush()'s own recursion keep issuing writes to an object that is refusing
+      // them, which is exactly what was measured running 15 minutes past the load.
+      if (Date.now() < buffer.circuitOpenUntil) {
+        buffer.pendingUpdates = capPendingUpdates(buffer.pendingUpdates)
+        // Reschedule before returning. Upstream scheduleFlush() (tags-buffer.js:89)
+        // runs on every addTags()/deleteKey() and computes its delay as
+        // max(0, flushIntervalMs - timeSinceLastFlush) — and lastFlushTime only
+        // advances on SUCCESS, so during a sustained failure that delay is 0ms.
+        // Such a timer fires straight into this branch and clears itself. Without
+        // re-arming here, the queue is left with no live timer and no log line
+        // until some later addTags() happens by. Measured: 2 of 12 synthetic
+        // crawls ended stranded that way.
+        if (!buffer.flushTimer) {
+          buffer.flushTimer = setTimeout(() => {
+            buffer.flushTimer = null
+            buffer.flush().catch(() => {})
+          }, Math.max(1, buffer.circuitOpenUntil - Date.now()))
+        }
+        return
+      }
+
+      buffer.isFlushing = true
+      const updates = buffer.pendingUpdates
+      buffer.pendingUpdates = []
+
+      try {
+        const mapping = await buffer.readTagsMapping()
+        buffer.applyUpdates(mapping, updates)
+        await buffer.writeTagsMapping(mapping)
+        buffer.lastFlushTime = Date.now()
+        if (buffer.consecutiveFlushFailures > 0) {
+          // Recovery needs its own line. Without it "it stopped" is only ever
+          // inferable from the absence of errors, which is not a signal.
+          console.warn(
+            `[BoundedGcsCacheHandler] TAGS_FLUSH_RECOVERED after ` +
+              `${buffer.consecutiveFlushFailures} consecutive failure(s)`
+          )
+        }
+        buffer.consecutiveFlushFailures = 0
+        buffer.circuitOpenUntil = 0
+      } catch (error) {
+        buffer.pendingUpdates = capPendingUpdates([...updates, ...buffer.pendingUpdates])
+        buffer.consecutiveFlushFailures += 1
+
+        if (buffer.consecutiveFlushFailures >= TAGS_CIRCUIT_TRIP_FAILURES) {
+          buffer.circuitOpenUntil = Date.now() + TAGS_CIRCUIT_COOLDOWN_MS
+          // `error` is carried deliberately. writeTagsMapping() logs and rethrows,
+          // but readTagsMapping() swallows and applyUpdates() does not log at all,
+          // so without this a throw from either reaches no log anywhere.
+          console.warn(
+            `[BoundedGcsCacheHandler] TAGS_CIRCUIT_OPEN after ` +
+              `${buffer.consecutiveFlushFailures} consecutive flush failures; ` +
+              `pausing tag writes for ${TAGS_CIRCUIT_COOLDOWN_MS}ms. ` +
+              `revalidateTag() will not record during this window. Last error: ` +
+              `${error instanceof Error ? error.message : String(error)}`
+          )
+        }
+
+        // Exponential, jittered, capped. Jitter is applied before the cap, so
+        // `capped` never exceeds TAGS_MAX_RETRY_MS. Note `delay` below can: the
+        // cooldown clamp may raise it, so its real bound is
+        // max(TAGS_MAX_RETRY_MS, TAGS_CIRCUIT_COOLDOWN_MS).
+        //
+        // Then clamped to outlast any open circuit, so this timer does not fire
+        // into the early return and waste a cycle. That is an optimisation, NOT
+        // the safety property: the early return re-arms its own timer, which is
+        // what actually guarantees the queue drains. Relying on the clamp alone
+        // would be wrong, because most timers during a failure are scheduled by
+        // upstream's scheduleFlush(), not here — see the early return above.
+        const growth = TAGS_FLUSH_INTERVAL_MS * 2 ** buffer.consecutiveFlushFailures
+        const jittered = growth * (0.8 + Math.random() * 0.4)
+        const capped = Math.min(Math.round(jittered), TAGS_MAX_RETRY_MS)
+        const remainingCooldown = Math.max(0, buffer.circuitOpenUntil - Date.now())
+        const delay = Math.max(capped, remainingCooldown)
+
+        if (!buffer.flushTimer) {
+          buffer.flushTimer = setTimeout(() => {
+            buffer.flushTimer = null
+            buffer.flush().catch(() => {})
+          }, delay)
+        }
+      } finally {
+        buffer.isFlushing = false
+      }
     }
   }
 
@@ -354,6 +561,12 @@ export {
   INIT_TIMEOUT_MS,
   INIT_FAULT,
   TAGS_FLUSH_INTERVAL_MS,
+  TAGS_MAX_RETRY_MS,
+  TAGS_CIRCUIT_TRIP_FAILURES,
+  TAGS_CIRCUIT_COOLDOWN_MS,
+  TAGS_MAX_PENDING_UPDATES,
+  coalesceTagUpdates,
+  capPendingUpdates,
   observeInitDuration,
 }
 export default CacheHandler

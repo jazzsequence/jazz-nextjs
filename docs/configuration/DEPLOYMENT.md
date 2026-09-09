@@ -88,11 +88,41 @@ init/read-path problem.
 **The bottleneck predates 0.11.0.** Unpacking 0.9.0 confirms `TagsBuffer` is byte-identical:
 same single `cache/tags/tags.json`, same 1s flush, same `// GCS rate limit is 1 write/second
 per object` comment. That budget is per object across **all** writers while the flush
-interval is per process, so one instance complies and autoscaled instances cannot. On
-failure `doFlush()` re-queues every pending update and retries with no queue cap, so the
-payload grows monotonically once failures start. The only delta in 0.11.0 is `gcs.js:37`
-`this.initialize().catch(...)` becoming `gcs.js:39` `setInitPromise(this.initialize().catch(...))`
-plus the awaits at `base.js:237`/`:323`.
+interval is per process, so one instance complies and autoscaled instances cannot. The only
+delta in 0.11.0 is `gcs.js:37` `this.initialize().catch(...)` becoming `gcs.js:39`
+`setInitPromise(this.initialize().catch(...))` plus the awaits at `base.js:237`/`:323`. On
+failure upstream's `doFlush()` re-queues every pending update and retries with no queue cap
+and no real backoff — its comment says "backoff", the code is a constant
+`flushIntervalMs * 2` — so the payload grows monotonically once failures start and nothing
+ever gives up. `cacheHandler.mjs` now replaces that failure path via `hardenTagsFlush()`:
+circuit breaker, exponential jittered backoff, and a coalesced, capped queue. The
+description above remains accurate for **upstream**, which is what a future version bump
+would reintroduce.
+
+Reproduced 2026-09-08 on the `test` environment, which already carried every other
+workaround: a short crawl tripped upstream's retry and it did not recover, with rate-limit
+rejections on `cache/tags/tags.json` still firing long after the site went quiet. Whether
+the replacement holds under the same crawl is **not yet established** — that measurement is
+the next step, and a green local suite does not qualify, since the handler is inert unless
+`NODE_ENV=production` and `PANTHEON_ENVIRONMENT` are both set.
+
+**Tunable without a deploy.** Every bound is an environment variable, so an incident can be
+managed from the dashboard rather than a release:
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `CACHE_INIT_TIMEOUT_MS` | 2000 | How long a request waits on init before falling through to the **previous build's** cache — not to "uncached". See the trade-off note below: that can surface as `/_next/static/` 404s, which is why `INIT_BOUND_EXCEEDED` matters |
+| `CACHE_TAGS_FLUSH_MS` | 5000 | Gap between tag-map writes; raises the load at which the rate limit trips |
+| `CACHE_TAGS_CIRCUIT_TRIP` | 5 | Consecutive flush failures before tag writes pause |
+| `CACHE_TAGS_CIRCUIT_COOLDOWN_MS` | 60000 | How long they stay paused |
+| `CACHE_TAGS_MAX_RETRY_MS` | 60000 | Ceiling on the exponential term. The delay actually scheduled is `max(that ceilinged term, remaining cooldown)`, so lowering it alone will not shorten a retry while the circuit is open |
+| `CACHE_TAGS_MAX_PENDING` | 2000 | Queue cap; beyond it the oldest updates are dropped |
+| `CACHE_INIT_FAULT` | unset | `hang` forces init never to settle. Inert on live by construction |
+
+Watch for `TAGS_CIRCUIT_OPEN`, `TAGS_FLUSH_RECOVERED`, `TAGS_QUEUE_TRIMMED` and
+`INIT_BOUND_EXCEEDED` in `terminus node:logs:runtime:get <site>.<env>`. Response headers cannot
+show any of this — the CDN answers most requests, so `x-nextjs-cache` reflects whenever that
+response was first generated, not what the handler just did.
 
 **Init is a victim of the contention, not a participant — the obvious reading is wrong.**
 `initialize()` is `initializeTagsMapping()` + `checkBuildInvalidation()`: an `exists()`
