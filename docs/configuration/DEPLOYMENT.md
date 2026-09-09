@@ -117,13 +117,22 @@ actually waited, so the two together distinguish "extended and sufficient" from
 "extended and still short". Whether 12000ms suffices for a **live**-scale purge is
 not yet established; the first live deploy is the measurement.
 
-**Tunable without a deploy.** Every bound is an environment variable, so an incident can be
-managed from the dashboard rather than a release:
+**Tunable without a code change — but not a live knob.** Every bound is read from
+`process.env` at module load rather than hardcoded, so changing one needs no release. It does
+not take effect on a running process either: because the read happens at module load, a new
+value requires at minimum a process restart. On a Pantheon Node site these are set with
+`terminus secret:site:set <site> <NAME> <value> --type=env --scope=web`; that command also
+offers a `--rebuild` flag, described as applicable to Node sites. Which of restart or rebuild
+is actually needed here has not been tested — budget for a rebuild and verify.
+
+Check what is actually set with `terminus secret:site:list <site>`. A variable that has never
+been set is simply absent from that listing, and the default below applies — do not assume a
+bound is tuned because it appears in this table.
 
 | Variable | Default | What it controls |
 |---|---|---|
-| `CACHE_INIT_TIMEOUT_MS` | 2000 | How long a request waits on init before falling through to the **previous build's** cache — not to "uncached". See the trade-off note below: that can surface as `/_next/static/` 404s, which is why `INIT_BOUND_EXCEEDED` matters |
-| `CACHE_INIT_BUILD_TIMEOUT_MS` | 12000 | The bound while init is running build invalidation — **only** while that is in flight, not generally. Covers `nukeCache()`'s own 10s abort. Past it, requests fall through to the previous build's cache; below it they wait. Lower this if a deploy makes requests hang |
+| `CACHE_INIT_TIMEOUT_MS` | 2000 | How long a request waits on init before falling through with init incomplete. Page entries are then suppressed rather than served, so the request renders fresh — the cost is render latency, not stale HTML. `INIT_BOUND_EXCEEDED` still matters as the signal that it happened |
+| `CACHE_INIT_BUILD_TIMEOUT_MS` | 12000 | The bound while init is running build invalidation — **only** while that is in flight, not generally. Covers `nukeCache()`'s own 10s abort. Past it, page requests render fresh; below it they wait. Lower this if a deploy makes requests hang |
 | `CACHE_TAGS_FLUSH_MS` | 5000 | Gap between tag-map writes; raises the load at which the rate limit trips |
 | `CACHE_TAGS_CIRCUIT_TRIP` | 5 | Consecutive flush failures before tag writes pause |
 | `CACHE_TAGS_CIRCUIT_COOLDOWN_MS` | 60000 | How long they stay paused |
@@ -132,7 +141,10 @@ managed from the dashboard rather than a release:
 | `CACHE_INIT_FAULT` | unset | `hang` forces init never to settle. Inert on live by construction |
 
 Watch for `TAGS_CIRCUIT_OPEN`, `TAGS_FLUSH_RECOVERED`, `TAGS_QUEUE_TRIMMED`,
-`INIT_BOUND_EXTENDED` and `INIT_BOUND_EXCEEDED` in `terminus node:logs:runtime:get <site>.<env>`. Response headers cannot
+`INIT_BOUND_EXTENDED`, `INIT_BOUND_EXCEEDED` and `ROUTE_ENTRY_SUPPRESSED` in
+`terminus node:logs:runtime:get <site>.<env>`. The last two pair up: `INIT_BOUND_EXCEEDED`
+says the bound fired, `ROUTE_ENTRY_SUPPRESSED` says page entries were actually discarded as a
+result. Response headers cannot
 show any of this — the CDN answers most requests, so `x-nextjs-cache` reflects whenever that
 response was first generated, not what the handler just did.
 
@@ -177,17 +189,34 @@ flush grows with an environment's age regardless of traffic. (It is **not** read
 inside init — see above; init only does an `exists()` check against it.)
 
 **Known trade-off in the bounded init — read before interpreting multidev results.**
-Past the bound, `get()` falls through to `readCacheEntry()` (`gcs.js:123`) and reads
-route-cache entries that `checkBuildInvalidation()` has not wiped yet. So the timeout does
-**not** degrade to "uncached"; it degrades to **the previous build's cache**. That knowingly
-re-opens the cross-build staleness race `initPromise` was added to close (documented upstream
-at `base.js:44-50` and `base.js:233-237`). Concretely, previous-build HTML/RSC can reference
-`/_next/static/<old-buildId>/…` assets absent from the deployed image, presenting as static
-assets 404ing — the same symptom as the original outage. **If 404s appear on the multidev
-after a deploy, the bounded init is a candidate cause, not only the thing under test.**
-`readCacheEntry()` is also unbounded in its own right, and `Promise.race` does not cancel
-the loser, so init I/O continues after the bound expires: if the mechanism is socket
-exhaustion, the bound relocates where requests queue rather than reducing contention.
+Past the bound, `get()` still falls through to `readCacheEntry()` (`gcs.js:123`), which can
+return route-cache entries `checkBuildInvalidation()` has not wiped yet. Those are no longer
+served: `shouldSuppressRouteEntry()` discards a page entry read while init is incomplete and
+returns a miss, so Next renders the route fresh from the current build. The timeout therefore
+degrades to **uncached pages**, and the cost of exceeding it is render latency and origin CPU
+rather than previous-build HTML.
+
+This is why the fetch and image exemptions are load-bearing rather than an optimisation. Only
+page entries are suppressed; fetch entries keep serving from cache, so even a long suppression
+window does not turn into a stampede against WordPress. Widening suppression to fetch entries
+would remove that protection.
+
+Two consequences to keep in mind. A genuinely non-settling init (the `CACHE_INIT_FAULT=hang`
+path, or a hard GCS outage) now disables the page cache for the life of that process — every
+request renders. That is correct rather than broken, but it is a real load change. And entries
+written during the window are swept when init completes and `invalidateRouteCache()` runs, so
+some of that render work is discarded.
+
+**If `/_next/static/` 404s appear after a deploy, the bounded init is no longer the obvious
+first candidate** — suppression is specifically intended to prevent that presentation. Treat
+`ROUTE_ENTRY_SUPPRESSED` in the runtime log as the evidence that it engaged.
+
+`readCacheEntry()` is still unbounded in its own right, and `Promise.race` does not cancel the
+loser, so init I/O continues after the bound expires: if the mechanism is socket exhaustion,
+the bound relocates where requests queue rather than reducing contention.
+
+Not yet confirmed on a live deploy at the time of writing — the suppression path is covered by
+unit tests and has not been observed engaging in production.
 
 **Installation**:
 ```bash

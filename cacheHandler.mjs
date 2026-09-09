@@ -3,8 +3,8 @@ import { GcsCacheHandler, FileCacheHandler } from '@pantheon-systems/nextjs-cach
 // 2000ms is measured, not guessed. From 1265 INIT_OBSERVED samples on a Pantheon
 // environment: p50=166 p90=427 p95=551 p99=825 max=1111, and ZERO exceeded 2000ms.
 // So the bound sits at ~1.8x the worst observed init and never fires in normal
-// operation — which matters, because when it does fire get() falls through to
-// previous-build cache entries.
+// operation — which matters, because when it does fire get() stops serving page
+// entries and every route renders uncached until init completes.
 //
 // WHAT THAT SAMPLE COVERS, because the population matters more than the numbers:
 // init takes a cheap path when the stored buildId matches (base.js:78-86) and an
@@ -18,9 +18,10 @@ import { GcsCacheHandler, FileCacheHandler } from '@pantheon-systems/nextjs-cach
 // environment's CDN purge returns almost immediately because there is nearly
 // nothing to purge; live has a real edge cache. **The bound is therefore
 // unvalidated for the slowest known path — a deploy-time purge on live.** If
-// deploy-time init there runs past 2000ms, this fires on every deploy and get()
-// falls through to previous-build entries, which looks like a CDN problem rather
-// than this. Watch INIT_BOUND_EXCEEDED on the first deploy to any busy environment.
+// deploy-time init there runs past 2000ms, this fires on every deploy and every
+// page renders uncached until init completes — a load spike on the origin rather
+// than the CDN-looking staleness this used to produce. Watch INIT_BOUND_EXCEEDED
+// on the first deploy to any busy environment.
 //
 // Do not raise it casually: every additional second is worst-case blocking on the
 // request path, and the sampled data says none is needed. Do not lower it below
@@ -56,12 +57,43 @@ const INIT_TIMEOUT_MS = Number(process.env.CACHE_INIT_TIMEOUT_MS) || 2000
  * path, which is the opposite of what the bound exists for. ensureInitialized()
  * extends to it only while invalidateRouteCache() is actually in flight.
  *
- * The trade is explicit. Past this bound, get() serves PREVIOUS BUILD entries and
- * can emit stale /_next/static/<buildId>/ references; below it, requests arriving
- * during a deploy wait instead. Waiting is the better failure, but only because
- * deploy-time init is rare — which is exactly why it must not apply generally.
+ * The trade is explicit. Below this bound, requests arriving during a deploy wait;
+ * past it they fall through with init incomplete, and get() then declines to serve
+ * page entries it cannot vouch for (see shouldSuppressRouteEntry) — so exceeding
+ * the bound costs render latency rather than correctness. Waiting is still the
+ * better failure, but only because deploy-time init is rare, which is exactly why
+ * it must not apply generally.
  */
 const INIT_BUILD_TIMEOUT_MS = Number(process.env.CACHE_INIT_BUILD_TIMEOUT_MS) || 12000
+
+/**
+ * Whether a cache read must be discarded because init has not completed.
+ *
+ * Only page/route entries are affected. They embed /_next/static/<buildId>/ asset
+ * references, so a previous-build one renders an unstyled page — the visible
+ * symptom of both the 2026-09-04 and 2026-09-09 outages.
+ *
+ * Fetch and image entries are deliberately exempt, and that exemption is a safety
+ * property rather than an optimisation. Neither carries a buildId, so a previous-build
+ * entry is merely old rather than broken — but more importantly, because fetch entries
+ * keep serving, even a long suppression window costs render CPU without becoming a
+ * stampede against WordPress. That is what makes suppression survivable when init never
+ * settles at all. Widening this to fetch would remove the protection the rest of this
+ * file exists to provide.
+ *
+ * `determineCacheType()` returns a closed set ('route' | 'fetch' | 'image') and defaults
+ * to 'route', so an unrecognised entry is suppressed rather than trusted.
+ *
+ * @param {boolean} initPending True if init had not completed when the entry was evaluated.
+ *   Sampled after the read, not at it: an init that settles mid-read leaves the entry
+ *   judged as trustworthy. That window is one object read against a bound measured in
+ *   seconds, and it fails toward the pre-existing behaviour rather than past it.
+ * @param {string} cacheType `determineCacheType()` result: 'route', 'fetch' or 'image'.
+ * @returns {boolean} True if the caller should return a miss instead of the entry.
+ */
+function shouldSuppressRouteEntry(initPending, cacheType) {
+  return initPending && cacheType === 'route'
+}
 
 /**
  * Await `promise`, giving up after `ms`. Resolves true if the bound won.
@@ -94,9 +126,10 @@ async function raceAgainstBound(promise, ms) {
  * the bound instead of waiting for GCS to fail.
  *
  * ALLOWLISTED, not blocklisted, and that asymmetry is the whole point. A hung init
- * on live would leave every instance permanently past the bound, serving PREVIOUS
- * BUILD cache entries — which presents as /_next/static/ 404s, the same symptom as
- * the outage this file exists to contain. A console.warn is a notice, not a control.
+ * on live would leave every instance permanently past the bound with page entries
+ * suppressed, so the whole site would render uncached for the life of every process
+ * — an origin-load failure rather than the stale-asset one this used to cause, and
+ * no less catastrophic. A console.warn is a notice, not a control.
  *
  * Arming requires an explicitly non-live PANTHEON_ENVIRONMENT, so an unset or
  * unrecognised environment stays inert rather than being treated as "not live".
@@ -572,16 +605,63 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
   }
 
   /**
+   * Do not serve a page that init has not vouched for.
+   *
+   * ensureInitialized() bounds the wait so a slow GCS cannot hold requests open.
+   * The cost of giving up is that super.get() then reads entries written by the
+   * PREVIOUS build, which checkBuildInvalidation() has not wiped yet. Their HTML
+   * references /_next/static/<buildId>/ assets this build does not have, so the
+   * page loads unstyled. Worse, that response is cacheable: it gets stored at the
+   * edge and survives long after the origin recovers, which is why the 2026-09-09
+   * incident needed a manual edge purge to clear despite init being healthy again
+   * within about half a minute.
+   *
+   * Returning a miss makes Next render the route fresh from the current build
+   * instead. Slower for the length of the window, and never wrong — so nothing
+   * broken is produced, and nothing broken can be cached.
+   */
+  async get(cacheKey, ctx) {
+    const entry = await super.get(cacheKey, ctx)
+    if (!entry) {
+      return entry
+    }
+
+    // super.ensureInitialized() nulls initPromise only after its own await
+    // resolves, so a non-null value here means init did not finish within the
+    // bound this request applied. Derived rather than a flag we set ourselves:
+    // a flag would have to be cleared somewhere, and the path that clears it is
+    // exactly the path that is failing.
+    if (!shouldSuppressRouteEntry(Boolean(this.initPromise), this.determineCacheType(ctx))) {
+      return entry
+    }
+
+    this.routeSuppressedCount = (this.routeSuppressedCount || 0) + 1
+    const n = this.routeSuppressedCount
+    // Throttled on the same schedule as INIT_BOUND_EXCEEDED: every request in the
+    // window suppresses, so one line each would bury the signal.
+    if (n === 1 || n === 10 || n === 100 || n % 1000 === 0) {
+      console.warn(
+        `[BoundedGcsCacheHandler] ROUTE_ENTRY_SUPPRESSED count=${n} — init incomplete, ` +
+          'serving a miss rather than a possible previous-build page. Rendering fresh.'
+      )
+    }
+    return null
+  }
+
+  /**
    * Bound the wait on init.
    *
    * Two things this does NOT do. Promise.race does not cancel the loser and super
    * only nulls initPromise after its own await resolves, so while init is pending
-   * EVERY request pays the full bound, not just the first. And past the bound get()
-   * falls through to readCacheEntry(), which returns PREVIOUS BUILD entries that
-   * checkBuildInvalidation() has not wiped — reopening the staleness race
-   * initPromise exists to close (base.js:44-50). That can surface as /_next/static/
-   * 404s, so INIT_BOUND_EXCEEDED is the signal that distinguishes it from a genuine
-   * asset problem.
+   * EVERY request pays the full bound, not just the first. And past the bound
+   * readCacheEntry() still returns PREVIOUS BUILD entries that
+   * checkBuildInvalidation() has not wiped — the staleness race initPromise exists
+   * to close (base.js:44-50) is reopened at the read.
+   *
+   * What closes it again is get(), which discards those entries rather than serving
+   * them. So exceeding the bound costs render latency, not stale /_next/static/
+   * references. INIT_BOUND_EXCEEDED remains the signal that the bound fired at all;
+   * ROUTE_ENTRY_SUPPRESSED is the signal that entries were actually discarded.
    */
   async ensureInitialized() {
     if (!this.initPromise) {
@@ -607,7 +687,8 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
         if (this.buildBoundExtendedCount === 1) {
           console.warn(
             `[BoundedGcsCacheHandler] INIT_BOUND_EXTENDED to ${INIT_BUILD_TIMEOUT_MS}ms — ` +
-              'build invalidation in flight; waiting rather than serving previous-build entries.'
+              'build invalidation in flight; waiting for it to finish rather than falling ' +
+              'through and rendering every page uncached.'
           )
         }
         appliedBound = INIT_BUILD_TIMEOUT_MS
@@ -628,8 +709,9 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
           // live, so it would have argued the extension never fired when it fired
           // and was still short.
           `[BoundedGcsCacheHandler] INIT_BOUND_EXCEEDED count=${n} bound=${appliedBound}ms — ` +
-            'serving without completed init. Cache reads may return PREVIOUS BUILD entries, ' +
-            'which can reference stale /_next/static/<buildId>/ assets.'
+            'serving without completed init. Page entries are suppressed while this holds ' +
+            '(see ROUTE_ENTRY_SUPPRESSED), so routes render fresh instead of returning ' +
+            'previous-build HTML. Expect render latency and origin load, not stale assets.'
         )
       }
     }
@@ -654,5 +736,6 @@ export {
   coalesceTagUpdates,
   capPendingUpdates,
   observeInitDuration,
+  shouldSuppressRouteEntry,
 }
 export default CacheHandler
