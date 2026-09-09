@@ -972,10 +972,15 @@ describe('capPendingUpdates() / coalesceTagUpdates() — the claims the comments
 
 describe('retry delay outlasts an open circuit', () => {
   // TAGS_MAX_RETRY_MS and TAGS_CIRCUIT_COOLDOWN_MS are independently overridable
-  // and default to the same value. If the retry were allowed to fire while the
-  // circuit is still open it would hit the early return, schedule nothing, and
-  // strand the buffer until the next addTags(). The delay is clamped so that
-  // cannot happen at any configuration.
+  // and default to the same value. Clamping the retry past the cooldown stops
+  // this timer firing into the early return and wasting a cycle.
+  //
+  // This is an optimisation, NOT the safety property — the early return re-arms
+  // its own timer, and that is what actually guarantees the queue drains. Most
+  // timers during a sustained failure come from upstream's scheduleFlush(), not
+  // from here, so a clamp on this one could never have been sufficient. Keeping
+  // that straight matters: the earlier version of this comment claimed the clamp
+  // prevented stranding, and stranding was real and reachable at the defaults.
   it('never schedules a retry that lands before the circuit closes', async () => {
     const { BoundedGcsCacheHandler: Handler, TAGS_CIRCUIT_TRIP_FAILURES } = await import(
       '../../cacheHandler.mjs'
