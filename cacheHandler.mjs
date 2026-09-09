@@ -31,6 +31,65 @@ import { GcsCacheHandler, FileCacheHandler } from '@pantheon-systems/nextjs-cach
 const INIT_TIMEOUT_MS = Number(process.env.CACHE_INIT_TIMEOUT_MS) || 2000
 
 /**
+ * The bound while init is running build invalidation, which is a different animal.
+ *
+ * Measured, not guessed. The first Dev deploy carrying this handler logged nine
+ * INIT_BOUND_EXCEEDED, every one inside the deploy minute, while steady-state init
+ * across 3079 samples ran 51-72ms. So 2000ms is generous for ordinary operation and
+ * too small for exactly one path: an init that finds a changed buildId and runs
+ * invalidateRouteCache(), whose awaited nukeCache() aborts at 10000ms on its own
+ * (edge-cache-clear.js:23), on top of listing and deleting route-cache objects.
+ *
+ * 12000ms is the abort plus what the short bound already allowed — not a budget
+ * derived for the sweep. super.invalidateRouteCache() runs getFiles() and
+ * Promise.all(delete) BEFORE reaching nukeCache(), both unbounded, so those share
+ * the same 2000ms remainder already shown to be too small on this path. If a live
+ * deploy still exceeds 12000ms, that listing is the first place to look.
+ *
+ * Residual: if super.invalidateRouteCache() never settles at all, the in-flight flag
+ * stays true and every request for the life of the process pays 12000ms rather than
+ * 2000ms. A finally cannot help — nothing settles to run it. nukeCache is bounded;
+ * the GCS work above it is not, so that scenario's worst case widened sixfold.
+ *
+ * It is NOT a general raise:
+ * applying this to every request would put a twelve-second worst case on the hot
+ * path, which is the opposite of what the bound exists for. ensureInitialized()
+ * extends to it only while invalidateRouteCache() is actually in flight.
+ *
+ * The trade is explicit. Past this bound, get() serves PREVIOUS BUILD entries and
+ * can emit stale /_next/static/<buildId>/ references; below it, requests arriving
+ * during a deploy wait instead. Waiting is the better failure, but only because
+ * deploy-time init is rare — which is exactly why it must not apply generally.
+ */
+const INIT_BUILD_TIMEOUT_MS = Number(process.env.CACHE_INIT_BUILD_TIMEOUT_MS) || 12000
+
+/**
+ * Await `promise`, giving up after `ms`. Resolves true if the bound won.
+ *
+ * @param {Promise<unknown>} promise Promise to await.
+ * @param {number} ms Bound in milliseconds.
+ * @returns {Promise<boolean>} True when the bound elapsed first.
+ */
+async function raceAgainstBound(promise, ms) {
+  let timer
+  let timedOut = false
+  try {
+    await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timer = setTimeout(() => {
+          timedOut = true
+          resolve()
+        }, ms)
+      }),
+    ])
+  } finally {
+    clearTimeout(timer)
+  }
+  return timedOut
+}
+
+/**
  * CACHE_INIT_FAULT=hang makes init never settle, so an environment can demonstrate
  * the bound instead of waiting for GCS to fail.
  *
@@ -201,6 +260,8 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
     super(...args)
 
     this.boundExceededCount = 0
+    this.buildBoundExtendedCount = 0
+    this.buildInvalidationInFlight = false
     this.widenTagsFlushInterval()
     this.hardenTagsFlush()
 
@@ -458,6 +519,9 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
    * adding latency here would worsen the exact problem the bound exists to contain.
    */
   async invalidateRouteCache() {
+    // Read by ensureInitialized() to decide which bound applies. Set before any
+    // await so a request arriving during the sweep sees it.
+    this.buildInvalidationInFlight = true
     let deletedObjectNames = new Set()
     try {
       const [files] = await this.bucket.getFiles({ prefix: this.routeCachePrefix })
@@ -470,7 +534,13 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
       console.warn('[BoundedGcsCacheHandler] TAG_PRUNE_LISTING_FAILED', error)
     }
 
-    await super.invalidateRouteCache()
+    try {
+      await super.invalidateRouteCache()
+    } finally {
+      // Must clear on the failure path too: a stuck flag would apply the long
+      // bound to every subsequent request for the life of the process.
+      this.buildInvalidationInFlight = false
+    }
 
     void this.pruneRouteKeysFromTagMap(deletedObjectNames)
   }
@@ -518,21 +588,31 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
       return
     }
 
-    let timer
-    let timedOut = false
+    // Captured once: racing super.ensureInitialized() twice would invoke it twice.
+    const init = super.ensureInitialized()
 
-    try {
-      await Promise.race([
-        super.ensureInitialized(),
-        new Promise((resolve) => {
-          timer = setTimeout(() => {
-            timedOut = true
-            resolve()
-          }, INIT_TIMEOUT_MS)
-        }),
-      ])
-    } finally {
-      clearTimeout(timer)
+    let appliedBound = INIT_TIMEOUT_MS
+    let timedOut = await raceAgainstBound(init, INIT_TIMEOUT_MS)
+
+    /*
+     * Extend only for the path measured to need it. Checked AFTER the short bound
+     * rather than before, deliberately: a request can arrive before
+     * invalidateRouteCache() has set the flag, and deciding up front would give
+     * that request the short bound for work that is about to take much longer.
+     */
+    if (timedOut && this.buildInvalidationInFlight) {
+      const remaining = INIT_BUILD_TIMEOUT_MS - INIT_TIMEOUT_MS
+      if (remaining > 0) {
+        this.buildBoundExtendedCount = (this.buildBoundExtendedCount || 0) + 1
+        if (this.buildBoundExtendedCount === 1) {
+          console.warn(
+            `[BoundedGcsCacheHandler] INIT_BOUND_EXTENDED to ${INIT_BUILD_TIMEOUT_MS}ms — ` +
+              'build invalidation in flight; waiting rather than serving previous-build entries.'
+          )
+        }
+        appliedBound = INIT_BUILD_TIMEOUT_MS
+        timedOut = await raceAgainstBound(init, remaining)
+      }
     }
 
     if (timedOut) {
@@ -542,7 +622,12 @@ class BoundedGcsCacheHandler extends GcsCacheHandler {
       const n = this.boundExceededCount
       if (n === 1 || n === 10 || n === 100 || n % 1000 === 0) {
         console.warn(
-          `[BoundedGcsCacheHandler] INIT_BOUND_EXCEEDED count=${n} bound=${INIT_TIMEOUT_MS}ms — ` +
+          // The bound actually waited, not the starting one. After an extension this
+          // said 2000ms while the request had waited 12000ms — and DEPLOYMENT.md
+          // tells operators to grep this string to judge whether the bound holds on
+          // live, so it would have argued the extension never fired when it fired
+          // and was still short.
+          `[BoundedGcsCacheHandler] INIT_BOUND_EXCEEDED count=${n} bound=${appliedBound}ms — ` +
             'serving without completed init. Cache reads may return PREVIOUS BUILD entries, ' +
             'which can reference stale /_next/static/<buildId>/ assets.'
         )
@@ -560,6 +645,7 @@ export {
   BoundedGcsCacheHandler,
   INIT_TIMEOUT_MS,
   INIT_FAULT,
+  INIT_BUILD_TIMEOUT_MS,
   TAGS_FLUSH_INTERVAL_MS,
   TAGS_MAX_RETRY_MS,
   TAGS_CIRCUIT_TRIP_FAILURES,

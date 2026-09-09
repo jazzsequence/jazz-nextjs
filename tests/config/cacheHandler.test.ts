@@ -1,7 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 // @ts-expect-error -- cacheHandler.mjs is plain ESM with no type declarations.
-import { BoundedGcsCacheHandler, INIT_TIMEOUT_MS, observeInitDuration } from '../../cacheHandler.mjs'
+import {
+  BoundedGcsCacheHandler,
+  INIT_TIMEOUT_MS,
+  INIT_BUILD_TIMEOUT_MS,
+  observeInitDuration,
+} from '../../cacheHandler.mjs'
 
 /**
  * Covers the two things this subclass exists for.
@@ -1073,6 +1078,204 @@ describe('an open circuit must not strand the queue', () => {
 
     vi.useRealTimers()
     vi.restoreAllMocks()
+  })
+})
+
+describe('a longer bound for build invalidation only', () => {
+  // Measured, not guessed. The first Dev deploy carrying this handler logged nine
+  // INIT_BOUND_EXCEEDED, every one inside the deploy minute, while steady-state
+  // init across thousands of samples ran 51-72ms. So 2000ms is generous for normal
+  // operation and too small for exactly one path: init that finds a changed buildId
+  // and runs invalidateRouteCache(), whose awaited nukeCache() alone aborts at
+  // 10000ms (edge-cache-clear.js:23).
+  //
+  // Raising the bound globally would put that worst case on every request. This
+  // extends it only while build invalidation is actually in flight.
+  function makeCtx(initPromise: Promise<void> | null, inFlight = false) {
+    return {
+      initPromise,
+      boundExceededCount: 0,
+      buildBoundExtendedCount: 0,
+      buildInvalidationInFlight: inFlight,
+    }
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  it('still gives up at the short bound when no build invalidation is running', async () => {
+    const ctx = makeCtx(new Promise<void>(() => {}), false)
+    let settled = false
+
+    const pending = BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx).then(() => {
+      settled = true
+    })
+
+    await vi.advanceTimersByTimeAsync(INIT_TIMEOUT_MS)
+    await pending
+
+    expect(settled).toBe(true)
+    expect(ctx.boundExceededCount).toBe(1)
+  })
+
+  it('keeps waiting past the short bound while build invalidation is in flight', async () => {
+    const ctx = makeCtx(new Promise<void>(() => {}), true)
+    let settled = false
+
+    const pending = BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx).then(() => {
+      settled = true
+    })
+
+    await vi.advanceTimersByTimeAsync(INIT_TIMEOUT_MS)
+    expect(settled).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(INIT_BUILD_TIMEOUT_MS - INIT_TIMEOUT_MS)
+    await pending
+
+    expect(settled).toBe(true)
+  })
+
+  it('gives up at the longer bound rather than waiting forever', async () => {
+    const ctx = makeCtx(new Promise<void>(() => {}), true)
+
+    const pending = BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx)
+    await vi.advanceTimersByTimeAsync(INIT_BUILD_TIMEOUT_MS)
+    await pending
+
+    expect(ctx.boundExceededCount).toBe(1)
+  })
+
+  it('resolves as soon as init settles, without waiting out either bound', async () => {
+    const ctx = makeCtx(Promise.resolve(), true)
+
+    await BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx)
+
+    expect(ctx.boundExceededCount).toBe(0)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('reports the bound it actually waited, not the one it started with', async () => {
+    // After extending, the request has waited the long bound. Reporting the short
+    // one would tell an operator grepping INIT_BOUND_EXCEEDED that the extension
+    // never fired, when it fired and was still insufficient — the opposite
+    // conclusion, on the only evidence a live deploy provides.
+    const ctx = makeCtx(new Promise<void>(() => {}), true)
+
+    const pending = BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx)
+    await vi.advanceTimersByTimeAsync(INIT_BUILD_TIMEOUT_MS)
+    await pending
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`bound=${INIT_BUILD_TIMEOUT_MS}ms`)
+    )
+  })
+
+  it('reports the short bound when it never extended', async () => {
+    const ctx = makeCtx(new Promise<void>(() => {}), false)
+
+    const pending = BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx)
+    await vi.advanceTimersByTimeAsync(INIT_TIMEOUT_MS)
+    await pending
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining(`bound=${INIT_TIMEOUT_MS}ms`)
+    )
+  })
+
+  it('announces the extension once', async () => {
+    const ctx = makeCtx(new Promise<void>(() => {}), true)
+
+    const pending = BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx)
+    await vi.advanceTimersByTimeAsync(INIT_BUILD_TIMEOUT_MS)
+    await pending
+
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('INIT_BOUND_EXTENDED'))
+    expect(ctx.buildBoundExtendedCount).toBe(1)
+  })
+
+  it('extends when invalidation starts DURING the short bound, not only before it', async () => {
+    // The discriminating test. Every other case here passes just as well if the
+    // bound is chosen up front, so none of them justifies checking the flag after
+    // the short bound instead of before. This one fails under that design: the
+    // request arrives first, invalidateRouteCache() sets the flag partway through,
+    // and an up-front decision would already have committed to 2000ms.
+    const ctx = makeCtx(new Promise<void>(() => {}), false)
+    let settled = false
+
+    const pending = BoundedGcsCacheHandler.prototype.ensureInitialized.call(ctx).then(() => {
+      settled = true
+    })
+
+    await vi.advanceTimersByTimeAsync(INIT_TIMEOUT_MS / 2)
+    ctx.buildInvalidationInFlight = true
+    await vi.advanceTimersByTimeAsync(INIT_TIMEOUT_MS / 2)
+
+    expect(settled).toBe(false)
+
+    await vi.advanceTimersByTimeAsync(INIT_BUILD_TIMEOUT_MS - INIT_TIMEOUT_MS)
+    await pending
+
+    expect(settled).toBe(true)
+    expect(ctx.buildBoundExtendedCount).toBe(1)
+  })
+
+  it('the longer bound covers nukeCache, which aborts at 10s', async () => {
+    // If this ever drops below the upstream abort, the extension stops covering
+    // the very operation it exists for.
+    expect(INIT_BUILD_TIMEOUT_MS).toBeGreaterThan(10_000)
+    expect(INIT_BUILD_TIMEOUT_MS).toBeGreaterThan(INIT_TIMEOUT_MS)
+  })
+})
+
+describe('invalidateRouteCache flags itself as in flight', () => {
+  it('sets the flag while running and clears it afterwards', async () => {
+    const seen: boolean[] = []
+    const ctx = {
+      buildInvalidationInFlight: false,
+      routeCachePrefix: 'route-cache/',
+      bucket: {
+        getFiles: async () => {
+          seen.push(ctx.buildInvalidationInFlight)
+          return [[]]
+        },
+      },
+      pruneRouteKeysFromTagMap: vi.fn(),
+    }
+
+    await BoundedGcsCacheHandler.prototype.invalidateRouteCache.call(ctx)
+
+    // super.invalidateRouteCache() lists the bucket too, so getFiles runs more than
+    // once. What matters is that the flag is set for every one of them, not how
+    // many there are — asserting a count would break on an upstream change that
+    // is none of this test's business.
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.every(Boolean)).toBe(true)
+    expect(ctx.buildInvalidationInFlight).toBe(false)
+  })
+
+  it('clears the flag even when the sweep throws', async () => {
+    // A stuck flag would apply the long bound to every later request forever.
+    const ctx = {
+      buildInvalidationInFlight: false,
+      routeCachePrefix: 'route-cache/',
+      bucket: {
+        getFiles: async () => {
+          throw new Error('boom')
+        },
+      },
+      pruneRouteKeysFromTagMap: vi.fn(),
+    }
+
+    await BoundedGcsCacheHandler.prototype.invalidateRouteCache.call(ctx)
+
+    expect(ctx.buildInvalidationInFlight).toBe(false)
   })
 })
 

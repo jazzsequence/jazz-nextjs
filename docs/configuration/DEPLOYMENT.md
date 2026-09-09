@@ -106,12 +106,24 @@ the replacement holds under the same crawl is **not yet established** — that m
 the next step, and a green local suite does not qualify, since the handler is inert unless
 `NODE_ENV=production` and `PANTHEON_ENVIRONMENT` are both set.
 
+**Deploy-time init needs a longer bound than steady state.** The first Dev deploy
+carrying this handler logged nine `INIT_BOUND_EXCEEDED`, all inside the deploy
+minute, while steady-state init ran in the tens of milliseconds across thousands of
+samples. The expensive path is an init that finds a changed buildId and runs
+`invalidateRouteCache()`, whose awaited `nukeCache()` aborts at 10s by itself. Hence
+a separate, larger bound that applies only while that is happening —
+`INIT_BOUND_EXTENDED` says it engaged, and `INIT_BOUND_EXCEEDED` reports the bound
+actually waited, so the two together distinguish "extended and sufficient" from
+"extended and still short". Whether 12000ms suffices for a **live**-scale purge is
+not yet established; the first live deploy is the measurement.
+
 **Tunable without a deploy.** Every bound is an environment variable, so an incident can be
 managed from the dashboard rather than a release:
 
 | Variable | Default | What it controls |
 |---|---|---|
 | `CACHE_INIT_TIMEOUT_MS` | 2000 | How long a request waits on init before falling through to the **previous build's** cache — not to "uncached". See the trade-off note below: that can surface as `/_next/static/` 404s, which is why `INIT_BOUND_EXCEEDED` matters |
+| `CACHE_INIT_BUILD_TIMEOUT_MS` | 12000 | The bound while init is running build invalidation — **only** while that is in flight, not generally. Covers `nukeCache()`'s own 10s abort. Past it, requests fall through to the previous build's cache; below it they wait. Lower this if a deploy makes requests hang |
 | `CACHE_TAGS_FLUSH_MS` | 5000 | Gap between tag-map writes; raises the load at which the rate limit trips |
 | `CACHE_TAGS_CIRCUIT_TRIP` | 5 | Consecutive flush failures before tag writes pause |
 | `CACHE_TAGS_CIRCUIT_COOLDOWN_MS` | 60000 | How long they stay paused |
@@ -119,8 +131,8 @@ managed from the dashboard rather than a release:
 | `CACHE_TAGS_MAX_PENDING` | 2000 | Queue cap; beyond it the oldest updates are dropped |
 | `CACHE_INIT_FAULT` | unset | `hang` forces init never to settle. Inert on live by construction |
 
-Watch for `TAGS_CIRCUIT_OPEN`, `TAGS_FLUSH_RECOVERED`, `TAGS_QUEUE_TRIMMED` and
-`INIT_BOUND_EXCEEDED` in `terminus node:logs:runtime:get <site>.<env>`. Response headers cannot
+Watch for `TAGS_CIRCUIT_OPEN`, `TAGS_FLUSH_RECOVERED`, `TAGS_QUEUE_TRIMMED`,
+`INIT_BOUND_EXTENDED` and `INIT_BOUND_EXCEEDED` in `terminus node:logs:runtime:get <site>.<env>`. Response headers cannot
 show any of this — the CDN answers most requests, so `x-nextjs-cache` reflects whenever that
 response was first generated, not what the handler just did.
 
