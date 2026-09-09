@@ -117,13 +117,35 @@ actually waited, so the two together distinguish "extended and sufficient" from
 "extended and still short". Whether 12000ms suffices for a **live**-scale purge is
 not yet established; the first live deploy is the measurement.
 
-**Tunable without a code change — but not a live knob.** Every bound is read from
-`process.env` at module load rather than hardcoded, so changing one needs no release. It does
-not take effect on a running process either: because the read happens at module load, a new
-value requires at minimum a process restart. On a Pantheon Node site these are set with
-`terminus secret:site:set <site> <NAME> <value> --type=env --scope=web`; that command also
-offers a `--rebuild` flag, described as applicable to Node sites. Which of restart or rebuild
-is actually needed here has not been tested — budget for a rebuild and verify.
+**Tunable without a code change — but it costs a rebuild.** Every bound is read from
+`process.env` at module load rather than hardcoded, so changing one needs no code change, PR
+or merge. That is the entire saving, and it is smaller than it sounds.
+
+A rebuild is the only way to apply a new value. `--scope=web` values are part of the deployed
+build's environment, so restarting changes nothing: an instance the platform spins up inherits
+the environment of the build it is running, not the newest secret — even though the platform
+does restart instances on its own, see the `AUTOSCALING` note further down.
+
+Nor is there another way in. The only way to interact with Node on Pantheon in any context is
+the `node:` Terminus commands, and none of them acts on a running process:
+`node:builds:rebuild`, `node:builds:rollback` and `node:builds:wait` operate on builds, and
+the log commands only read output — `node:logs:runtime:get` reads a running instance's log
+but cannot change it. Terminus has no restart, reboot or bounce command, and `env:wake` only
+pings a sleeping environment.
+
+There is no filesystem route in either. Next.js sites have no SFTP, and Pantheon has never
+supported SSH into its containers on any site type.
+
+To apply one:
+
+```
+terminus secret:site:set <site> <NAME> <value> --type=env --scope=web --rebuild
+```
+
+**Do not treat these as incident knobs.** Applying one takes a full rebuild and deploy, which
+is the same wait as shipping a code change — so in an incident, reach for whatever restores
+service fastest (an edge cache clear, a rollback via `node:builds:rollback`) rather than
+tuning a bound and waiting on a build.
 
 Check what is actually set with `terminus secret:site:list <site>`. A variable that has never
 been set is simply absent from that listing, and the default below applies — do not assume a
@@ -132,7 +154,7 @@ bound is tuned because it appears in this table.
 | Variable | Default | What it controls |
 |---|---|---|
 | `CACHE_INIT_TIMEOUT_MS` | 2000 | How long a request waits on init before falling through with init incomplete. Page entries are then suppressed rather than served, so the request renders fresh — the cost is render latency, not stale HTML. `INIT_BOUND_EXCEEDED` still matters as the signal that it happened |
-| `CACHE_INIT_BUILD_TIMEOUT_MS` | 12000 | The bound while init is running build invalidation — **only** while that is in flight, not generally. Covers `nukeCache()`'s own 10s abort. Past it, page requests render fresh; below it they wait. Lower this if a deploy makes requests hang |
+| `CACHE_INIT_BUILD_TIMEOUT_MS` | 12000 | The bound while init is running build invalidation — **only** while that is in flight, not generally. Covers `nukeCache()`'s own 10s abort. Past it, page requests render fresh; below it they wait. Lower this if deploys routinely make requests hang — but it applies from the next rebuild onward and cannot help a deploy already in progress |
 | `CACHE_TAGS_FLUSH_MS` | 5000 | Gap between tag-map writes; raises the load at which the rate limit trips |
 | `CACHE_TAGS_CIRCUIT_TRIP` | 5 | Consecutive flush failures before tag writes pause |
 | `CACHE_TAGS_CIRCUIT_COOLDOWN_MS` | 60000 | How long they stay paused |
@@ -250,7 +272,10 @@ const nextConfig = {
 };
 ```
 
-**Environment Variables** (set in Pantheon dashboard):
+**Environment Variables** — the first two are injected by Pantheon rather than set by an
+operator. Changing any of them takes a rebuild, for the reason given in the bounds section
+above; do not assume the read timing matches those bounds, though, since it varies per
+variable:
 - `CACHE_BUCKET`: GCS bucket name (automatically set by Pantheon in production)
 - `OUTBOUND_PROXY_ENDPOINT`: Edge cache proxy (automatically set by Pantheon)
 - `CACHE_DEBUG`: Set to `true` or `1` for debug logging (optional)
