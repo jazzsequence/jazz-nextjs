@@ -638,7 +638,7 @@ job rather than at the failing step.
   workflow.** They are consumed by the Next.js *server runtime*
   (`src/lib/wordpress/client.ts`, `src/lib/wordpress/greeting.ts`,
   `app/api/contact/route.ts`) for WordPress basic auth. On a deployed environment that
-  runtime is on Pantheon, so it reads them from Pantheon dashboard env vars — see
+  runtime is on Pantheon, so it reads them from Pantheon secrets (set as env vars) — see
   "WordPress Application Passwords" below. They were previously passed to the E2E step
   where they did nothing, and have been removed; do not re-add them.
 
@@ -659,7 +659,7 @@ The [Pantheon API (beta)](https://api.pantheon.io/docs/swagger.json) can be used
 
 ### Testing Strategy
 
-1. **Local tests** (`npm test`) - Run during development and pre-commit
+1. **Local tests** (`npm test -- --run`) - Run during development and pre-commit
 2. **Pantheon build** - Triggered by push/PR
 3. **GitHub Actions** - Wait for Pantheon build, then run E2E tests
 4. **Environment-specific tests** - Different test suites for Dev/PR/Test/Live
@@ -675,12 +675,12 @@ To connect a custom domain (typically to Live):
 
 Before deploying to Test or Live:
 
-- [ ] All tests passing: `npm test`
+- [ ] All tests passing: `npm test -- --run`
 - [ ] Build succeeds locally: `npm run build`
 - [ ] Standalone build tested: `npm run start:test`
 - [ ] E2E tests pass against standalone build
 - [ ] No secrets in committed files
-- [ ] Environment variables configured in Pantheon dashboard
+- [ ] Environment variables configured as Pantheon secrets (a change needs a rebuild — see "Environment Variables" below)
 - [ ] WordPress application passwords have NO spaces (critical for Pantheon)
 - [ ] Documentation updated
 - [ ] CLAUDE.md and AI_USAGE.md current
@@ -698,10 +698,14 @@ If a deployment causes issues:
 
 ## Environment Variables
 
-Set environment variables in Pantheon dashboard, not in committed files:
+Set environment variables as Pantheon secrets, not in committed files:
 - WordPress API URL
 - API keys
 - Feature flags
+
+Changing one takes a rebuild before the application sees it — see "Tunable without a code
+change" in the cache-handler section above for why, and for the `secret:site:set --rebuild`
+invocation. Nothing about setting a value applies it to a running instance.
 
 Never commit `.env` files to version control.
 
@@ -713,7 +717,7 @@ For local development, create a `.env.local` file in the project root. See `.env
 
 WordPress displays application passwords with spaces for readability (e.g., `4Wjp 1234 abcd efgh`), but you must remove ALL spaces when storing them:
 - **Local**: `.env.local` file
-- **Pantheon**: Environment variables in dashboard
+- **Pantheon**: Environment variables set as secrets; a change takes a rebuild before the app sees it
 
 **Example `.env.local`**:
 ```bash
@@ -731,7 +735,7 @@ WordPress displays application passwords with spaces for readability:
 4Wjp 1234 abcd efgh
 ```
 
-But when storing in Pantheon dashboard, remove ALL spaces:
+But when storing as a Pantheon secret, remove ALL spaces:
 ```
 4Wjp1234abcdefgh
 ```

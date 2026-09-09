@@ -215,7 +215,7 @@ User asks: "What custom post types exist?"
 AI: Use mcp-adapter-discover-abilities or mcp-adapter-execute-ability
 → Result: gc_game, rb_recipe, plague-artist, movie, ab_address, media
 
-AI: "jazzsequence.com has these custom post types: games (gc_game), recipes (rb_recipe), artists (plague-artist), movies (movie), addresses (ab_address), and media."
+AI: "jazzsequence.com has these custom post types: games (gc_game), recipes (rb_recipe), artists (plague-artist), movies (movie), addresses (ab_address), and media. Only gc_game and media are in scope for this frontend — recipes, artists and movies belong to multisite subsites, and addresses are not exposed over REST, so there is no route; see the Custom Post Types list below."
 ```
 
 **Example 2: Understand Post Type Schema**
@@ -385,13 +385,14 @@ User asks: "Fetch WordPress posts"
 - Rate limiting: 10 req/sec, burst of 20
 - CDN images: `sfo2.digitaloceanspaces.com/cdn.jazzsequence/`
 
-**Custom Post Types:**
-- `gc_game` - Games
-- `rb_recipe` - Recipes
-- `plague-artist` - Artists
-- `movie` - Movies
-- `ab_address` - Address book
-- `media` - YouTube/WordPress.tv
+**Custom Post Types** referenced across the multisite network. Only two are in scope for this
+frontend — see CLAUDE.md, which is authoritative on scope:
+- `gc_game` - Games — **in scope**, `/games`
+- `media` - YouTube/WordPress.tv — **in scope**, `/media`
+- `rb_recipe` - Recipes — **out of scope**, registered on a multisite subsite, not on jazzsequence.com; do not build routes
+- `plague-artist` - Artists — **out of scope**, same
+- `movie` - Movies — **out of scope**, same
+- `ab_address` - Address book — registered here, but not exposed over REST: `/wp/v2/ab_address` 404s, so this frontend has no route for it. No code path reaches it — `ADDRESS_CONFIG` in `src/lib/wordpress/client.ts` targets that endpoint but nothing calls it
 
 **File Organization:**
 - `/src` - Source code ONLY (no tests)
@@ -453,6 +454,7 @@ with the config, the config wins.
 | `typescript` | `7.x` | Next build worker crash | `npm run build`, then a PR environment |
 | `eslint` | `10.x` | `eslint-plugin-react` incompatible | `npm run lint` — must exit 0 |
 | `vitest`, `@vitest/*` | `5.x` | `@storybook/addon-vitest` peer-requires vitest `^3.0.0 \|\| ^4.0.0`, while every `@vitest/*` 5.0.0 pins vitest `5.0.0` exactly | `npm install` (**not** `npm ci` — it skips peer resolution) must resolve, then `npm run build-storybook` |
+| `@pantheon-systems/nextjs-cache-handler` | `>0.9.0` | Took the live site down; the only pin here with an outage behind it | A deploy survives on an environment carrying a live-comparable cache, across both prefixes — green CI and PR environments explicitly do **not** qualify. See **LIFT WHEN** in `dependabot.yml` |
 
 **A `versions:` ignore also suppresses security-update PRs.** This is not documented by
 GitHub, and `update-types:` does *not* behave this way — see

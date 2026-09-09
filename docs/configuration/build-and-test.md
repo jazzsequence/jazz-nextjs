@@ -4,7 +4,7 @@
 
 ```bash
 # Unit tests
-npm test
+npm test -- --run   # single run; bare `npm test` is watch mode
 
 # Lint
 npm run lint
@@ -198,7 +198,7 @@ Before deploying to Pantheon:
 - [ ] E2E tests pass: `npm run test:e2e`
 - [ ] Standalone build tested: `npm run start:test`
 - [ ] No secrets in committed files
-- [ ] Environment variables configured in Pantheon dashboard
+- [ ] Environment variables configured as Pantheon secrets (a change needs a rebuild)
 - [ ] Documentation updated
 
 See `docs/configuration/DEPLOYMENT.md` for full deployment guide.

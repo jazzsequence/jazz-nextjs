@@ -26,7 +26,7 @@ This document is a **digest** - detailed documentation is in `@docs/`. Load rele
 ### Essential Commands
 
 ```bash
-npm test              # Unit tests
+npm test -- --run     # Unit tests (bare `npm test` is watch mode)
 npm run lint          # Linter
 npm run build         # Build
 npm run test:e2e      # E2E tests (MANDATORY)
@@ -273,7 +273,7 @@ cmd1 && cmd2 && cmd3                 # ❌ Chains require manual approval
 
 **RIGHT**:
 ```bash
-npm test                             # ✅ Separate commands
+npm test -- --run                    # ✅ Separate commands
 git add src/file.ts                  # ✅ Auto-approved individually
 git commit -m "message"              # ✅ Clean approval flow
 ```
