@@ -1,0 +1,309 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: post-single.spec.ts >> Individual Post Page >> should safely render HTML content
+- Location: tests/e2e/post-single.spec.ts:67:3
+
+# Error details
+
+```
+TimeoutError: locator.textContent: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('article').first()
+
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - link "jazzsequence" [ref=e5] [cursor=pointer]:
+        - /url: /
+      - navigation "Main navigation" [ref=e6]:
+        - search [ref=e7]:
+          - button "Search" [ref=e8]:
+            - generic [aria-hidden] [ref=e9]: 
+        - list [ref=e11]:
+          - listitem [ref=e12]:
+            - link "Home" [ref=e13] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e14]:
+            - link "Music" [ref=e15] [cursor=pointer]:
+              - /url: /music
+          - listitem [ref=e18]:
+            - link "Code" [ref=e19] [cursor=pointer]:
+              - /url: https://github.com/jazzsequence
+          - listitem [ref=e22]:
+            - link "Games" [ref=e23] [cursor=pointer]:
+              - /url: /games
+          - listitem [ref=e26]:
+            - link "Articles" [ref=e27] [cursor=pointer]:
+              - /url: /articles
+          - listitem [ref=e28]:
+            - link "Media" [ref=e29] [cursor=pointer]:
+              - /url: /media
+          - listitem [ref=e30]:
+            - link "About" [ref=e31] [cursor=pointer]:
+              - /url: /about
+          - listitem [ref=e32]:
+            - link "Now" [ref=e33] [cursor=pointer]:
+              - /url: /now
+  - main [ref=e34]:
+    - paragraph [ref=e35]: Unable to load post. Please try again later.
+  - contentinfo [ref=e36]:
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - generic [ref=e40]:
+          - paragraph [ref=e41]: jazzsequence
+          - paragraph [ref=e42]: "@jazzsequence@jazzsequence.com"
+          - paragraph [ref=e43]: I make websites and things.
+          - generic [ref=e44]:
+            - button "Follow on the Open Social Web" [ref=e45]:
+              - generic [aria-hidden] [ref=e46]: 
+              - text: Follow on the Open Social Web
+            - link "View profile" [ref=e47] [cursor=pointer]:
+              - /url: https://jazzsequence.com/@jazzsequence
+        - paragraph [ref=e48]:
+          - text: Want to know what makes this site go?
+          - link "Check out the GitHub repo" [ref=e49] [cursor=pointer]:
+            - /url: https://github.com/jazzsequence/jazz-nextjs
+          - text: "!"
+      - generic [ref=e50]:
+        - link "Personal site" [ref=e51] [cursor=pointer]:
+          - /url: https://chrisreynolds.io
+          - generic [aria-hidden] [ref=e52]: 
+        - link "Newsletter" [ref=e53] [cursor=pointer]:
+          - /url: https://us1.campaign-archive.com/home/?u=4085972eca88b58d063f1b9a5&id=85460dd934
+          - generic [aria-hidden] [ref=e54]: 
+        - link "Bluesky" [ref=e55] [cursor=pointer]:
+          - /url: https://bsky.app/profile/jazzsequence.com
+          - generic [aria-hidden] [ref=e56]: 
+        - link "GitHub" [ref=e57] [cursor=pointer]:
+          - /url: https://github.com/jazzsequence
+          - generic [aria-hidden] [ref=e58]: 
+        - link "Instagram" [ref=e59] [cursor=pointer]:
+          - /url: https://instagram.com/jazzs3quence
+          - generic [aria-hidden] [ref=e60]: 
+        - link "Spotify" [ref=e61] [cursor=pointer]:
+          - /url: https://open.spotify.com/user/jazzsequence
+          - generic [aria-hidden] [ref=e62]: 
+        - link "LinkedIn" [ref=e63] [cursor=pointer]:
+          - /url: https://linkedin.com/in/chrissreynolds
+          - generic [aria-hidden] [ref=e64]: 
+        - link "YouTube" [ref=e65] [cursor=pointer]:
+          - /url: https://www.youtube.com/c/chrisreynoldsjazzsequence
+          - generic [aria-hidden] [ref=e66]: 
+        - link "Bandcamp" [ref=e67] [cursor=pointer]:
+          - /url: https://music.jazzsequence.com/
+          - generic [aria-hidden] [ref=e68]: 
+        - link "SoundCloud" [ref=e69] [cursor=pointer]:
+          - /url: https://soundcloud.com/jazzs3quence
+          - generic [aria-hidden] [ref=e70]: 
+        - link "Twitch" [ref=e71] [cursor=pointer]:
+          - /url: https://twitch.tv/jazzsequence
+          - generic [aria-hidden] [ref=e72]: 
+        - link "Mastodon" [ref=e73] [cursor=pointer]:
+          - /url: https://mstdn.social/@jazzsequence
+          - generic [aria-hidden] [ref=e74]: 
+        - link "WordPress.org" [ref=e75] [cursor=pointer]:
+          - /url: https://profiles.wordpress.org/jazzs3quence
+          - generic [aria-hidden] [ref=e76]: 
+        - link "Etsy" [ref=e77] [cursor=pointer]:
+          - /url: https://possibleoctopus.com
+          - generic [aria-hidden] [ref=e78]: 
+      - generic [ref=e79]:
+        - generic [ref=e80]: jazzsequence
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - text: "Last Built: 9/14/2026, 5:42:47 AM MT •"
+            - link "1ff8f89" [ref=e83] [cursor=pointer]:
+              - /url: https://github.com/jazzsequence/jazz-nextjs/commit/1ff8f894c20845a4cb9c3ca8a7f56f1bf628df11
+          - generic [ref=e84]: © 2026 Chris Reynolds
+  - alert [ref=e85]
+```
+
+# Test source
+
+```ts
+  1   | import { test, expect } from '@playwright/test';
+  2   | 
+  3   | test.describe('Individual Post Page', () => {
+  4   |   let testSlug: string;
+  5   | 
+  6   |   // Get a real post slug before running tests
+  7   |   test.beforeAll(async ({ request }) => {
+  8   |     const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
+  9   |     const response = await request.get(`${baseUrl}/`);
+  10  |     const html = await response.text();
+  11  | 
+  12  |     // Extract first post slug from homepage
+  13  |     const match = html.match(/href="\/posts\/([^"]+)"/);
+  14  |     if (match && match[1]) {
+  15  |       testSlug = match[1];
+  16  |     } else {
+  17  |       // Fallback to a commonly available post
+  18  |       testSlug = 'welcome';
+  19  |     }
+  20  |   });
+  21  | 
+  22  |   test('should display post title', async ({ page }) => {
+  23  |     await page.goto(`/posts/${testSlug}`);
+  24  | 
+  25  |     const heading = page.locator('h1');
+  26  |     await expect(heading).toBeVisible();
+  27  | 
+  28  |     const titleText = await heading.textContent();
+  29  |     expect(titleText).toBeTruthy();
+  30  |     expect(titleText?.length).toBeGreaterThan(0);
+  31  |   });
+  32  | 
+  33  |   test('should display post content', async ({ page }) => {
+  34  |     await page.goto(`/posts/${testSlug}`);
+  35  | 
+  36  |     // Content should be in article element — use first() since embedded article
+  37  |     // cards (ArticleCard) also render <article> tags inside the post body.
+  38  |     const article = page.locator('article').first();
+  39  |     await expect(article).toBeVisible();
+  40  | 
+  41  |     // Should have some text content
+  42  |     const content = await article.textContent();
+  43  |     expect(content).toBeTruthy();
+  44  |     expect(content?.length).toBeGreaterThan(50); // Reasonable content length
+  45  |   });
+  46  | 
+  47  |   test('should display post date', async ({ page }) => {
+  48  |     await page.goto(`/posts/${testSlug}`);
+  49  | 
+  50  |     const date = page.locator('time');
+  51  |     await expect(date).toBeVisible();
+  52  |   });
+  53  | 
+  54  |   test('should display featured image if available', async ({ page }) => {
+  55  |     await page.goto(`/posts/${testSlug}`);
+  56  |     await page.waitForLoadState('domcontentloaded');
+  57  | 
+  58  |     // Featured image is optional, so check if it exists
+  59  |     const image = page.locator('article img').first();
+  60  |     const imageExists = await image.count() > 0;
+  61  | 
+  62  |     if (imageExists) {
+  63  |       await expect(image).toBeVisible();
+  64  |     }
+  65  |   });
+  66  | 
+  67  |   test('should safely render HTML content', async ({ page }) => {
+  68  |     await page.goto(`/posts/${testSlug}`);
+  69  | 
+  70  |     // Content should be rendered (not showing raw HTML)
+  71  |     const article = page.locator('article').first();
+  72  | 
+  73  |     // Should not contain escaped HTML entities in normal text
+> 74  |     const visibleText = await article.textContent();
+      |                                       ^ TimeoutError: locator.textContent: Timeout 10000ms exceeded.
+  75  |     expect(visibleText).not.toContain('&lt;');
+  76  |     expect(visibleText).not.toContain('&gt;');
+  77  |   });
+  78  | 
+  79  |   test('should handle 404 for non-existent posts', async ({ page }) => {
+  80  |     const response = await page.goto('/posts/this-post-definitely-does-not-exist-12345');
+  81  | 
+  82  |     // Should return 404 or show not found page
+  83  |     if (response) {
+  84  |       const status = response.status();
+  85  |       // Accept 404 or 200 with "not found" content
+  86  |       expect([200, 404]).toContain(status);
+  87  |     }
+  88  | 
+  89  |     // Should show some indication of not found
+  90  |     const body = page.locator('body');
+  91  |     const text = await body.textContent();
+  92  | 
+  93  |     // Check for 404 or not found indicators
+  94  |     const hasNotFoundIndicator =
+  95  |       text?.toLowerCase().includes('not found') ||
+  96  |       text?.toLowerCase().includes('404') ||
+  97  |       text?.toLowerCase().includes('does not exist');
+  98  | 
+  99  |     expect(hasNotFoundIndicator).toBe(true);
+  100 |   });
+  101 | 
+  102 |   test('should have navigation back to posts', async ({ page }) => {
+  103 |     await page.goto(`/posts/${testSlug}`);
+  104 | 
+  105 |     // Should have navigation menu with link to posts
+  106 |     const nav = page.locator('nav[role="navigation"]');
+  107 |     await expect(nav).toBeVisible();
+  108 |   });
+  109 | 
+  110 |   test('should have footer', async ({ page }) => {
+  111 |     await page.goto(`/posts/${testSlug}`);
+  112 | 
+  113 |     const footer = page.locator('footer');
+  114 |     await expect(footer).toBeVisible();
+  115 |   });
+  116 | 
+  117 |   test('should be responsive', async ({ page }) => {
+  118 |     // Test mobile viewport
+  119 |     await page.setViewportSize({ width: 375, height: 667 });
+  120 |     await page.goto(`/posts/${testSlug}`);
+  121 | 
+  122 |     const heading = page.locator('h1');
+  123 |     await expect(heading).toBeVisible();
+  124 | 
+  125 |     // Test desktop viewport
+  126 |     await page.setViewportSize({ width: 1920, height: 1080 });
+  127 |     await expect(heading).toBeVisible();
+  128 |   });
+  129 | 
+  130 |   test('should have readable content width', async ({ page }) => {
+  131 |     await page.goto(`/posts/${testSlug}`);
+  132 | 
+  133 |     const article = page.locator('article').first();
+  134 |     const box = await article.boundingBox();
+  135 | 
+  136 |     // Content should not be too wide (for readability)
+  137 |     // Max ~800px is common for readable content
+  138 |     if (box) {
+  139 |       expect(box.width).toBeLessThan(1200);
+  140 |     }
+  141 |   });
+  142 | 
+  143 |   test('should not have console errors', async ({ page }) => {
+  144 |     const consoleErrors: string[] = [];
+  145 | 
+  146 |     page.on('console', msg => {
+  147 |       if (msg.type() === 'error') {
+  148 |         consoleErrors.push(msg.text());
+  149 |       }
+  150 |     });
+  151 | 
+  152 |     await page.goto(`/posts/${testSlug}`);
+  153 |     await page.waitForLoadState('domcontentloaded');
+  154 | 
+  155 |     expect(consoleErrors).toHaveLength(0);
+  156 |   });
+  157 | 
+  158 |   test('should load all assets successfully', async ({ page }) => {
+  159 |     const failedRequests: string[] = [];
+  160 | 
+  161 |     page.on('response', response => {
+  162 |       if (response.status() >= 400) {
+  163 |         failedRequests.push(`${response.status()} - ${response.url()}`);
+  164 |       }
+  165 |     });
+  166 | 
+  167 |     await page.goto(`/posts/${testSlug}`);
+  168 |     await page.waitForLoadState('domcontentloaded');
+  169 | 
+  170 |     expect(failedRequests).toHaveLength(0);
+  171 |   });
+  172 | });
+  173 | 
+```
