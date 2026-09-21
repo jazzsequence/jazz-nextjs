@@ -23,6 +23,7 @@ ISR is the safety net. On-demand revalidation handles the common case of intenti
 - `/media`, `/media/[slug]`, `/media/page/[page]`
 - `/tag/[slug]`, `/category/[slug]`
 - `app/sitemap.ts` — `export const revalidate = 3600` (sitemap regenerates hourly)
+- `app/icon.tsx`, `app/apple-icon.tsx` — favicon/apple-touch-icon, sourced from the WordPress Site Icon. ISR-only: no webhook triggers on it, so a WP admin changing the Site Icon takes up to an hour to appear rather than being instant. Falls back to a transparent pixel if WordPress or the CDN is unreachable, rather than failing the build.
 
 Cache tags are used for grouped invalidation — e.g., all pages tagged `posts` can be revalidated together when any post is published.
 
@@ -119,6 +120,7 @@ Tags used across the codebase for grouped invalidation:
 | `menu`, `header` | All pages that include navigation |
 | `tag-<slug>` | Tag archive page |
 | `category-<slug>` | Category archive page |
+| `site-info` | `src/lib/wordpress/site-info.ts`'s WP-root-endpoint fetch. Governs `app/layout.tsx`'s `<title>`/meta description/OG `siteName`/JSON-LD `siteName` (used on every page), `app/opengraph-image.tsx`'s tagline, and `app/icon.tsx`/`app/apple-icon.tsx`'s Site Icon. ISR-only (1h) — no webhook path revalidates it on demand. |
 
 ## Troubleshooting
 

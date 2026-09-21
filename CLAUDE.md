@@ -257,6 +257,7 @@ Key facts:
 - `/series/[slug]` — series archives (Organize Series plugin)
 - `/search` — search results page (revalidate=0, always fresh; filter tabs: All/Posts/Media)
 - `/style-guide` — style guide page
+- `/icon`, `/apple-icon` — favicon (32x32) and apple-touch-icon (180x180), fetched dynamically from the WordPress Site Icon (`site-info.ts`'s `fetchSiteIcon()`) rather than a bundled static asset. `app/favicon.ico` remains as a static fallback route.
 
 
 ---
