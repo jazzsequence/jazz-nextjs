@@ -79,7 +79,7 @@ describe('PostPage', () => {
     await PostPage({ params: Promise.resolve({ slug: 'test-post' }) });
 
     expect(wpClient.fetchPost).toHaveBeenCalledWith('posts', 'test-post', {
-      isr: { revalidate: 3600, tags: ['posts', 'post-test-post'] },
+      isr: { revalidate: 3600, tags: ['post-test-post'] },
       embed: true,
     });
   });

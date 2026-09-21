@@ -109,7 +109,7 @@ Tags used across the codebase for grouped invalidation:
 |-----|----------------|
 | `posts` | All post archive pages + homepage |
 | `post-<slug>` | Individual post page |
-| `pages` | All WordPress page routes |
+| `pages` | Orphaned — no route or cache entry is tagged `pages` (there's no WordPress-pages archive/listing route to group). The webhook still emits `revalidateTag('pages')` on every page publish (see the mapping table above), but it has no effect. Individual pages invalidate via `page-<slug>` instead. |
 | `page-<slug>` | Individual page route |
 | `games` | Games archive |
 | `game-<slug>` | Individual game (not a separate route, but tagged for future use) |

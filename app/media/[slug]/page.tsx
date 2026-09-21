@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
   try {
     const item = await fetchPost<WPMedia>('media', slug, {
       embed: true,
-      isr: { revalidate: 3600, tags: ['media'] },
+      isr: { revalidate: 3600, tags: [`media-${slug}`] },
     })
     const title = decodeHtmlEntities(item.title.rendered)
     const description = excerptToDescription(item.excerpt?.rendered)
@@ -54,7 +54,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   let item: WPMedia
   try {
     item = await fetchPost<WPMedia>('media', slug, {
-      isr: { revalidate: 3600, tags: ['media', `media-${slug}`] },
+      isr: { revalidate: 3600, tags: [`media-${slug}`] },
       embed: true,
     })
   } catch (error) {
