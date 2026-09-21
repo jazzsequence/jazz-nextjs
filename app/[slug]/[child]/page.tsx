@@ -72,7 +72,7 @@ export default async function ChildPage({ params }: PageProps) {
   let pageData: WPPage
   try {
     pageData = await fetchPost<WPPage>('pages', child, {
-      isr: { revalidate: 3600, tags: ['pages', `page-${child}`] },
+      isr: { revalidate: 3600, tags: [`page-${child}`] },
       embed: true,
     })
   } catch (error) {

@@ -50,7 +50,7 @@ export default async function Page({ params }: PageProps) {
   let pageData: WPPage
   try {
     pageData = await fetchPost<WPPage>('pages', slug, {
-      isr: { revalidate: 3600, tags: ['pages', `page-${slug}`] },
+      isr: { revalidate: 3600, tags: [`page-${slug}`] },
       embed: true,
     })
   } catch (error) {

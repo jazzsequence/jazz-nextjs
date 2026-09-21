@@ -116,7 +116,7 @@ describe('WordPress Page', () => {
     await Page({ params })
 
     expect(client.fetchPost).toHaveBeenCalledWith('pages', 'about', {
-      isr: { revalidate: 3600, tags: ['pages', 'page-about'] },
+      isr: { revalidate: 3600, tags: ['page-about'] },
       embed: true,
     })
   })
