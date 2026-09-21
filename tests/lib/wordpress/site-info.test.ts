@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchSiteInfo } from '@/lib/wordpress/site-info'
+import { fetchSiteInfo, fetchSiteIcon } from '@/lib/wordpress/site-info'
 
 const mockSiteInfo = {
   name: 'jazzsequence',
@@ -55,5 +55,65 @@ describe('fetchSiteInfo', () => {
     global.fetch = vi.fn().mockRejectedValue(new Error('Network error'))
 
     await expect(fetchSiteInfo()).rejects.toThrow('Network error')
+  })
+})
+
+describe('fetchSiteIcon', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('returns the 32/180 sub-sizes when the media lookup succeeds', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ site_icon: 16520, site_icon_url: 'https://example.com/full.jpg' }) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          media_details: {
+            sizes: {
+              'site_icon-32': { source_url: 'https://example.com/icon-32.jpg' },
+              'site_icon-180': { source_url: 'https://example.com/icon-180.jpg' },
+            },
+          },
+        }),
+      })
+
+    const result = await fetchSiteIcon()
+
+    expect(result).toEqual({ small: 'https://example.com/icon-32.jpg', medium: 'https://example.com/icon-180.jpg' })
+  })
+
+  it('falls back to the full-crop URL when the media lookup has no sub-sizes', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ site_icon: 16520, site_icon_url: 'https://example.com/full.jpg' }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ media_details: { sizes: {} } }) })
+
+    const result = await fetchSiteIcon()
+
+    expect(result).toEqual({ small: 'https://example.com/full.jpg', medium: 'https://example.com/full.jpg' })
+  })
+
+  it('falls back to the full-crop URL when the media lookup request fails', async () => {
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ site_icon: 16520, site_icon_url: 'https://example.com/full.jpg' }) })
+      .mockResolvedValueOnce({ ok: false, status: 404, statusText: 'Not Found' })
+
+    const result = await fetchSiteIcon()
+
+    expect(result).toEqual({ small: 'https://example.com/full.jpg', medium: 'https://example.com/full.jpg' })
+  })
+
+  it('returns null when no Site Icon is configured', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ site_icon: 0, site_icon_url: undefined }) })
+
+    const result = await fetchSiteIcon()
+
+    expect(result).toBeNull()
+  })
+
+  it('throws on non-OK root response', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' })
+
+    await expect(fetchSiteIcon()).rejects.toThrow()
   })
 })

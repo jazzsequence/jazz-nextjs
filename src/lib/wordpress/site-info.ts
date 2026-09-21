@@ -24,6 +24,13 @@ export interface SiteInfo {
   url: string
 }
 
+export interface SiteIcon {
+  /** 32x32 — browser favicon */
+  small: string
+  /** 180x180 — apple-touch-icon */
+  medium: string
+}
+
 /**
  * Fetch WordPress site name and description from the REST API root endpoint.
  *
@@ -46,4 +53,57 @@ export async function fetchSiteInfo(): Promise<SiteInfo> {
     description: data.description || '',
     url: data.url || 'https://jazzsequence.com',
   }
+}
+
+/**
+ * Fetch the WordPress Site Icon at the browser-favicon and apple-touch-icon sizes.
+ *
+ * WordPress registers `site_icon-32`/`site_icon-180` (and others) as media sub-sizes
+ * of the attachment when a Site Icon is set in Settings > General. The root endpoint's
+ * `site_icon_url` is the much larger "full" crop, so the sub-sizes are fetched
+ * separately from the media endpoint by attachment ID (`site_icon`) and used when
+ * available; the full-crop URL is the fallback if the media lookup fails or the
+ * sub-sizes aren't there (e.g. a very small source image).
+ *
+ * Returns null only if no Site Icon is configured at all — callers should fall back
+ * to a bundled static icon in that case.
+ */
+export async function fetchSiteIcon(): Promise<SiteIcon | null> {
+  const rootResponse = await fetch(WP_ROOT_URL, {
+    next: { revalidate: 3600, tags: ['site-info'] },
+  })
+
+  if (!rootResponse.ok) {
+    throw new Error(`Failed to fetch site info: ${rootResponse.status} ${rootResponse.statusText}`)
+  }
+
+  const root = await rootResponse.json()
+  const iconId = root.site_icon
+  const fallbackUrl = root.site_icon_url as string | undefined
+
+  if (!iconId && !fallbackUrl) {
+    return null
+  }
+
+  if (iconId) {
+    const mediaResponse = await fetch(`${WP_ROOT_URL}/wp/v2/media/${iconId}`, {
+      next: { revalidate: 3600, tags: ['site-info'] },
+    })
+
+    if (mediaResponse.ok) {
+      const media = await mediaResponse.json()
+      const sizes = media.media_details?.sizes ?? {}
+      const small = sizes['site_icon-32']?.source_url
+      const medium = sizes['site_icon-180']?.source_url
+      if (small && medium) {
+        return { small, medium }
+      }
+    }
+  }
+
+  if (!fallbackUrl) {
+    return null
+  }
+
+  return { small: fallbackUrl, medium: fallbackUrl }
 }
