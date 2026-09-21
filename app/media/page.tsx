@@ -151,7 +151,7 @@ export default async function MediaPage({ searchParams }: MediaPageProps) {
       isr: { revalidate: 3600, tags: ['media'] },
     }),
     fetchMenuItems(1698, { isr: { revalidate: 3600, tags: ['menu', 'header'] } }),
-    fetchPost<WPPage>('pages', 'videos', { embed: true, isr: { revalidate: 3600, tags: ['pages'] } }),
+    fetchPost<WPPage>('pages', 'videos', { embed: true, isr: { revalidate: 3600, tags: ['page-videos'] } }),
   ])
 
   const mediaTypes = await typesPromise
