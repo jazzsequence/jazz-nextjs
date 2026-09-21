@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { fetchSiteInfo, fetchSiteIcon } from '@/lib/wordpress/site-info'
+import { fetchSiteInfo, fetchSiteIcon, buildIconResponse } from '@/lib/wordpress/site-info'
 
 const mockSiteInfo = {
   name: 'jazzsequence',
@@ -115,5 +115,33 @@ describe('fetchSiteIcon', () => {
     global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' })
 
     await expect(fetchSiteIcon()).rejects.toThrow()
+  })
+})
+
+describe('buildIconResponse', () => {
+  beforeEach(() => {
+    vi.resetAllMocks()
+  })
+
+  it('serves the image with the upstream response\'s own Content-Type', async () => {
+    const imageBytes = new Uint8Array([1, 2, 3]).buffer
+    global.fetch = vi.fn().mockResolvedValue({
+      arrayBuffer: async () => imageBytes,
+      headers: new Headers({ 'content-type': 'image/png' }),
+    })
+
+    const response = await buildIconResponse('https://example.com/icon.png', 'image/jpeg')
+
+    expect(global.fetch).toHaveBeenCalledWith('https://example.com/icon.png', expect.anything())
+    expect(response.headers.get('Content-Type')).toBe('image/png')
+  })
+
+  it('falls back to the given content type if the upstream response omits one', async () => {
+    const imageBytes = new Uint8Array([1, 2, 3]).buffer
+    global.fetch = vi.fn().mockResolvedValue({ arrayBuffer: async () => imageBytes, headers: new Headers() })
+
+    const response = await buildIconResponse('https://example.com/icon.jpg', 'image/jpeg')
+
+    expect(response.headers.get('Content-Type')).toBe('image/jpeg')
   })
 })

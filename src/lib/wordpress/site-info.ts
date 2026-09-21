@@ -107,3 +107,21 @@ export async function fetchSiteIcon(): Promise<SiteIcon | null> {
 
   return { small: fallbackUrl, medium: fallbackUrl }
 }
+
+/**
+ * Fetch an icon image and wrap it in a Response suitable for a Next.js
+ * `icon`/`apple-icon` route's default export.
+ *
+ * `Content-Type` is taken from WordPress's own response header — the only reliable
+ * source, since WordPress serves the Site Icon in whatever format it was originally
+ * uploaded as (commonly JPEG or PNG, and the URL's extension isn't a contract) —
+ * falling back to `fallbackContentType` only if WordPress's response omits one.
+ */
+export async function buildIconResponse(imageUrl: string, fallbackContentType: string): Promise<Response> {
+  const response = await fetch(imageUrl, { next: { revalidate: 3600, tags: ['site-info'] } })
+  const imageData = await response.arrayBuffer()
+
+  return new Response(imageData, {
+    headers: { 'Content-Type': response.headers.get('content-type') || fallbackContentType },
+  })
+}
