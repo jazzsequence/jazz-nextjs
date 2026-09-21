@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: PostPageProps): Promise<Metad
   try {
     const post = await fetchPost<WPPost>('posts', slug, {
       embed: true,
-      isr: { revalidate: 3600, tags: ['posts'] },
+      isr: { revalidate: 3600, tags: [`post-${slug}`] },
     });
     const title = decodeHtmlEntities(post.title.rendered);
     const description = excerptToDescription(post.excerpt?.rendered);
@@ -61,7 +61,7 @@ export default async function PostPage({ params }: PostPageProps) {
   try {
     const [post, menuItems] = await Promise.allSettled([
       fetchPost<WPPost>('posts', slug, {
-        isr: { revalidate: 3600, tags: ['posts', `post-${slug}`] },
+        isr: { revalidate: 3600, tags: [`post-${slug}`] },
         embed: true,
       }),
       fetchMenuItems(1698, {
