@@ -125,3 +125,36 @@ export async function buildIconResponse(imageUrl: string, fallbackContentType: s
     headers: { 'Content-Type': response.headers.get('content-type') || fallbackContentType },
   })
 }
+
+// A 1x1 transparent PNG. `icon`/`apple-icon` routes are statically prerendered, so an
+// uncaught error here fails the entire production build — confirmed by a transient
+// DNS blip against the CDN host failing `npm run build` outright on 2026-09-21, the
+// same failure mode app/opengraph-image.tsx already guards against for its tagline.
+const TRANSPARENT_PIXEL_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64'
+)
+
+/**
+ * Resolve the WordPress Site Icon at the given size into a Response, for a Next.js
+ * `icon`/`apple-icon` route's default export.
+ *
+ * Falls back to a 1x1 transparent pixel if no Site Icon is configured, or if
+ * WordPress/the CDN is unreachable — see the note on TRANSPARENT_PIXEL_PNG for why
+ * this must never throw.
+ */
+export async function resolveIconResponse(
+  size: 'small' | 'medium',
+  fallbackContentType: string
+): Promise<Response> {
+  try {
+    const icon = await fetchSiteIcon()
+    const imageUrl = icon?.[size]
+    if (!imageUrl) {
+      throw new Error('No WordPress Site Icon configured')
+    }
+    return await buildIconResponse(imageUrl, fallbackContentType)
+  } catch {
+    return new Response(TRANSPARENT_PIXEL_PNG, { headers: { 'Content-Type': 'image/png' } })
+  }
+}
