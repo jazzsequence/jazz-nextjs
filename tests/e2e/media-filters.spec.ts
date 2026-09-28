@@ -29,6 +29,16 @@ async function pageLinkHrefs(page: Page): Promise<string[]> {
   return [...new Set(hrefs.filter((href): href is string => !!href && href !== '#'))]
 }
 
+/** The highest page number rendered in the pagination nav, or 1 with no nav at all. */
+async function lastPageNumber(page: Page): Promise<number> {
+  const numbers = await page
+    .locator('nav[aria-label="Pagination"] a[aria-label^="Go to page "]')
+    .evaluateAll((links) =>
+      links.map((link) => Number(link.getAttribute('aria-label')?.replace('Go to page ', '')))
+    )
+  return numbers.length > 0 ? Math.max(...numbers) : 1
+}
+
 test.describe('Media type filters', () => {
   test('renders a filter pill for every media type, with All current', async ({ page }) => {
     // Extra timeout on first navigation — Turbopack compiles /media on first access.
@@ -107,14 +117,25 @@ test.describe('Media type filters', () => {
 
   test('an unknown type renders the unfiltered listing rather than an error', async ({ page }) => {
     await page.goto('/media', { waitUntil: 'domcontentloaded' })
-    const unfiltered = await cardTitles(page)
+    const unfilteredCount = (await cardTitles(page)).length
+    const unfilteredLastPage = await lastPageNumber(page)
+    expect(unfilteredCount).toBeGreaterThan(0)
 
     const response = await page.goto('/media?type=not-a-real-type', {
       waitUntil: 'domcontentloaded',
     })
 
     expect(response?.status()).toBe(200)
-    expect(await cardTitles(page)).toEqual(unfiltered)
+    // Same page size and page count as the real unfiltered listing — an unknown type
+    // must fall through to the unfiltered query rather than being sent to WordPress as
+    // a filter, which would 400 or (for an id that happens to resolve) return a
+    // differently-sized result set. This deliberately does NOT compare exact card
+    // *titles* against the earlier /media snapshot: both requests share the `media`
+    // ISR cache tag, and a background revalidation landing between the two navigations
+    // legitimately swaps in a newer generation (stale-while-revalidate — see the
+    // GcsCacheHandler note in CLAUDE.md) without either page being unfiltered.
+    expect(await cardTitles(page)).toHaveLength(unfilteredCount)
+    expect(await lastPageNumber(page)).toBe(unfilteredLastPage)
     await expect(
       page.getByTestId('media-filters').getByRole('link', { name: 'All' })
     ).toHaveAttribute('aria-current', 'page')
