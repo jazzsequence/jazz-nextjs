@@ -78,7 +78,7 @@ jobs:
 
       - name: Wait for Pantheon build and deployment to complete
         id: wait
-        uses: jazzsequence/pantheon-wait-for-build@v1
+        uses: jazzsequence/pantheon-wait-for-build@v2
         with:
           pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
           site-name: ${{ env.PANTHEON_SITE_NAME }}
