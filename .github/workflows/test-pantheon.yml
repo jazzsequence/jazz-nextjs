@@ -1,4 +1,4 @@
-name: Test on Pantheon
+name: Test
 
 # Two independent jobs:
 #   local  - lint, unit tests, build and the local E2E group, against a server started on the
