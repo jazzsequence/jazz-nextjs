@@ -184,6 +184,28 @@ jobs:
           BOT_BYPASS_TOKEN: ${{ steps.bypass.outputs.token }}
           CI: true
 
+      # Last line of defence for the bypass token. The artifact below is downloadable and the
+      # report is published to GitHub Pages, and this repo and that site are public. The test
+      # code keeps the token out of Playwright's API client, which records request headers, but
+      # that was found by measuring, so scan the actual output rather than trust it. The HTML
+      # report hides its data in a base64 zip inside index.html, which a plain grep misses —
+      # hence the script. On a hit the output is deleted so the steps below have nothing to
+      # upload or publish, and the job fails loudly. Any scanner failure is treated as a hit.
+      - name: Refuse to publish a report that contains the bypass token
+        if: always()
+        env:
+          SCAN_SECRET: ${{ steps.bypass.outputs.token }}
+        run: |
+          if [ -z "$SCAN_SECRET" ]; then
+            echo "No bypass token this run; nothing to scan for."
+            exit 0
+          fi
+          if ! python3 -I scripts/scan-report-for-secret.py playwright-report test-results; then
+            rm -rf playwright-report test-results
+            echo "::error::The bypass token was found in (or the scan of) the Playwright output. It was deleted instead of uploaded or published. If a report from this run was already visible, rotate the token."
+            exit 1
+          fi
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v7

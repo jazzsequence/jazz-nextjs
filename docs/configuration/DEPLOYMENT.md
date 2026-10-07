@@ -604,9 +604,11 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 9. Verify the Pantheon site responds with HTTP 200, sending the bot-bypass token; fails
    with a named error if the token step did not produce one
 10. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
-11. Upload the Playwright report and publish it to GitHub Pages
-12. Report results in the GitHub Actions summary
-13. Fail the workflow if lint, unit tests, or E2E did not succeed
+11. **Scan the Playwright output for the bot-bypass token** and refuse to publish it if found
+    (see "Bot-bypass token" below)
+12. Upload the Playwright report and publish it to GitHub Pages
+13. Report results in the GitHub Actions summary
+14. Fail the workflow if lint, unit tests, or E2E did not succeed
 
 **Re-running a failed job does not retry the build.** `wait-for-build.sh` selects the
 first build record matching the commit SHA and exits non-zero on any terminal `*FAILURE*`
@@ -647,6 +649,13 @@ as a step output (not `GITHUB_ENV`), so the third-party actions in the job never
   (`tests/e2e/support/app-client.ts`) that writes no such log and attaches the token only for
   the app's own https origin, so an image URL on the external CDN gets none. A unit test
   fails if `fixtures.ts` gains `extraHTTPHeaders` or `request.newContext(`.
+- Before anything is uploaded or published, `scripts/scan-report-for-secret.py` scans
+  `playwright-report/` and `test-results/` for the token, including inside the HTML report's
+  embedded base64 zip, which a plain grep of the folder does not see. On a hit the output is
+  deleted, so the artifact upload and the Pages publish have nothing to ship, and the job
+  fails; if a report from that run was already visible, rotate the token. This is the net
+  under the measures above for any leak path they miss. It prints where it found the token,
+  never the token, and a scanner failure counts as a hit.
 - Playwright traces are off while the token is set (`config/playwright.config.ts`). A trace
   records request headers, so it contains the token, and CI uploads `test-results/` and
   publishes the report to GitHub Pages — this repo and that site are public. Do not turn
