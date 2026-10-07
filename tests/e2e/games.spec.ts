@@ -1,4 +1,14 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
+
+// Navigations stop at domcontentloaded (waiting for `load` means ~38 CDN images), so the page
+// may not have hydrated when a test clicks: the click lands on inert markup and does nothing.
+// Retry the click until the modal it should open actually appears.
+async function openModal(page: Page, card: Locator) {
+  await expect(async () => {
+    await card.click()
+    await expect(page.getByTestId('modal-backdrop')).toBeVisible({ timeout: 1000 })
+  }).toPass({ timeout: 15_000 })
+}
 
 // Serialize games tests: 4 workers simultaneously hitting /games on a cold Turbopack
 // start triggers parallel compilations that collectively exceed the 30s navigation
@@ -7,22 +17,25 @@ test.describe.configure({ mode: 'serial' })
 
 test.describe('Games Page', () => {
   test('should display the games page heading', async ({ page }) => {
-    // Extra timeout on first navigation — Turbopack compiles /games on first access
-    await page.goto('/games', { timeout: 90000 })
+    // Turbopack compiles /games on first access. The per-test timeout in
+    // config/playwright.config.ts (30s) caps page.goto's own `timeout`, so a longer goto
+    // timeout alone protects nothing — the test needs the headroom too.
+    test.setTimeout(90_000)
+    await page.goto('/games', { waitUntil: 'domcontentloaded', timeout: 90_000 })
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page.locator('h1')).toContainText('Games')
   })
 
   test('should have correct page title metadata', async ({ page }) => {
-    await page.goto('/games')
+    await page.goto('/games', { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('domcontentloaded')
 
     await expect(page).toHaveTitle(/Games/)
   })
 
   test('should render the games grid', async ({ page }) => {
-    await page.goto('/games')
+    await page.goto('/games', { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('domcontentloaded')
 
     const grid = page.getByTestId('games-grid')
@@ -30,7 +43,7 @@ test.describe('Games Page', () => {
   })
 
   test('should render game filter controls', async ({ page }) => {
-    await page.goto('/games')
+    await page.goto('/games', { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('domcontentloaded')
 
     const filters = page.getByTestId('game-filters')
@@ -41,21 +54,22 @@ test.describe('Games Page', () => {
   })
 
   test('should render game cards', async ({ page }) => {
-    await page.goto('/games')
-    // networkidle ensures ISR on-demand generation completes before asserting
-    await page.waitForLoadState('networkidle')
+    await page.goto('/games', { waitUntil: 'domcontentloaded' })
 
-    // Grid is always rendered (even empty state); extended timeout for ISR cold-start
+    // Not waiting for networkidle: it needs the ~38 CDN images to finish, which is the same
+    // cost that made `load` time out. Both assertions below auto-retry, so the longer
+    // timeout is what covers ISR on-demand generation on a cold start.
+    // Grid is always rendered (even empty state).
     const grid = page.getByTestId('games-grid')
     await expect(grid).toBeVisible({ timeout: 20000 })
 
     // The count paragraph (inside games-grid) should show games
     const countText = grid.locator('p').filter({ hasText: /\d+ game/ })
-    await expect(countText).toBeVisible()
+    await expect(countText).toBeVisible({ timeout: 20000 })
   })
 
   test('should open modal when a game card is clicked', async ({ page }) => {
-    await page.goto('/games')
+    await page.goto('/games', { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('domcontentloaded')
 
     // Click the first game card (not a filter button)
@@ -68,7 +82,7 @@ test.describe('Games Page', () => {
     if (filterCount < await allButtons.count()) {
       // Click the first non-filter button (a game card)
       const gameCards = page.getByTestId('games-grid').locator('button[type="button"]').nth(filterCount)
-      await gameCards.click()
+      await openModal(page, gameCards)
 
       // Modal backdrop should appear
       await expect(page.getByTestId('modal-backdrop')).toBeVisible()
@@ -79,7 +93,7 @@ test.describe('Games Page', () => {
   })
 
   test('should close modal when backdrop is clicked', async ({ page }) => {
-    await page.goto('/games')
+    await page.goto('/games', { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('domcontentloaded')
 
     const filters = page.getByTestId('game-filters')
@@ -89,7 +103,7 @@ test.describe('Games Page', () => {
 
     if (filterCount < await allButtons.count()) {
       const gameCard = page.getByTestId('games-grid').locator('button[type="button"]').nth(filterCount)
-      await gameCard.click()
+      await openModal(page, gameCard)
 
       const backdrop = page.getByTestId('modal-backdrop')
       await expect(backdrop).toBeVisible()
@@ -102,7 +116,7 @@ test.describe('Games Page', () => {
   })
 
   test('should close modal with close button', async ({ page }) => {
-    await page.goto('/games')
+    await page.goto('/games', { waitUntil: 'domcontentloaded' })
     await page.waitForLoadState('domcontentloaded')
 
     const filters = page.getByTestId('game-filters')
@@ -112,7 +126,7 @@ test.describe('Games Page', () => {
 
     if (filterCount < await allButtons.count()) {
       const gameCard = page.getByTestId('games-grid').locator('button[type="button"]').nth(filterCount)
-      await gameCard.click()
+      await openModal(page, gameCard)
 
       await expect(page.getByTestId('modal-backdrop')).toBeVisible()
 

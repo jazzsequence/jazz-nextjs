@@ -25,9 +25,12 @@ const WCAG_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']
  * activity, which image-heavy pages behind a CDN may never reach, and it timed out
  * intermittently on / and /posts. axe audits the DOM, so it needs markup present, not
  * every asset fetched (`image-alt` inspects the <img> element, not its bytes).
+ *
+ * For the same reason `goto` stops at domcontentloaded. The default waits for `load`, which
+ * on /games means all ~38 eager CDN images (~17MB) inside the 30s test timeout.
  */
 async function auditPage(page: Page, path: string, readySelector = 'main') {
-  await page.goto(path)
+  await page.goto(path, { waitUntil: 'domcontentloaded' })
   await expect(page.locator(readySelector)).toBeVisible()
 
   const results = await new AxeBuilder({ page })
