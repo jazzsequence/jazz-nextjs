@@ -26,7 +26,7 @@
  *     — these are covered by unit tests (EmbedBlock + SocialScriptLoader)
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 const TWITTER_POST = '/posts/why-you-should-care-about-whats-happening-with-portlands-professional-soccer-teams';
 
@@ -258,7 +258,11 @@ test.describe('Embed — error resilience', () => {
         const isThirdParty = [
           'platform.twitter.com', 'instagram.com', 'tiktok.com',
           'assets.tumblr.com', 'open.spotify.com', 'youtube.com',
-        ].some(d => text.includes(d));
+        ].some(d => text.includes(d))
+          // Chrome logs "Permissions policy violation: compute-pressure is not allowed in this
+          // document." It names no domain, so the list above does not match it. Seen on
+          // /posts/binary-jazz, which embeds YouTube and other third-party content.
+          || text.startsWith('Permissions policy violation');
         if (!isThirdParty) consoleErrors.push(text);
       }
     });

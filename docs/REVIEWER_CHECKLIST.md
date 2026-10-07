@@ -41,55 +41,30 @@ too). Any other file type, including unknown extensions, runs the full suite.
 ### Tests & build
 
 Run each command as a separate Bash call. Never chain with `&&` or `;`.
-Do NOT give a verdict until you have seen output from all four commands.
+Do NOT give a verdict until you have seen output from all three commands.
 
 ```
 npm test -- --run        # unit tests
 npm run lint             # linter
 npm run build            # build
-npm run test:e2e         # E2E — run LAST, MANDATORY
 ```
 
-After `npm run test:e2e`, read the Playwright summary line directly:
-- `X passed` with no failures → pass
-- `X failed` or `X flaky` → do NOT reject reflexively. Triage first (see below).
+**Do not run E2E (`npm run test:e2e`).** The pre-commit hook runs it against the staged
+commit and is the layer that gates (see `docs/REVIEWER_WORKFLOW.md`), so a run here only
+doubles a multi-minute suite. Unit tests and lint are cheap and stay with you. Item 4 is
+reported as deferred, not skipped silently, and you still review the diff for the breakage
+E2E exists to catch (routing, server startup, runtime errors) and apply the E2E coverage
+items in Section B — that is code review, not a test run.
 
-Read the Playwright summary yourself rather than the hook's `✅ E2E tests passed` line.
-E2E runs when `REVIEWER_E2E_CMD` is set and the commit is not text-only. Whether it also
-runs under `USER_COMMIT=1` depends on `REVIEWER_E2E_ON_USER_COMMIT`; when it is skipped
-the hook says so explicitly (`⏭️ E2E skipped`), so trust the hook's output over any
-description here. Agent commits always run it — they cannot reach the bypass. The
-summary is still the thing that tells you *what* passed.
-
-**Flaky-test triage (mandatory before rejecting on E2E):**
-
-This suite makes live network calls to the jazzsequence.com WordPress backend, so
-individual tests can time out under parallel-worker load for reasons that have
-nothing to do with the change under review. Blocking a good diff on unrelated
-infrastructure flakiness is itself a defect. When you see `X failed`/`X flaky`:
-
-1. Identify each failing test and its spec file.
-2. **Is the failure caused by the change under review?** A failure is change-related
-   if the failing spec exercises a file in the staged diff, OR the failure message
-   points at behaviour the diff touches. If so → **REJECT** (real regression).
-3. Otherwise, re-run the failing spec(s) in isolation
-   (`npm run test:e2e -- <spec> --reporter=line`, optionally `--workers=1`).
-   - Passes in isolation, failure was a timeout / network / live-backend error, and
-     the spec is unrelated to the staged files → **confirmed environmental flake.**
-     Do NOT block. Record it as `⚠️ flaky (unrelated)` under item 4 with the test
-     name, the reason, and the isolated-rerun result, and treat item 4 as passing.
-   - Fails again in isolation, or is reproducible/change-related → **REJECT.**
-
-A confirmed unrelated flake never blocks approval. A failure that reproduces, or
-that touches code in the diff, always blocks.
+If the hook later blocks on E2E, the approval flag is already consumed and a fresh review is
+needed on the unchanged staged set; that is the main agent's follow-up, not part of this review.
 
 **Items:**
 1. Unit tests pass (`npm test -- --run`)
 2. Lint clean (`npm run lint`)
 3. Build succeeds (`npm run build`)
-4. E2E tests pass, or any failure is a confirmed environmental flake unrelated to
-   the diff (`npm run test:e2e`) — read Playwright summary, not hook output; apply
-   the flaky-test triage above before deciding
+4. E2E — **not run by the reviewer.** Report `⏭️ 4: deferred to the pre-commit hook`; the
+   hook runs `npm run test:e2e` and blocks the commit if it fails
 
 ### File organisation
 

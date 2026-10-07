@@ -162,11 +162,12 @@ See [TESTING.md](TESTING.md) for complete testing guide.
 GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests against deployed Pantheon environments:
 - **On push to main**: Tests run against `dev-jazz-nextjs15.pantheonsite.io`
 - **On pull requests**: Tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
-- **Wait strategy**: `jazzsequence/pantheon-wait-for-build@v1` reports build/deploy status, then an HTTP 200 check (12 attempts, 5s apart) before E2E
-- **Test types**: Lint (`npm run lint`), unit tests (`npm test -- --run`), and E2E tests (`npm run test:e2e`) — all three gate the workflow
-- **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
+- **Wait strategy**: `jazzsequence/pantheon-wait-for-build@v1` reports build/deploy status, then an HTTP 200 check (12 attempts, 5s apart, sending the Pantheon bot-bypass token) before E2E
+- **Bot-bypass token**: fetched fresh each run with `terminus gcdn:bot-bypass` because Cloudflare challenges unverified automation; `tests/e2e/fixtures.ts` scopes it to the app origin. Details in `@docs/configuration/DEPLOYMENT.md`
+- **Two jobs**: `Test (no Pantheon)` runs lint, unit tests, build and the local E2E group (`npm run test:e2e`) against a server on the runner; `Test deployed site` runs only the Pantheon group (`npm run test:e2e:pantheon`, specs in `tests/e2e/pantheon/`) against the multidev. Both gate the run
+- **Environment detection**: `E2E_TARGET=pantheon` plus `BASE_URL` selects the Pantheon group; without `E2E_TARGET` the config starts its own server
 
-**Required GitHub Secrets**: `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action) and `REVALIDATE_SECRET` — without the latter the E2E spec throws at collection time and the entire run aborts. `WORDPRESS_USERNAME` / `WORDPRESS_APP_PASSWORD` are not workflow secrets; they are server-runtime vars supplied by Pantheon on deployed environments. See `@docs/configuration/DEPLOYMENT.md`.
+**Required GitHub Secrets**: `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action and used by Terminus to fetch the bot-bypass token — needed in both the Actions and Dependabot secret stores) and `REVALIDATE_SECRET` — without the latter the E2E spec throws at collection time and the entire run aborts. `WORDPRESS_USERNAME` and `WORDPRESS_PASSWORD` are used by the local job's server (the workflow maps the latter to `WORDPRESS_APP_PASSWORD`) and must exist as Actions and Dependabot secrets. See `@docs/configuration/DEPLOYMENT.md`.
 
 ## Last Updated
 2026-04-03
