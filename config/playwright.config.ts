@@ -12,8 +12,14 @@ export default defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Use multiple workers for parallel test execution.
-   * CI targets a deployed Pantheon environment (BASE_URL set → no local webServer), which
-   * handles 4 concurrent workers fine. Locally the webServer below is a single `next dev`
+   * CI targets a deployed Pantheon environment (BASE_URL set → no local webServer) behind
+   * Pantheon's Cloudflare GCDN, whose rate limiting still applies to requests that carry the
+   * bot-bypass token. Suspected cause, unconfirmed: in the first CI run with the token working,
+   * four workers produced pages that rendered without their content (h1, nav, footer not found)
+   * plus 429s on the image CDN check, while one run of one spec file on one worker from a
+   * different network passed. Two workers halves the request rate and should fit the 15-minute
+   * job cap; one worker would be slower (estimated, not measured). If failures persist at two,
+   * try one or look at the failing pages' bodies. Locally the webServer below is a single `next dev`
    * process, and extra workers saturate it — `page.goto` then times out in whichever spec
    * happens to be unlucky. The dev server, not worker count, is the bottleneck, so fewer
    * workers cost almost nothing in wall time. One worker locally, because the thing that
@@ -21,7 +27,7 @@ export default defineConfig({
    * hundreds of `TimeoutError`s fetching remote CDN images and answered some with a 500,
    * failing a different spec (console-error, image, goto-timeout) on every full run. With one
    * worker the full suite took the same time, logged a handful, and passed. */
-  workers: process.env.CI ? 4 : 1,
+  workers: process.env.CI ? 2 : 1,
   /* Global timeout to prevent infinite hangs */
   timeout: 30_000,  // 30 seconds per test
   /* Timeout for expect() assertions */
