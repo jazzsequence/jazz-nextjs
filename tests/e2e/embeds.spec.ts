@@ -258,7 +258,13 @@ test.describe('Embed — error resilience', () => {
         const isThirdParty = [
           'platform.twitter.com', 'instagram.com', 'tiktok.com',
           'assets.tumblr.com', 'open.spotify.com', 'youtube.com',
-        ].some(d => text.includes(d));
+        ].some(d => text.includes(d))
+          // Chrome reports an embedded iframe (e.g. the YouTube player) asking for a capability
+          // the parent page does not grant — "Permissions policy violation: compute-pressure is
+          // not allowed in this document." It names no domain, so the list above misses it, but
+          // it is the third-party embed's doing, not ours. Intermittent: only when the iframe
+          // finishes loading before the assertion.
+          || text.startsWith('Permissions policy violation');
         if (!isThirdParty) consoleErrors.push(text);
       }
     });
