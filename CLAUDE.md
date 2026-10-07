@@ -29,7 +29,8 @@ This document is a **digest** - detailed documentation is in `@docs/`. Load rele
 npm test -- --run     # Unit tests (bare `npm test` is watch mode)
 npm run lint          # Linter
 npm run build         # Build
-npm run test:e2e      # E2E tests (MANDATORY)
+npm run test:e2e      # E2E tests, local group (MANDATORY)
+npm run test:e2e:pantheon  # Pantheon group only; needs BASE_URL (CI runs it)
 npm run start:test    # Test standalone build
 npm run revalidate    # Force ISR cache revalidation (all tags, dev env)
 ```

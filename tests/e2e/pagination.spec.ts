@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('Pagination Component', () => {
   test('should display pagination on homepage', async ({ page }) => {

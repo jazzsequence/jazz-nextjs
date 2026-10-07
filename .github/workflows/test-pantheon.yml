@@ -1,6 +1,14 @@
 name: Test on Pantheon
 
-# GitHub Pages Setup Required:
+# Two independent jobs:
+#   local  - lint, unit tests, build and the local E2E group, against a server started on the
+#            runner. Needs no Pantheon environment, so it neither waits for a deploy nor goes
+#            near Pantheon's Cloudflare rate limit.
+#   test   - the Pantheon group (tests/e2e/pantheon/): the few checks that need a deployed
+#            environment, against the PR / dev multidev. Named "Test deployed site".
+# Either failing fails the run.
+#
+# GitHub Pages Setup Required (for the deployed job's report):
 # 1. Go to repository Settings → Pages
 # 2. Set Source to "Deploy from a branch"
 # 3. Select branch "gh-pages" and folder "/ (root)"
@@ -26,6 +34,112 @@ permissions:
   id-token: write
 
 jobs:
+  local:
+    name: Test (no Pantheon)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v6
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The local server reads WordPress through endpoints that return 401 without credentials
+      # (the menu and the greeting block), so without these the navigation is missing from every
+      # page and dozens of tests fail with nothing pointing at the cause. Both must exist as
+      # Actions secrets AND Dependabot secrets: Dependabot-triggered runs cannot read Actions
+      # secrets.
+      - name: Check WordPress credentials
+        env:
+          WORDPRESS_USERNAME: ${{ secrets.WORDPRESS_USERNAME }}
+          WORDPRESS_PASSWORD: ${{ secrets.WORDPRESS_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$WORDPRESS_USERNAME" ] && missing="$missing WORDPRESS_USERNAME"
+          [ -z "$WORDPRESS_PASSWORD" ] && missing="$missing WORDPRESS_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secret(s):$missing. Each must exist as an Actions secret AND a Dependabot secret."
+            exit 1
+          fi
+
+      # Each check below uses continue-on-error so one failure does not hide the others; the
+      # run only goes red at the final gate step.
+      - name: Run lint
+        id: lint
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Run unit tests
+        id: unit-tests
+        continue-on-error: true
+        run: npm test -- --run
+        env:
+          CI: true
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: npm run build
+        env:
+          WORDPRESS_USERNAME: ${{ secrets.WORDPRESS_USERNAME }}
+          WORDPRESS_APP_PASSWORD: ${{ secrets.WORDPRESS_PASSWORD }}
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      # BASE_URL is deliberately unset: the Playwright config then starts its own server on the
+      # runner. The default group skips tests/e2e/pantheon/.
+      - name: Run E2E tests (local group)
+        id: e2e-local
+        continue-on-error: true
+        run: npm run test:e2e
+        env:
+          WORDPRESS_USERNAME: ${{ secrets.WORDPRESS_USERNAME }}
+          WORDPRESS_APP_PASSWORD: ${{ secrets.WORDPRESS_PASSWORD }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          CI: true
+
+      # No Pantheon bypass token exists in this job, so there is nothing to scan for and the
+      # report is only uploaded as an artifact (the Pages deployment belongs to the deployed job).
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-report-local
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Report status
+        if: always()
+        run: |
+          echo "### Local test results (no Pantheon environment)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Lint (ESLint):** ${{ steps.lint.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Unit Tests (Vitest):** ${{ steps.unit-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build:** ${{ steps.build.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **E2E Tests (local group):** ${{ steps.e2e-local.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail workflow if any checks failed
+        if: steps.lint.outcome != 'success' || steps.unit-tests.outcome != 'success' || steps.build.outcome != 'success' || steps.e2e-local.outcome != 'success'
+        run: exit 1
+
   test:
     name: Test deployed site
     runs-on: ubuntu-latest
@@ -51,17 +165,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # Runs before the Pantheon build wait so lint output is visible in ~1 minute
-      # instead of after a ~10 minute deploy, and so it still reports when the build
-      # fails. Note continue-on-error means the run only goes red at the final gate
-      # step, not here. Catches dependency bumps that break the lint toolchain
-      # (e.g. an ESLint major that breaks eslint-plugin-react), which the
-      # deployed-site tests cannot detect.
-      - name: Run lint
-        id: lint
-        continue-on-error: true
-        run: npm run lint
-
       - name: Determine environment
         id: env
         run: |
@@ -76,6 +179,47 @@ jobs:
           echo "env_name=${ENV_NAME}" >> $GITHUB_OUTPUT
           echo "base_url=${BASE_URL}" >> $GITHUB_OUTPUT
 
+      # Pantheon's Cloudflare-backed GCDN answers unverified automation (Playwright, Actions
+      # runners) with a managed challenge, HTTP 403. A per-site bot-bypass token exempts it,
+      # but it rotates (each one is valid for 6 months, a new one starts every 3), so it is
+      # fetched fresh each run rather than stored — a stored copy would silently expire and turn
+      # every E2E run red. Uses PANTHEON_MACHINE_TOKEN, which must be in BOTH the Actions and the
+      # Dependabot secret stores (Dependabot-triggered runs cannot read Actions secrets).
+      # continue-on-error so the readiness check below fails loudly instead of this step.
+      # The token goes through a masked step output, not GITHUB_ENV, so third-party actions
+      # later in the job (gh-pages, upload-artifact) never see it.
+      - name: Fetch Pantheon bot-bypass token
+        id: bypass
+        continue-on-error: true
+        env:
+          PANTHEON_MACHINE_TOKEN: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
+        run: |
+          if [ -z "$PANTHEON_MACHINE_TOKEN" ]; then
+            echo "::error::PANTHEON_MACHINE_TOKEN is empty. It must exist as an Actions secret AND a Dependabot secret."
+            exit 1
+          fi
+
+          curl -fsSL "https://github.com/pantheon-systems/terminus/releases/download/4.3.3/terminus.phar" -o terminus
+          chmod +x terminus
+          sudo mv terminus /usr/local/bin/terminus
+          # Pinned: the plugin runs in the same process as the Pantheon credential.
+          terminus self:plugin:install pantheon-systems/terminus-gcdn-plugin:0.4.0
+          terminus auth:login --machine-token="$PANTHEON_MACHINE_TOKEN"
+
+          # stderr is dropped: terminus prints [notice] lines there that would corrupt the JSON.
+          # `|| true` so a failed lookup reaches the explicit error below instead of exiting
+          # silently under `bash -e -o pipefail`.
+          TOKEN=$(terminus gcdn:bot-bypass "$PANTHEON_SITE_NAME" --format=json --fields=role,token 2>/dev/null \
+            | jq -r '.[] | select(.role == "current") | .token') || true
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::error::Could not read the current bot-bypass token for $PANTHEON_SITE_NAME."
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Wait for Pantheon build and deployment to complete
         id: wait
         uses: jazzsequence/pantheon-wait-for-build@v1
@@ -83,18 +227,17 @@ jobs:
           pantheon-machine-token: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
           site-name: ${{ env.PANTHEON_SITE_NAME }}
 
-      - name: Run unit tests
-        id: unit-tests
-        continue-on-error: true
-        run: npm test -- --run
-        env:
-          CI: true
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
+      # This check sends the bypass token so it exercises the same path the tests do — a bare
+      # curl is waved through and would report "ready" while every request is being challenged.
       - name: Verify Pantheon site is accessible
+        env:
+          BOT_BYPASS_TOKEN: ${{ steps.bypass.outputs.token }}
         run: |
+          if [ -z "$BOT_BYPASS_TOKEN" ]; then
+            echo "::error::No bot-bypass token — the 'Fetch Pantheon bot-bypass token' step failed (see its log). Without it Cloudflare challenges every request."
+            exit 1
+          fi
+
           echo "Testing connectivity to: ${{ steps.env.outputs.base_url }}"
           echo "Waiting for site to be fully ready..."
 
@@ -105,7 +248,7 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
 
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.env.outputs.base_url }}" || echo "000")
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "x-pantheon-bot-bypass: ${BOT_BYPASS_TOKEN}" "${{ steps.env.outputs.base_url }}" || echo "000")
 
             if [ "$HTTP_CODE" == "200" ]; then
               echo "✅ Site is accessible (HTTP $HTTP_CODE)"
@@ -119,18 +262,41 @@ jobs:
           echo "❌ Site not accessible after 60 seconds"
           exit 1
 
+      # Only tests/e2e/pantheon/ runs here (E2E_TARGET=pantheon, set by the npm script). It sends
+      # a handful of requests through Node fetch, so no browser is installed and the run stays far
+      # under Pantheon's 50-dynamic-requests-a-minute limit. Everything else runs in the local job.
       - name: Run E2E tests against Pantheon
-        id: e2e-tests
+        id: e2e-pantheon
         continue-on-error: true
-        run: npm run test:e2e
+        run: npm run test:e2e:pantheon
         env:
-          # WORDPRESS_USERNAME / WORDPRESS_APP_PASSWORD are deliberately NOT set here.
-          # No spec reads them, and against a deployed BASE_URL no local server starts,
-          # so the Next.js runtime that does use them is on Pantheon and sources them
-          # from Pantheon env vars. Do not re-add them.
           BASE_URL: ${{ steps.env.outputs.base_url }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          # Read by tests/e2e/fixtures.ts, which scopes it to the app origin. See there.
+          BOT_BYPASS_TOKEN: ${{ steps.bypass.outputs.token }}
           CI: true
+
+      # Last line of defence for the bypass token. The artifact below is downloadable and the
+      # report is published to GitHub Pages, and this repo and that site are public. The test
+      # code keeps the token out of Playwright's API client, which records request headers, but
+      # that was found by measuring, so scan the actual output rather than trust it. The HTML
+      # report hides its data in a base64 zip inside index.html, which a plain grep misses —
+      # hence the script. On a hit the output is deleted so the steps below have nothing to
+      # upload or publish, and the job fails loudly. Any scanner failure is treated as a hit.
+      - name: Refuse to publish a report that contains the bypass token
+        if: always()
+        env:
+          SCAN_SECRET: ${{ steps.bypass.outputs.token }}
+        run: |
+          if [ -z "$SCAN_SECRET" ]; then
+            echo "No bypass token this run; nothing to scan for."
+            exit 0
+          fi
+          if ! python3 -I scripts/scan-report-for-secret.py playwright-report test-results; then
+            rm -rf playwright-report test-results
+            echo "::error::The bypass token was found in (or the scan of) the Playwright output. It was deleted instead of uploaded or published. If a report from this run was already visible, rotate the token."
+            exit 1
+          fi
 
       - name: Upload test results
         if: always()
@@ -158,19 +324,16 @@ jobs:
         run: |
           REPORT_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_id }}"
 
-          echo "### Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployed-site test results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ steps.env.outputs.env_name }}" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** ${{ steps.env.outputs.base_url }}" >> $GITHUB_STEP_SUMMARY
           echo "**Deployment:** ${{ steps.wait.outputs.deployment_ready == 'true' && '✅ Ready' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "#### Test Suites" >> $GITHUB_STEP_SUMMARY
-          echo "- **Lint (ESLint):** ${{ steps.lint.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Unit Tests (Vitest):** ${{ steps.unit-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **E2E Tests (Playwright):** ${{ steps.e2e-tests.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **E2E Tests (Pantheon group):** ${{ steps.e2e-pantheon.outcome == 'success' && '✅ Passed' || '❌ Failed' }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📊 [View Playwright Report](${REPORT_URL}) for detailed test results" >> $GITHUB_STEP_SUMMARY
 
       - name: Fail workflow if any checks failed
-        if: steps.lint.outcome != 'success' || steps.unit-tests.outcome != 'success' || steps.e2e-tests.outcome != 'success'
+        if: steps.e2e-pantheon.outcome != 'success'
         run: exit 1

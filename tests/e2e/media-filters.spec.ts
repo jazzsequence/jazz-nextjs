@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 
 // Serialize, for the same reason as games.spec.ts: several workers landing on /media
 // at once on a cold Turbopack start compile the route in parallel and blow the

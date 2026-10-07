@@ -253,12 +253,12 @@ function processOrder(date: Date, config: Config) {
 ## Automated Checks
 
 ```bash
-# The four gates this project actually has — see the Approval Workflow below.
+# The three gates the reviewer runs — see the Approval Workflow below.
 # Run each as a separate Bash call; never chain with && or ;
 npm test -- --run     # bare `npm test` is watch mode and never exits
 npm run lint
 npm run build
-npm run test:e2e
+# E2E (`npm run test:e2e`) is NOT run by the reviewer: the pre-commit hook runs it.
 ```
 
 ## Best Practices
@@ -342,17 +342,19 @@ When reviewing code for commit approval:
    ```
    It is the authoritative list — numbered items across two sections, including the
    commit-size hard block, the documentation-staleness items, the dependency/registry
-   checks, and the E2E flake-triage protocol. Report every item explicitly. Do not
-   substitute the summary below for reading it.
+   checks. Report every item explicitly. Do not substitute the summary below for reading it.
 
-3. **Run all validation checks** — run each command separately, never chain with `&&` or `;`:
+3. **Run the validation checks** — run each command separately, never chain with `&&` or `;`:
    - Unit tests: `npm test -- --run`  (bare `npm test` is watch mode and never exits)
    - Lint: `npm run lint`
    - Build: `npm run build`
-   - **E2E: `npm run test:e2e`** — this is the check the pre-commit hook actually gates on,
-     and the one most likely to catch runtime and routing breakage. Never approve without it.
+   - **Do NOT run E2E (`npm run test:e2e`).** The pre-commit hook runs it against the staged
+     commit and is what actually gates, so running it here only doubles a multi-minute suite.
+     Report checklist item 4 as `⏭️ 4: deferred to the pre-commit hook`. Still review the diff
+     for what E2E would catch (routing, runtime and server-startup breakage) and the E2E
+     coverage items in Section B — those are code review, not a test run.
 
-   Skip all four when the staged set is text-only — every file left is `.md` or `.txt` after
+   Skip all three when the staged set is text-only — every file left is `.md` or `.txt` after
    the lock files in `REVIEWER_EXCLUDED_FILES` are removed from the count, so a lock-file-only
    stage such as a Dependabot merge qualifies too. See "Text-only commits" in
    `docs/configuration/build-and-test.md`.
