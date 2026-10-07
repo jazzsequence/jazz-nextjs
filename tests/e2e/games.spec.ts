@@ -1,9 +1,9 @@
 import type { Locator, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 
-// Navigations stop at domcontentloaded (waiting for `load` means ~38 CDN images), so the page
-// may not have hydrated when a test clicks: the click lands on inert markup and does nothing.
-// Retry the click until the modal it should open actually appears.
+// Navigations stop at domcontentloaded (waiting for `load` means ~38 CDN images). Without a
+// retry, the modal-open test failed because the modal never appeared after the click, so retry
+// the click until the modal it should open actually appears.
 async function openModal(page: Page, card: Locator) {
   await expect(async () => {
     await card.click()

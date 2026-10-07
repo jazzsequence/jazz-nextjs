@@ -57,9 +57,8 @@ def scan_file(path: Path, needle: bytes) -> list[str]:
             scan_zip(base64.b64decode(embedded.group(1)), needle, f"{path} (embedded report data)")
         )
     elif EMBEDDED_MARKER in text:
-        # The report says it carries embedded data but the pattern above cannot read it, so a
-        # Playwright upgrade probably changed the format. Calling this file clean would turn the
-        # scan into a silent no-op, so count it as a hit and make someone look.
+        # The file carries the embedded-data marker but the pattern above cannot read the data.
+        # Calling it clean would turn the scan into a silent no-op, so count it as a hit.
         hits.append(f"{path} (embedded report data could not be read: cannot be verified)")
     return hits
 
