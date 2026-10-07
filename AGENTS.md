@@ -67,7 +67,7 @@ so must you. Do not run tests on such a commit.`
 
 **Layer 1 - Manual Oversight (Reviewer Agent) - RUNS FIRST:**
 - Spawned BEFORE staging/committing
-- Runs tests, lint, build, and E2E — skipped for a text-only staged set, exactly as the hook skips them. See `docs/REVIEWER_CHECKLIST.md` for the full item list
+- Runs unit tests, lint and build — skipped for a text-only staged set, exactly as the hook skips them. It does **not** run E2E: the hook runs it and gates, so running it here only doubles a multi-minute suite (checklist item 4 is reported as deferred). See `docs/REVIEWER_CHECKLIST.md` for the full item list
 - Comprehensive review of ALL rules
 - Checks documentation updates, TDD methodology, file organization, license compatibility
 - Writes the approval flag itself if everything passes — never the main agent
@@ -91,7 +91,7 @@ so must you. Do not run tests on such a commit.`
 
 **The reviewer agent will check:**
 See `docs/REVIEWER_CHECKLIST.md` for the full checklist the reviewer works through.
-Section A items run on every commit, except items 1-4 (unit, lint, build, E2E), which are skipped for a text-only staged set. Section B items are conditional (skipped with ⏭️ when not applicable).
+Section A items run on every commit, except items 1-4 (unit, lint, build, E2E), which are skipped for a text-only staged set; item 4 (E2E) is deferred to the hook on every other commit. Section B items are conditional (skipped with ⏭️ when not applicable).
 
 **CRITICAL WORKFLOW:**
 1. Make changes (edit files, write code)
