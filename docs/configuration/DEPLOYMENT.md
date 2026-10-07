@@ -647,7 +647,7 @@ as a step output (not `GITHUB_ENV`), so the third-party actions in the job never
   site. Wrapping the thrown error does not reach the report step (measured), so the token must
   never be handed to a Playwright API client at all. `api` is a small Node-fetch client
   (`tests/e2e/support/app-client.ts`) that writes no such log and attaches the token only for
-  the app's own https origin, so an image URL on the external CDN gets none. A unit test
+  the app's own https origin, so a request to any other host gets none. A unit test
   fails if `fixtures.ts` gains `extraHTTPHeaders` or `request.newContext(`.
 - Before anything is uploaded or published, `scripts/scan-report-for-secret.py` scans
   `playwright-report/` and `test-results/` for the token, including inside the HTML report's

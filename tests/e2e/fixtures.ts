@@ -31,7 +31,7 @@ export const test = base.extend<{ api: AppClient }>({
     await provide(context)
   },
 
-  // API calls (api-revalidate, post-single's beforeAll, images) use `api`, NOT Playwright's
+  // API calls (api-revalidate, post-single's beforeAll) use `api`, NOT Playwright's
   // `request` or `page.request`. Playwright records every request header of an
   // APIRequestContext call — in the error it throws and in the report step the HTML report
   // embeds — and CI publishes that report to a public GitHub Pages site, so the bypass token

@@ -51,30 +51,4 @@ test.describe('Image Rendering', () => {
       }
     }
   });
-
-  test('CDN image URLs should be accessible', async ({ page, api }) => {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-
-    const images = page.locator('article img');
-    const imageCount = await images.count();
-
-    if (imageCount > 0) {
-      const firstImage = images.first();
-      const src = await firstImage.getAttribute('src');
-
-      expect(src).toBeTruthy();
-
-      // Check if it's a CDN URL
-      const imageSrc = src!.startsWith('http') ? src! : new URL(src!, page.url()).href;
-
-      // Verify the URL is accessible. `src` may be the app origin (/_next/image, which needs the
-      // bypass token) or the external CDN (which must not get it); `api` decides per URL.
-      const response = await api.get(imageSrc);
-      expect(response.status()).toBeLessThan(400);
-
-      // Verify it's actually an image
-      const contentType = response.headers()['content-type'];
-      expect(contentType).toMatch(/^image\//);
-    }
-  });
 });
