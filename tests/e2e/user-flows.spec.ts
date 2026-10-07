@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('User Navigation Flows', () => {
   test('should navigate from homepage to posts list', async ({ page }) => {
