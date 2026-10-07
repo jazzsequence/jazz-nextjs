@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 test.describe('WordPress Pages', () => {
   test('should display music page', async ({ page }) => {

@@ -55,8 +55,11 @@ npm test -- --run
 # With UI
 npm run test:ui
 
-# E2E tests
+# E2E tests, local group (starts its own server; skips tests/e2e/pantheon/)
 npm run test:e2e
+
+# E2E tests, Pantheon group (needs BASE_URL; runs only tests/e2e/pantheon/)
+BASE_URL=https://pr-N-jazz-nextjs15.pantheonsite.io npm run test:e2e:pantheon
 
 # E2E with UI
 npm run test:e2e:ui

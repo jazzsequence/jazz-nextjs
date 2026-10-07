@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 /**
  * Pagination URL correctness — search and taxonomy archives.

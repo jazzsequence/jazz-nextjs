@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('Posts List Page', () => {
   test('should display posts list heading', async ({ page }) => {
