@@ -167,7 +167,7 @@ GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests again
 - **Test types**: Lint (`npm run lint`), unit tests (`npm test -- --run`), and E2E tests (`npm run test:e2e`) — all three gate the workflow
 - **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
 
-**Required GitHub Secrets**: `PANTHEON_ACCESS_TOKEN` (Pantheon PAT used to fetch the bot-bypass token — needed in both the Actions and Dependabot secret stores), `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action) and `REVALIDATE_SECRET` — without the latter the E2E spec throws at collection time and the entire run aborts. `WORDPRESS_USERNAME` / `WORDPRESS_APP_PASSWORD` are not workflow secrets; they are server-runtime vars supplied by Pantheon on deployed environments. See `@docs/configuration/DEPLOYMENT.md`.
+**Required GitHub Secrets**: `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action and used by Terminus to fetch the bot-bypass token — needed in both the Actions and Dependabot secret stores) and `REVALIDATE_SECRET` — without the latter the E2E spec throws at collection time and the entire run aborts. `WORDPRESS_USERNAME` / `WORDPRESS_APP_PASSWORD` are not workflow secrets; they are server-runtime vars supplied by Pantheon on deployed environments. See `@docs/configuration/DEPLOYMENT.md`.
 
 ## Last Updated
 2026-04-03

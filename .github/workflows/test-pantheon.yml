@@ -80,7 +80,7 @@ jobs:
       # runners) with a managed challenge, HTTP 403. A per-site bot-bypass token exempts it,
       # but it rotates (each one is valid for 6 months, a new one starts every 3), so it is
       # fetched fresh each run rather than stored — a stored copy would silently expire and turn
-      # every E2E run red. Needs a Pantheon Personal Access Token in BOTH the Actions and the
+      # every E2E run red. Uses PANTHEON_MACHINE_TOKEN, which must be in BOTH the Actions and the
       # Dependabot secret stores (Dependabot-triggered runs cannot read Actions secrets).
       # continue-on-error so unit tests still report; the readiness check below then fails loudly.
       # The token goes through a masked step output, not GITHUB_ENV, so third-party actions
@@ -89,19 +89,19 @@ jobs:
         id: bypass
         continue-on-error: true
         env:
-          PANTHEON_ACCESS_TOKEN: ${{ secrets.PANTHEON_ACCESS_TOKEN }}
+          PANTHEON_MACHINE_TOKEN: ${{ secrets.PANTHEON_MACHINE_TOKEN }}
         run: |
-          if [ -z "$PANTHEON_ACCESS_TOKEN" ]; then
-            echo "::error::PANTHEON_ACCESS_TOKEN is empty. Add it as an Actions secret AND a Dependabot secret."
+          if [ -z "$PANTHEON_MACHINE_TOKEN" ]; then
+            echo "::error::PANTHEON_MACHINE_TOKEN is empty. It must exist as an Actions secret AND a Dependabot secret."
             exit 1
           fi
 
           curl -fsSL "https://github.com/pantheon-systems/terminus/releases/download/4.3.3/terminus.phar" -o terminus
           chmod +x terminus
           sudo mv terminus /usr/local/bin/terminus
-          # Pinned: the plugin runs in the same process as the access token.
+          # Pinned: the plugin runs in the same process as the Pantheon credential.
           terminus self:plugin:install pantheon-systems/terminus-gcdn-plugin:0.4.0
-          terminus auth:login --machine-token="$PANTHEON_ACCESS_TOKEN"
+          terminus auth:login --machine-token="$PANTHEON_MACHINE_TOKEN"
 
           # stderr is dropped: terminus prints [notice] lines there that would corrupt the JSON.
           # `|| true` so a failed lookup reaches the explicit error below instead of exiting

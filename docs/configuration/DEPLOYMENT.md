@@ -665,11 +665,11 @@ as a step output (not `GITHUB_ENV`), so the third-party actions in the job never
   a named error.
 
 **GitHub Secrets used by this workflow**:
-- `PANTHEON_ACCESS_TOKEN` - Pantheon Personal Access Token, used to log Terminus in so the
-  bot-bypass token can be fetched. **Must exist in both the Actions and the Dependabot
-  secret stores**: workflows triggered by Dependabot cannot read Actions secrets, so
-  without the Dependabot copy every Dependabot PR fails at the token step.
 - `PANTHEON_MACHINE_TOKEN` - Machine token, passed to the `pantheon-wait-for-build` action
+  and used to log Terminus in so the bot-bypass token can be fetched. **Must exist in both
+  the Actions and the Dependabot secret stores**: workflows triggered by Dependabot cannot
+  read Actions secrets, so without the Dependabot copy every Dependabot PR fails at the token
+  step.
   - Generate at: https://dashboard.pantheon.io/users/#account/tokens
   - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
 - `REVALIDATE_SECRET` - shared secret for `/api/revalidate`. **The whole E2E run fails
