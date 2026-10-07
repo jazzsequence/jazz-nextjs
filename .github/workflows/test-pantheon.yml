@@ -76,6 +76,47 @@ jobs:
           echo "env_name=${ENV_NAME}" >> $GITHUB_OUTPUT
           echo "base_url=${BASE_URL}" >> $GITHUB_OUTPUT
 
+      # Pantheon's Cloudflare-backed GCDN answers unverified automation (Playwright, Actions
+      # runners) with a managed challenge, HTTP 403. A per-site bot-bypass token exempts it,
+      # but it rotates (each one is valid for 6 months, a new one starts every 3), so it is
+      # fetched fresh each run rather than stored — a stored copy would silently expire and turn
+      # every E2E run red. Needs a Pantheon Personal Access Token in BOTH the Actions and the
+      # Dependabot secret stores (Dependabot-triggered runs cannot read Actions secrets).
+      # continue-on-error so unit tests still report; the readiness check below then fails loudly.
+      # The token goes through a masked step output, not GITHUB_ENV, so third-party actions
+      # later in the job (gh-pages, upload-artifact) never see it.
+      - name: Fetch Pantheon bot-bypass token
+        id: bypass
+        continue-on-error: true
+        env:
+          PANTHEON_ACCESS_TOKEN: ${{ secrets.PANTHEON_ACCESS_TOKEN }}
+        run: |
+          if [ -z "$PANTHEON_ACCESS_TOKEN" ]; then
+            echo "::error::PANTHEON_ACCESS_TOKEN is empty. Add it as an Actions secret AND a Dependabot secret."
+            exit 1
+          fi
+
+          curl -fsSL "https://github.com/pantheon-systems/terminus/releases/download/4.3.3/terminus.phar" -o terminus
+          chmod +x terminus
+          sudo mv terminus /usr/local/bin/terminus
+          # Pinned: the plugin runs in the same process as the access token.
+          terminus self:plugin:install pantheon-systems/terminus-gcdn-plugin:0.4.0
+          terminus auth:login --machine-token="$PANTHEON_ACCESS_TOKEN"
+
+          # stderr is dropped: terminus prints [notice] lines there that would corrupt the JSON.
+          # `|| true` so a failed lookup reaches the explicit error below instead of exiting
+          # silently under `bash -e -o pipefail`.
+          TOKEN=$(terminus gcdn:bot-bypass "$PANTHEON_SITE_NAME" --format=json --fields=role,token 2>/dev/null \
+            | jq -r '.[] | select(.role == "current") | .token') || true
+
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "::error::Could not read the current bot-bypass token for $PANTHEON_SITE_NAME."
+            exit 1
+          fi
+
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
       - name: Wait for Pantheon build and deployment to complete
         id: wait
         uses: jazzsequence/pantheon-wait-for-build@v1
@@ -93,8 +134,17 @@ jobs:
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
+      # This check sends the bypass token so it exercises the same path the browser does — a bare
+      # curl is waved through and would report "ready" while every E2E test is being challenged.
       - name: Verify Pantheon site is accessible
+        env:
+          BOT_BYPASS_TOKEN: ${{ steps.bypass.outputs.token }}
         run: |
+          if [ -z "$BOT_BYPASS_TOKEN" ]; then
+            echo "::error::No bot-bypass token — the 'Fetch Pantheon bot-bypass token' step failed (see its log). Without it Cloudflare challenges every E2E request."
+            exit 1
+          fi
+
           echo "Testing connectivity to: ${{ steps.env.outputs.base_url }}"
           echo "Waiting for site to be fully ready..."
 
@@ -105,7 +155,7 @@ jobs:
             ATTEMPT=$((ATTEMPT + 1))
             echo "Attempt $ATTEMPT of $MAX_ATTEMPTS..."
 
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.env.outputs.base_url }}" || echo "000")
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -H "x-pantheon-bot-bypass: ${BOT_BYPASS_TOKEN}" "${{ steps.env.outputs.base_url }}" || echo "000")
 
             if [ "$HTTP_CODE" == "200" ]; then
               echo "✅ Site is accessible (HTTP $HTTP_CODE)"
@@ -130,6 +180,8 @@ jobs:
           # from Pantheon env vars. Do not re-add them.
           BASE_URL: ${{ steps.env.outputs.base_url }}
           REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          # Read by tests/e2e/fixtures.ts, which scopes it to the app origin. See there.
+          BOT_BYPASS_TOKEN: ${{ steps.bypass.outputs.token }}
           CI: true
 
       - name: Upload test results

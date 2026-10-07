@@ -162,11 +162,12 @@ See [TESTING.md](TESTING.md) for complete testing guide.
 GitHub Actions workflow (`.github/workflows/test-pantheon.yml`) runs tests against deployed Pantheon environments:
 - **On push to main**: Tests run against `dev-jazz-nextjs15.pantheonsite.io`
 - **On pull requests**: Tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
-- **Wait strategy**: `jazzsequence/pantheon-wait-for-build@v1` reports build/deploy status, then an HTTP 200 check (12 attempts, 5s apart) before E2E
+- **Wait strategy**: `jazzsequence/pantheon-wait-for-build@v1` reports build/deploy status, then an HTTP 200 check (12 attempts, 5s apart, sending the Pantheon bot-bypass token) before E2E
+- **Bot-bypass token**: fetched fresh each run with `terminus gcdn:bot-bypass` because Cloudflare challenges unverified automation; `tests/e2e/fixtures.ts` scopes it to the app origin. Details in `@docs/configuration/DEPLOYMENT.md`
 - **Test types**: Lint (`npm run lint`), unit tests (`npm test -- --run`), and E2E tests (`npm run test:e2e`) — all three gate the workflow
 - **Environment detection**: Playwright uses `BASE_URL` env var to target remote Pantheon sites
 
-**Required GitHub Secrets**: `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action) and `REVALIDATE_SECRET` — without the latter the E2E spec throws at collection time and the entire run aborts. `WORDPRESS_USERNAME` / `WORDPRESS_APP_PASSWORD` are not workflow secrets; they are server-runtime vars supplied by Pantheon on deployed environments. See `@docs/configuration/DEPLOYMENT.md`.
+**Required GitHub Secrets**: `PANTHEON_ACCESS_TOKEN` (Pantheon PAT used to fetch the bot-bypass token — needed in both the Actions and Dependabot secret stores), `PANTHEON_MACHINE_TOKEN` (passed to the `pantheon-wait-for-build` action) and `REVALIDATE_SECRET` — without the latter the E2E spec throws at collection time and the entire run aborts. `WORDPRESS_USERNAME` / `WORDPRESS_APP_PASSWORD` are not workflow secrets; they are server-runtime vars supplied by Pantheon on deployed environments. See `@docs/configuration/DEPLOYMENT.md`.
 
 ## Last Updated
 2026-04-03

@@ -597,14 +597,16 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
    visible in ~1 minute rather than after a ~10 minute build, and so it still reports
    when the Pantheon build fails
 4. Determine target environment (dev or PR-specific)
-5. Wait for Pantheon build and deployment (`jazzsequence/pantheon-wait-for-build@v1`)
-6. Run unit tests: `npm test -- --run`
-7. Install Playwright browsers (chromium)
-8. Verify the Pantheon site responds with HTTP 200
-9. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
-10. Upload the Playwright report and publish it to GitHub Pages
-11. Report results in the GitHub Actions summary
-12. Fail the workflow if lint, unit tests, or E2E did not succeed
+5. **Fetch the Pantheon bot-bypass token** (see "Bot-bypass token" below)
+6. Wait for Pantheon build and deployment (`jazzsequence/pantheon-wait-for-build@v1`)
+7. Run unit tests: `npm test -- --run`
+8. Install Playwright browsers (chromium)
+9. Verify the Pantheon site responds with HTTP 200, sending the bot-bypass token; fails
+   with a named error if the token step did not produce one
+10. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
+11. Upload the Playwright report and publish it to GitHub Pages
+12. Report results in the GitHub Actions summary
+13. Fail the workflow if lint, unit tests, or E2E did not succeed
 
 **Re-running a failed job does not retry the build.** `wait-for-build.sh` selects the
 first build record matching the commit SHA and exits non-zero on any terminal `*FAILURE*`
@@ -620,10 +622,33 @@ job rather than at the failing step.
 **Deployment detection**:
 - Build and deploy status come from the `pantheon-wait-for-build` action
 - A follow-up accessibility check polls the environment URL for HTTP 200
-  (12 attempts, 5s apart) before E2E runs
+  (12 attempts, 5s apart) before E2E runs, sending the bot-bypass token so it takes the
+  same path the browser does
 - Fails if the site is not reachable within that window
 
+**Bot-bypass token**: `*.pantheonsite.io` is served through Pantheon's Cloudflare-backed
+GCDN, which answers automation it cannot verify (Playwright, GitHub Actions runners) with a
+managed challenge — HTTP 403, `cf-mitigated: challenge` — and a bare `curl` is let through,
+so a plain readiness check can say "ready" while every browser request is being challenged.
+Pantheon issues a per-site token, sent in the `x-pantheon-bot-bypass` header, that exempts
+our own traffic. One token covers every environment, including `pr-N` multidevs. It rotates,
+so the workflow fetches the current one on every run with `terminus gcdn:bot-bypass` instead
+of storing a copy that would silently expire. The token is masked and handed to later steps
+as a step output (not `GITHUB_ENV`), so the third-party actions in the job never see it.
+- `tests/e2e/fixtures.ts` adds the header to browser and `request` traffic for the app's own
+  https origin only. Specs import `test` from `./fixtures`, not `@playwright/test`. It is
+  deliberately not Playwright's `use.extraHTTPHeaders`, which would send the credential to
+  every host a page loads (embeds, fonts, the image CDN). `page.request` is not covered by
+  the context route, so a spec using it passes `botBypassHeaders(url, baseURL, token)` per call.
+- Locally `BOT_BYPASS_TOKEN` is unset and the fixtures do nothing.
+- If the token step fails, unit tests still report and the readiness check then fails with
+  a named error.
+
 **GitHub Secrets used by this workflow**:
+- `PANTHEON_ACCESS_TOKEN` - Pantheon Personal Access Token, used to log Terminus in so the
+  bot-bypass token can be fetched. **Must exist in both the Actions and the Dependabot
+  secret stores**: workflows triggered by Dependabot cannot read Actions secrets, so
+  without the Dependabot copy every Dependabot PR fails at the token step.
 - `PANTHEON_MACHINE_TOKEN` - Machine token, passed to the `pantheon-wait-for-build` action
   - Generate at: https://dashboard.pantheon.io/users/#account/tokens
   - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
