@@ -635,11 +635,18 @@ our own traffic. One token covers every environment, including `pr-N` multidevs.
 so the workflow fetches the current one on every run with `terminus gcdn:bot-bypass` instead
 of storing a copy that would silently expire. The token is masked and handed to later steps
 as a step output (not `GITHUB_ENV`), so the third-party actions in the job never see it.
-- `tests/e2e/fixtures.ts` adds the header to browser and `request` traffic for the app's own
-  https origin only. Specs import `test` from `./fixtures`, not `@playwright/test`. It is
-  deliberately not Playwright's `use.extraHTTPHeaders`, which would send the credential to
-  every host a page loads (embeds, fonts, the image CDN). `page.request` is not covered by
-  the context route, so a spec using it passes `botBypassHeaders(url, baseURL, token)` per call.
+- `tests/e2e/fixtures.ts` adds the header to browser traffic for the app's own https origin
+  only, through a context route. Specs import `test` from `./fixtures`, not
+  `@playwright/test`. It is deliberately not Playwright's `use.extraHTTPHeaders`, which would
+  send the credential to every host a page loads (embeds, fonts, the image CDN).
+- **API calls use the `api` fixture, never `request` or `page.request`.** Playwright records
+  every request header of an API-client call, both in the error it throws and in the report
+  step that the HTML report embeds, and CI publishes that report to a public GitHub Pages
+  site. Wrapping the thrown error does not reach the report step (measured), so the token must
+  never be handed to a Playwright API client at all. `api` is a small Node-fetch client
+  (`tests/e2e/support/app-client.ts`) that writes no such log and attaches the token only for
+  the app's own https origin, so an image URL on the external CDN gets none. A unit test
+  fails if `fixtures.ts` gains `extraHTTPHeaders` or `request.newContext(`.
 - Playwright traces are off while the token is set (`config/playwright.config.ts`). A trace
   records request headers, so it contains the token, and CI uploads `test-results/` and
   publishes the report to GitHub Pages — this repo and that site are public. Do not turn

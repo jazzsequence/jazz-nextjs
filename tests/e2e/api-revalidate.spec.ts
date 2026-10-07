@@ -19,8 +19,8 @@ function requireRevalidateSecret(): string {
 test.describe('Revalidation API', () => {
   const revalidateSecret = requireRevalidateSecret()
 
-  test('should reject requests without secret', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should reject requests without secret', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       data: { path: '/' }
     })
 
@@ -29,8 +29,8 @@ test.describe('Revalidation API', () => {
     expect(body.error).toContain('Invalid secret')
   })
 
-  test('should reject requests with wrong secret', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should reject requests with wrong secret', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: {
         'X-Revalidate-Secret': 'wrong-secret'
       },
@@ -42,8 +42,8 @@ test.describe('Revalidation API', () => {
     expect(body.error).toContain('Invalid secret')
   })
 
-  test('should accept requests with valid secret and path', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should accept requests with valid secret and path', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: {
         'X-Revalidate-Secret': revalidateSecret
       },
@@ -57,8 +57,8 @@ test.describe('Revalidation API', () => {
     expect(body.path).toBe('/')
   })
 
-  test('should accept requests with valid secret and tag', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should accept requests with valid secret and tag', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: {
         'X-Revalidate-Secret': revalidateSecret
       },
@@ -72,8 +72,8 @@ test.describe('Revalidation API', () => {
     expect(body.tag).toBe('posts')
   })
 
-  test('should include timestamp in response', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should include timestamp in response', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: {
         'X-Revalidate-Secret': revalidateSecret
       },
@@ -85,8 +85,8 @@ test.describe('Revalidation API', () => {
     expect(new Date(body.timestamp).getTime()).toBeGreaterThan(0)
   })
 
-  test('should handle both path and tag in same request', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should handle both path and tag in same request', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: {
         'X-Revalidate-Secret': revalidateSecret
       },
@@ -103,10 +103,10 @@ test.describe('Revalidation API', () => {
     expect(body.tag).toBe('posts')
   })
 
-  test('should not allow GET requests in production', async ({ request }) => {
+  test('should not allow GET requests in production', async ({ api }) => {
     // This test assumes NODE_ENV=production in Pantheon
     // In local dev, GET returns usage info
-    const response = await request.get('/api/revalidate')
+    const response = await api.get('/api/revalidate')
 
     // In production: 405
     // In development: 200 with usage info
@@ -115,8 +115,8 @@ test.describe('Revalidation API', () => {
 
   // ── WordPress-native payload ───────────────────────────────────────────────
 
-  test('should revalidate post by post_type + post_slug', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should revalidate post by post_type + post_slug', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: { post_type: 'post', post_slug: 'teh-s3quence-016' },
       timeout: 30_000,
@@ -133,8 +133,8 @@ test.describe('Revalidation API', () => {
     expect(body.tags).toContain('post-teh-s3quence-016')
   })
 
-  test('should revalidate page by post_type + post_slug', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should revalidate page by post_type + post_slug', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: { post_type: 'page', post_slug: 'about' },
       timeout: 30_000,
@@ -147,8 +147,8 @@ test.describe('Revalidation API', () => {
     expect(body.tags).toContain('page-about')
   })
 
-  test('should revalidate games list for gc_game post type', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should revalidate games list for gc_game post type', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: { post_type: 'gc_game', post_slug: 'twilight-imperium' },
       timeout: 30_000,
@@ -163,8 +163,8 @@ test.describe('Revalidation API', () => {
 
   // ── surrogate_keys payload (webhook mu-plugin format) ──────────────────────
 
-  test('should accept surrogate_keys array in request body', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('should accept surrogate_keys array in request body', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: {
         surrogate_keys: ['post-123', 'post-list', 'term-5'],
@@ -177,9 +177,9 @@ test.describe('Revalidation API', () => {
     expect(body.tags).toEqual(expect.arrayContaining(['post-123', 'post-list', 'term-5']))
   })
 
-  test('should accept surrogate_keys via body secret field', async ({ request }) => {
+  test('should accept surrogate_keys via body secret field', async ({ api }) => {
     // The webhook mu-plugin sends the secret in the body as well as the header
-    const response = await request.post('/api/revalidate', {
+    const response = await api.post('/api/revalidate', {
       data: {
         secret: revalidateSecret,
         surrogate_keys: ['post-42', 'post-list'],
@@ -192,8 +192,8 @@ test.describe('Revalidation API', () => {
     expect(body.tags).toContain('post-42')
   })
 
-  test('surrogate_keys with no valid keys returns 400', async ({ request }) => {
-    const response = await request.post('/api/revalidate', {
+  test('surrogate_keys with no valid keys returns 400', async ({ api }) => {
+    const response = await api.post('/api/revalidate', {
       headers: { 'X-Revalidate-Secret': revalidateSecret },
       data: { surrogate_keys: [] },
     })

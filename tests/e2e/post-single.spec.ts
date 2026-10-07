@@ -4,9 +4,9 @@ test.describe('Individual Post Page', () => {
   let testSlug: string;
 
   // Get a real post slug before running tests
-  test.beforeAll(async ({ request }) => {
+  test.beforeAll(async ({ api }) => {
     const baseUrl = process.env.BASE_URL || 'http://localhost:3001';
-    const response = await request.get(`${baseUrl}/`);
+    const response = await api.get(`${baseUrl}/`);
     const html = await response.text();
 
     // Extract first post slug from homepage

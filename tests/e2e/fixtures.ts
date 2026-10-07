@@ -1,5 +1,6 @@
 import { test as base, expect } from '@playwright/test'
 import { botBypassHeaders } from './support/bot-bypass'
+import { createAppClient, type AppClient } from './support/app-client'
 
 export type { Page } from '@playwright/test'
 export { expect }
@@ -16,7 +17,7 @@ const token = process.env.BOT_BYPASS_TOKEN
 // The fixture callback is named `provide`, not Playwright's conventional `use`, because
 // eslint-plugin-react-hooks reads `use(...)` as a React Hook and rejects it.
 
-export const test = base.extend({
+export const test = base.extend<{ api: AppClient }>({
   // Browser traffic. A route per request, not `use.extraHTTPHeaders`, so the token never
   // reaches third-party hosts (embeds, fonts, the image CDN).
   context: async ({ context, baseURL }, provide) => {
@@ -30,16 +31,13 @@ export const test = base.extend({
     await provide(context)
   },
 
-  // Standalone `request` fixture (api-revalidate, post-single beforeAll). Every call in the
-  // suite targets the app origin, so the header is set for the whole client. For anything
-  // external, use `page.request.get(url, { headers: botBypassHeaders(...) })` instead.
-  // `page.request` is NOT covered by the route above: routes don't intercept API requests.
-  request: async ({ playwright, baseURL }, provide) => {
-    const context = await playwright.request.newContext({
-      baseURL,
-      extraHTTPHeaders: botBypassHeaders(baseURL ?? '', baseURL, token),
-    })
-    await provide(context)
-    await context.dispose()
+  // API calls (api-revalidate, post-single's beforeAll, images) use `api`, NOT Playwright's
+  // `request` or `page.request`. Playwright records every request header of an
+  // APIRequestContext call — in the error it throws and in the report step the HTML report
+  // embeds — and CI publishes that report to a public GitHub Pages site, so the bypass token
+  // must never be handed to one. `api` is a Node-fetch client that writes no such log. See
+  // support/app-client.ts. (Plain `request` still works, but carries no token.)
+  api: async ({ baseURL }, provide) => {
+    await provide(createAppClient(baseURL ?? 'http://localhost:3001', token))
   },
 })

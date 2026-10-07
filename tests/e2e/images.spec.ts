@@ -1,10 +1,4 @@
 import { test, expect } from './fixtures';
-import { botBypassHeaders } from './support/bot-bypass';
-
-// page.request is not covered by the context route in fixtures.ts, and `src` may be the app
-// origin (/_next/image, needs the token) or the external CDN (must not get it) — so decide per URL.
-const imageRequestHeaders = (url: string, baseURL: string | undefined) =>
-  botBypassHeaders(url, baseURL, process.env.BOT_BYPASS_TOKEN);
 
 test.describe('Image Rendering', () => {
   test('images should have proper Next.js Image optimization attributes', async ({ page }) => {
@@ -58,7 +52,7 @@ test.describe('Image Rendering', () => {
     }
   });
 
-  test('CDN image URLs should be accessible', async ({ page, baseURL }) => {
+  test('CDN image URLs should be accessible', async ({ page, api }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     const images = page.locator('article img');
@@ -71,12 +65,11 @@ test.describe('Image Rendering', () => {
       expect(src).toBeTruthy();
 
       // Check if it's a CDN URL
-      const imageSrc = src!.startsWith('http') ? src : new URL(src!, page.url()).href;
+      const imageSrc = src!.startsWith('http') ? src! : new URL(src!, page.url()).href;
 
-      // Verify the URL is accessible
-      const response = await page.request.get(imageSrc, {
-        headers: imageRequestHeaders(imageSrc, baseURL),
-      });
+      // Verify the URL is accessible. `src` may be the app origin (/_next/image, which needs the
+      // bypass token) or the external CDN (which must not get it); `api` decides per URL.
+      const response = await api.get(imageSrc);
       expect(response.status()).toBeLessThan(400);
 
       // Verify it's actually an image
