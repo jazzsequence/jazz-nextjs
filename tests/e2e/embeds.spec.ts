@@ -26,7 +26,7 @@
  *     — these are covered by unit tests (EmbedBlock + SocialScriptLoader)
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 const TWITTER_POST = '/posts/why-you-should-care-about-whats-happening-with-portlands-professional-soccer-teams';
 
