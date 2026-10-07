@@ -10,7 +10,7 @@
  * Run: npm run test:e2e -- --grep a11y
  */
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 import AxeBuilder from '@axe-core/playwright'
 
 const WCAG_AA_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']

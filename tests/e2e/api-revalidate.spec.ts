@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 // Falling back to a dummy secret in CI is worse than failing: every authenticated
 // request would 401 and this file would report ~10 failures that look like an auth

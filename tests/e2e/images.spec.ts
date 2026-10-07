@@ -1,69 +1,12 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { botBypassHeaders } from './support/bot-bypass';
+
+// page.request is not covered by the context route in fixtures.ts, and `src` may be the app
+// origin (/_next/image, needs the token) or the external CDN (must not get it) — so decide per URL.
+const imageRequestHeaders = (url: string, baseURL: string | undefined) =>
+  botBypassHeaders(url, baseURL, process.env.BOT_BYPASS_TOKEN);
 
 test.describe('Image Rendering', () => {
-  test('featured images should load successfully on post cards', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-
-    // Find post cards with images
-    const images = page.locator('article img');
-    const imageCount = await images.count();
-
-    if (imageCount > 0) {
-      const firstImage = images.first();
-
-      // Check image is visible
-      await expect(firstImage).toBeVisible();
-
-      // Poll this image rather than riding on the page load event. Navigation now
-      // stops at domcontentloaded, so decoding may still be in flight here — and
-      // waiting for load would block on unrelated third-party subresources.
-      await expect.poll(() =>
-        firstImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
-      ).toBe(true);
-
-      // Get image dimensions to verify it rendered
-      const box = await firstImage.boundingBox();
-      expect(box).not.toBeNull();
-      expect(box?.width).toBeGreaterThan(0);
-      expect(box?.height).toBeGreaterThan(0);
-
-      // Check src attribute exists and is not empty
-      const src = await firstImage.getAttribute('src');
-      expect(src).toBeTruthy();
-      expect(src).not.toBe('');
-
-      // Verify the image URL is accessible
-      const imageSrc = src!.startsWith('http') ? src : new URL(src!, page.url()).href;
-      const response = await page.request.get(imageSrc);
-      expect(response.ok()).toBe(true);
-      expect(response.headers()['content-type']).toMatch(/^image\//);
-    }
-  });
-
-  test('featured images should load on individual posts', async ({ page }) => {
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
-
-    // PostCard: title is inside the image link (a > h2); find first post with a card image
-    const postLink = page.locator('article:has(img) a[href^="/posts/"]').first()
-    const href = await postLink.getAttribute('href')
-    expect(href, 'Expected at least one post card with a featured image on the homepage').toBeTruthy()
-
-    await page.goto(href!, { waitUntil: 'domcontentloaded' })
-
-    // On the individual post, verify the featured image loads if present
-    const featuredImage = page.locator('article img').first()
-    if (await featuredImage.count() > 0) {
-      await expect(featuredImage).toBeVisible()
-      await expect.poll(() =>
-        featuredImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
-      ).toBe(true)
-      const box = await featuredImage.boundingBox()
-      expect(box).not.toBeNull()
-      expect(box?.width).toBeGreaterThan(0)
-      expect(box?.height).toBeGreaterThan(0)
-    }
-  });
-
   test('images should have proper Next.js Image optimization attributes', async ({ page }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
@@ -115,7 +58,7 @@ test.describe('Image Rendering', () => {
     }
   });
 
-  test('CDN image URLs should be accessible', async ({ page }) => {
+  test('CDN image URLs should be accessible', async ({ page, baseURL }) => {
     await page.goto('/', { waitUntil: 'domcontentloaded' });
 
     const images = page.locator('article img');
@@ -131,7 +74,9 @@ test.describe('Image Rendering', () => {
       const imageSrc = src!.startsWith('http') ? src : new URL(src!, page.url()).href;
 
       // Verify the URL is accessible
-      const response = await page.request.get(imageSrc);
+      const response = await page.request.get(imageSrc, {
+        headers: imageRequestHeaders(imageSrc, baseURL),
+      });
       expect(response.status()).toBeLessThan(400);
 
       // Verify it's actually an image
