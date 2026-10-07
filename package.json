@@ -46,7 +46,7 @@
     "dompurify": "^3.4.16",
     "framer-motion": "^13.4.4",
     "html-react-parser": "^6.1.8",
-    "next": "16.2.12",
+    "next": "16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "sanitize-html": "^2.17.7",
