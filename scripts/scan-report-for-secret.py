@@ -20,6 +20,7 @@ import zipfile
 from pathlib import Path
 
 MAX_ZIP_DEPTH = 3
+EMBEDDED_MARKER = 'id="playwrightReportBase64"'
 EMBEDDED_REPORT = re.compile(
     r'id="playwrightReportBase64"[^>]*>\s*data:application/zip;base64,([A-Za-z0-9+/=]+)'
 )
@@ -49,11 +50,17 @@ def scan_file(path: Path, needle: bytes) -> list[str]:
         hits.append(f"{path} (plain text)")
     if path.suffix == ".zip" or data[:2] == b"PK":
         hits.extend(scan_zip(data, needle, f"{path} (zip)"))
-    embedded = EMBEDDED_REPORT.search(data.decode("utf-8", errors="replace"))
+    text = data.decode("utf-8", errors="replace")
+    embedded = EMBEDDED_REPORT.search(text)
     if embedded:
         hits.extend(
             scan_zip(base64.b64decode(embedded.group(1)), needle, f"{path} (embedded report data)")
         )
+    elif EMBEDDED_MARKER in text:
+        # The report says it carries embedded data but the pattern above cannot read it, so a
+        # Playwright upgrade probably changed the format. Calling this file clean would turn the
+        # scan into a silent no-op, so count it as a hit and make someone look.
+        hits.append(f"{path} (embedded report data could not be read: cannot be verified)")
     return hits
 
 

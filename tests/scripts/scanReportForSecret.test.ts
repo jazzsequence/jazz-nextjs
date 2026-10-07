@@ -78,6 +78,19 @@ describe('scripts/scan-report-for-secret.py', () => {
     expect(result.stdout + result.stderr).toContain('trace.zip')
   })
 
+  // If a Playwright upgrade changes how the report embeds its data, the pattern that finds it
+  // stops matching. Calling that report clean would defeat the scan, so it counts as a hit.
+  it('fails closed when report data is present but in a shape it cannot read', () => {
+    mkdirSync(join(root, 'report'))
+    writeFileSync(
+      join(root, 'report', 'index.html'),
+      '<script id="playwrightReportBase64" type="application/zip">some-future-encoding:abc123</script>',
+    )
+    const result = scan([join(root, 'report')])
+    expect(result.status).toBe(1)
+    expect(result.stdout + result.stderr).toMatch(/cannot be verified|could not be read/i)
+  })
+
   it('scans every directory it is given and ignores ones that do not exist', () => {
     writeReport(join(root, 'report'), { 'a.json': '{}' })
     mkdirSync(join(root, 'results'))
