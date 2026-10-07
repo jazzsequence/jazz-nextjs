@@ -640,6 +640,10 @@ as a step output (not `GITHUB_ENV`), so the third-party actions in the job never
   deliberately not Playwright's `use.extraHTTPHeaders`, which would send the credential to
   every host a page loads (embeds, fonts, the image CDN). `page.request` is not covered by
   the context route, so a spec using it passes `botBypassHeaders(url, baseURL, token)` per call.
+- Playwright traces are off while the token is set (`config/playwright.config.ts`). A trace
+  records request headers, so it contains the token, and CI uploads `test-results/` and
+  publishes the report to GitHub Pages — this repo and that site are public. Do not turn
+  traces back on for runs that carry the token.
 - Locally `BOT_BYPASS_TOKEN` is unset and the fixtures do nothing.
 - If the token step fails, unit tests still report and the readiness check then fails with
   a named error.

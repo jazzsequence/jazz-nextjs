@@ -38,8 +38,11 @@ export default defineConfig({
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL: process.env.BASE_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001',
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer
+     * Off while a Pantheon bot-bypass token is set: a trace records request headers, so it
+     * contains the token, and CI uploads test-results/ and publishes the report to GitHub
+     * Pages — this repo and that site are public. Traces return when there is no token. */
+    trace: process.env.BOT_BYPASS_TOKEN ? 'off' : 'on-first-retry',
     screenshot: 'only-on-failure',
     /* Explicit headless mode for CI */
     headless: true,
