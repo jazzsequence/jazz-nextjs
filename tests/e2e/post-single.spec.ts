@@ -11,12 +11,16 @@ test.describe('Individual Post Page', () => {
 
     // Extract first post slug from homepage
     const match = html.match(/href="\/posts\/([^"]+)"/);
-    if (match && match[1]) {
-      testSlug = match[1];
-    } else {
-      // Fallback to a commonly available post
-      testSlug = 'welcome';
+    if (!match?.[1]) {
+      // No made-up fallback slug: a post that doesn't exist renders "Unable to load post", so
+      // every test here would fail on a page that says nothing about why. Fail once, with the
+      // status and the start of the body, instead.
+      throw new Error(
+        `Could not find a post link on ${baseUrl}/ (HTTP ${response.status()}); ` +
+          `body starts: ${html.slice(0, 120).replace(/\s+/g, ' ')}`,
+      );
     }
+    testSlug = match[1];
   });
 
   test('should display post title', async ({ page }) => {

@@ -35,10 +35,10 @@ describe('playwright config workers', () => {
     vi.unstubAllEnvs()
   })
 
-  // Pantheon's Cloudflare rate limiting still applies to requests carrying the bypass token,
-  // and four CI workers produced failures consistent with it (unconfirmed), so CI runs fewer
-  // to lower the request rate. Locally one worker keeps the dev server's image optimizer from
-  // timing out.
+  // Pantheon's Cloudflare rate limiting still applies to requests carrying the bypass token:
+  // at four CI workers the screenshots of the failing navigation, pages, pagination,
+  // media-filters and user-flows tests showed its "429 Too Many Requests" page, so CI runs
+  // two. Locally one worker keeps the dev server's image optimizer from timing out.
   it('uses two workers in CI', async () => {
     vi.stubEnv('CI', 'true')
     const config = await loadConfig()

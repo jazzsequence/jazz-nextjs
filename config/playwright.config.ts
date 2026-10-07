@@ -14,12 +14,10 @@ export default defineConfig({
   /* Use multiple workers for parallel test execution.
    * CI targets a deployed Pantheon environment (BASE_URL set → no local webServer) behind
    * Pantheon's Cloudflare GCDN, whose rate limiting still applies to requests that carry the
-   * bot-bypass token. Suspected cause, unconfirmed: in the first CI run with the token working,
-   * four workers produced pages that rendered without their content (h1, nav, footer not found)
-   * plus 429s on the image CDN check, while one run of one spec file on one worker from a
-   * different network passed. Two workers halves the request rate and should fit the 15-minute
-   * job cap; one worker would be slower (estimated, not measured). If failures persist at two,
-   * try one or look at the failing pages' bodies. Locally the webServer below is a single `next dev`
+   * bot-bypass token. At four workers the screenshots of the failing navigation, pages,
+   * pagination, media-filters and user-flows tests in the CI report showed Cloudflare's
+   * "429 Too Many Requests" page, so CI runs two to halve the request rate.
+   * Locally the webServer below is a single `next dev`
    * process, and extra workers saturate it — `page.goto` then times out in whichever spec
    * happens to be unlucky. The dev server, not worker count, is the bottleneck, so fewer
    * workers cost almost nothing in wall time. One worker locally, because the thing that
