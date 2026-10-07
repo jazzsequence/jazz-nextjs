@@ -35,19 +35,59 @@ describe('playwright config workers', () => {
     vi.unstubAllEnvs()
   })
 
-  // Pantheon's Cloudflare rate limiting still applies to requests carrying the bypass token:
-  // at four CI workers the screenshots of the failing navigation, pages, pagination,
-  // media-filters and user-flows tests showed its "429 Too Many Requests" page, so CI runs
-  // two. Locally one worker keeps the dev server's image optimizer from timing out.
-  it('uses two workers in CI', async () => {
-    vi.stubEnv('CI', 'true')
-    const config = await loadConfig()
-    expect(config.workers).toBe(2)
-  })
-
-  it('uses one worker locally', async () => {
-    vi.stubEnv('CI', '')
+  // Both groups run one worker. The local group is one `next dev` server whose image
+  // optimizer timed out under two workers; the Pantheon group is a handful of requests, so
+  // parallelism buys it nothing.
+  it.each([
+    ['in CI', 'true'],
+    ['locally', ''],
+  ])('uses one worker %s', async (_label, ci) => {
+    vi.stubEnv('CI', ci)
     const config = await loadConfig()
     expect(config.workers).toBe(1)
+  })
+})
+
+// The suite is split in two. Specs under tests/e2e/pantheon/ need a deployed Pantheon
+// environment (real cache handler, Linux image optimizer, CDN in front); everything else runs
+// against a server the config starts itself and needs no Pantheon environment at all.
+describe('playwright config target', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('defaults to the local group: skips the pantheon specs and starts its own server', async () => {
+    vi.stubEnv('E2E_TARGET', '')
+    vi.stubEnv('BASE_URL', '')
+    const config = await loadConfig()
+    expect(config.testIgnore).toBe('**/pantheon/**')
+    expect(config.testMatch).toBeUndefined()
+    expect(config.webServer).toBeDefined()
+  })
+
+  it('pantheon target runs only the pantheon specs, with no local server', async () => {
+    vi.stubEnv('E2E_TARGET', 'pantheon')
+    vi.stubEnv('BASE_URL', 'https://pr-1-jazz-nextjs15.pantheonsite.io')
+    const config = await loadConfig()
+    expect(config.testMatch).toBe('**/pantheon/**/*.spec.ts')
+    expect(config.testIgnore).toBeUndefined()
+    expect(config.webServer).toBeUndefined()
+    expect(config.use?.baseURL).toBe('https://pr-1-jazz-nextjs15.pantheonsite.io')
+  })
+
+  // Without a BASE_URL the pantheon group would silently test localhost and pass or fail
+  // for the wrong reason.
+  it('pantheon target without BASE_URL fails at load, naming the variable', async () => {
+    vi.stubEnv('E2E_TARGET', 'pantheon')
+    vi.stubEnv('BASE_URL', '')
+    await expect(loadConfig()).rejects.toThrow(/BASE_URL/)
+  })
+
+  it('an explicit BASE_URL on the local group tests that server instead of starting one', async () => {
+    vi.stubEnv('E2E_TARGET', '')
+    vi.stubEnv('BASE_URL', 'http://localhost:3000')
+    const config = await loadConfig()
+    expect(config.webServer).toBeUndefined()
+    expect(config.testIgnore).toBe('**/pantheon/**')
   })
 })
