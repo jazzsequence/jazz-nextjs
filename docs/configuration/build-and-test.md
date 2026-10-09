@@ -89,7 +89,7 @@ describe a confirmation prompt that does not exist and omit the entire test suit
 
 **Location**: `config/vitest.config.ts`
 
-**Environment**: happy-dom (faster, better ESM compatibility than jsdom)
+**Environment**: happy-dom (faster, better ESM compatibility than jsdom) for component and page tests; `node` for `tests/app/api/`, `tests/lib/wordpress/` and `tests/scripts/`, which is where MSW-mocked requests run reliably. See `docs/TESTING.md`.
 
 **Features**:
 - TypeScript support

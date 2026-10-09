@@ -14,7 +14,11 @@ We follow **TDD London School** (mockist approach):
 
 ### Unit & Integration Tests (Vitest)
 
-**Framework**: Vitest 4.1.11 with happy-dom
+**Framework**: Vitest 4.1.11 with happy-dom, and `node` for server-side tests
+
+**Environments**: `config/vitest.config.ts` defines two Vitest projects. Tests under `tests/app/api/`, `tests/lib/wordpress/` and `tests/scripts/` run in `node`; everything else (components, pages, hooks) runs in happy-dom. Put a test that makes cross-origin requests through MSW in one of the `node` directories. Under MSW 3 in happy-dom, a cross-origin request through happy-dom's own `fetch` reached MSW as an unhandled `OPTIONS` request (happy-dom's CORS preflight) and was then blocked with "Cross-Origin Request Blocked", and `global.fetch` was read-only; in `node` neither happens.
+
+happy-dom is configured not to load iframe pages (`disableIframePageLoading`). With it on, the media page tests, which render iframes with real URLs, raised uncaught `getALPNNegotiatedProtocol` errors from inside `@mswjs/interceptors` and made Vitest exit non-zero even though every test passed.
 
 **Configuration**: `config/vitest.config.ts`
 
