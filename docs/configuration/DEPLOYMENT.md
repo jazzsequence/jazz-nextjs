@@ -446,10 +446,10 @@ Risk notes, from validating it:
 - **The AVIF path is not covered by E2E.** The optimizer returns WebP even when sent
   `Accept: image/avif`. AVIF is the surface one of the unconfirmed CRITICAL RCEs above
   concerns, so it is worth manual checking if that ever becomes relevant.
-- `tests/e2e/images.spec.ts` fetches through `/_next/image`, so the E2E run against a
-  `pr-N` environment does exercise Linux sharp — that run is the real verdict, not local
-  green. Note its assertions are wrapped in `if (imageCount > 0)`, so the spec cannot fail
-  if images ever stop rendering entirely.
+- The E2E run against a `pr-N` environment is the Pantheon group (`tests/e2e/pantheon/`),
+  and its `/_next/image` check is what exercises Linux sharp — that run is the real
+  verdict, not local green. `tests/e2e/images.spec.ts` runs in the local group, against a
+  dev server on the runner.
 
 To read the real build log (GitHub Actions only reports `BUILD_FAILURE`):
 
@@ -590,21 +590,33 @@ The `.github/workflows/test-pantheon.yml` workflow runs automated tests against 
 - Push to `main` branch → tests run against `dev-jazz-nextjs15.pantheonsite.io`
 - Pull request opened/updated → tests run against `pr-{number}-jazz-nextjs15.pantheonsite.io`
 
-**Workflow steps**:
-1. Checkout code and setup Node.js (version from `.nvmrc`)
-2. Restore npm cache, then install dependencies with `npm ci`
-3. **Run lint**: `npm run lint` — placed before the deployment wait so its output is
-   visible in ~1 minute rather than after a ~10 minute build, and so it still reports
-   when the Pantheon build fails
-4. Determine target environment (dev or PR-specific)
-5. Wait for Pantheon build and deployment (`jazzsequence/pantheon-wait-for-build@v1`)
-6. Run unit tests: `npm test -- --run`
-7. Install Playwright browsers (chromium)
-8. Verify the Pantheon site responds with HTTP 200
-9. Run E2E tests: `npm run test:e2e` with `BASE_URL` set to Pantheon environment
-10. Upload the Playwright report and publish it to GitHub Pages
-11. Report results in the GitHub Actions summary
-12. Fail the workflow if lint, unit tests, or E2E did not succeed
+**Two jobs, run independently** — either failing fails the run. The E2E suite is split in
+two by `E2E_TARGET` (see `config/playwright.config.ts`):
+
+- **`local`, "Test (no Pantheon)"**: everything except `tests/e2e/pantheon/`, run against a
+  server the Playwright config starts on the runner. It never touches a Pantheon
+  environment, so it neither waits for a build nor counts against Pantheon's Cloudflare
+  rate limit. Steps: checkout and Node setup, `npm ci`, a guard that names any empty
+  WordPress secret, lint, unit tests, `npm run build`, install Playwright browsers,
+  `npm run test:e2e`, upload the report as an artifact, report results, fail the job if
+  any check did not succeed. It does not publish to GitHub Pages.
+- **`test`, "Test deployed site"**: only `tests/e2e/pantheon/`, against the Pantheon
+  environment — `npm run test:e2e:pantheon` with `BASE_URL` set. Steps:
+  1. Checkout, Node setup, `npm ci`
+  2. Determine target environment (dev or PR-specific)
+  3. **Fetch the Pantheon bot-bypass token** (see "Bot-bypass token" below)
+  4. Wait for Pantheon build and deployment (`jazzsequence/pantheon-wait-for-build@v1`)
+  5. Verify the Pantheon site responds with HTTP 200, sending the bot-bypass token; fails
+     with a named error if the token step did not produce one
+  6. Run `npm run test:e2e:pantheon`
+  7. **Scan the Playwright output for the bot-bypass token** and refuse to publish it if
+     found (see "Bot-bypass token" below)
+  8. Upload the Playwright report and publish it to GitHub Pages
+  9. Report results in the GitHub Actions summary
+  10. Fail the job if the E2E step did not succeed
+
+The Pantheon group sends its requests through Node fetch, not a browser, so that job
+installs no Playwright browsers and runs no lint or unit tests.
 
 **Re-running a failed job does not retry the build.** `wait-for-build.sh` selects the
 first build record matching the commit SHA and exits non-zero on any terminal `*FAILURE*`
@@ -620,11 +632,52 @@ job rather than at the failing step.
 **Deployment detection**:
 - Build and deploy status come from the `pantheon-wait-for-build` action
 - A follow-up accessibility check polls the environment URL for HTTP 200
-  (12 attempts, 5s apart) before E2E runs
+  (12 attempts, 5s apart) before E2E runs, sending the bot-bypass token so it takes the
+  same path the browser does
 - Fails if the site is not reachable within that window
+
+**Bot-bypass token**: `*.pantheonsite.io` is served through Pantheon's Cloudflare-backed
+GCDN, which answers automation it cannot verify (Playwright, GitHub Actions runners) with a
+managed challenge — HTTP 403, `cf-mitigated: challenge` — and a bare `curl` is let through,
+so a plain readiness check can say "ready" while every browser request is being challenged.
+Pantheon issues a per-site token, sent in the `x-pantheon-bot-bypass` header, that exempts
+our own traffic. One token covers every environment, including `pr-N` multidevs. It rotates,
+so the workflow fetches the current one on every run with `terminus gcdn:bot-bypass` instead
+of storing a copy that would silently expire. The token is masked and handed to later steps
+as a step output (not `GITHUB_ENV`), so the third-party actions in the job never see it.
+- `tests/e2e/fixtures.ts` adds the header to browser traffic for the app's own https origin
+  only, through a context route. Specs import `test` from `./fixtures`, not
+  `@playwright/test`. It is deliberately not Playwright's `use.extraHTTPHeaders`, which would
+  send the credential to every host a page loads (embeds, fonts, the image CDN).
+- **API calls use the `api` fixture, never `request` or `page.request`.** Playwright records
+  every request header of an API-client call, both in the error it throws and in the report
+  step that the HTML report embeds, and CI publishes that report to a public GitHub Pages
+  site. Wrapping the thrown error does not reach the report step (measured), so the token must
+  never be handed to a Playwright API client at all. `api` is a small Node-fetch client
+  (`tests/e2e/support/app-client.ts`) that writes no such log and attaches the token only for
+  the app's own https origin, so a request to any other host gets none. A unit test
+  fails if `fixtures.ts` gains `extraHTTPHeaders` or `request.newContext(`.
+- Before anything is uploaded or published, `scripts/scan-report-for-secret.py` scans
+  `playwright-report/` and `test-results/` for the token, including inside the HTML report's
+  embedded base64 zip, which a plain grep of the folder does not see. On a hit the output is
+  deleted, so the artifact upload and the Pages publish have nothing to ship, and the job
+  fails; if a report from that run was already visible, rotate the token. This is the net
+  under the measures above for any leak path they miss. It prints where it found the token,
+  never the token, and a scanner failure counts as a hit.
+- Playwright traces are off while the token is set (`config/playwright.config.ts`). A trace
+  records request headers, so it contains the token, and CI uploads `test-results/` and
+  publishes the report to GitHub Pages — this repo and that site are public. Do not turn
+  traces back on for runs that carry the token.
+- Locally `BOT_BYPASS_TOKEN` is unset and the fixtures do nothing.
+- If the token step fails, unit tests still report and the readiness check then fails with
+  a named error.
 
 **GitHub Secrets used by this workflow**:
 - `PANTHEON_MACHINE_TOKEN` - Machine token, passed to the `pantheon-wait-for-build` action
+  and used to log Terminus in so the bot-bypass token can be fetched. **Must exist in both
+  the Actions and the Dependabot secret stores**: workflows triggered by Dependabot cannot
+  read Actions secrets, so without the Dependabot copy every Dependabot PR fails at the token
+  step.
   - Generate at: https://dashboard.pantheon.io/users/#account/tokens
   - Add to GitHub: Settings → Secrets and variables → Actions → New repository secret
 - `REVALIDATE_SECRET` - shared secret for `/api/revalidate`. **The whole E2E run fails
@@ -634,13 +687,14 @@ job rather than at the failing step.
   deliberate: it previously fell back to `'test-secret'`, which turned a missing secret
   into ~10 401 failures that read as an auth regression. The fallback is kept for local
   runs, where `webServer.env` uses the same value so client and server agree.
-- `WORDPRESS_USERNAME`, `WORDPRESS_APP_PASSWORD` - **not GitHub secrets for this
-  workflow.** They are consumed by the Next.js *server runtime*
-  (`src/lib/wordpress/client.ts`, `src/lib/wordpress/greeting.ts`,
-  `app/api/contact/route.ts`) for WordPress basic auth. On a deployed environment that
-  runtime is on Pantheon, so it reads them from Pantheon secrets (set as env vars) — see
-  "WordPress Application Passwords" below. They were previously passed to the E2E step
-  where they did nothing, and have been removed; do not re-add them.
+- `WORDPRESS_USERNAME`, `WORDPRESS_PASSWORD` - WordPress credentials for the `local`
+  job's server, which reads WordPress basic auth from `WORDPRESS_USERNAME` and
+  `WORDPRESS_APP_PASSWORD`; the workflow maps the `WORDPRESS_PASSWORD` secret onto the
+  latter. Without them the menu and greeting endpoints return 401 and the navigation is
+  missing from every page. Must exist as both Actions and Dependabot secrets. The
+  `local` job's guard step fails with the missing names. They are not used by the
+  `Test deployed site` job: on a deployed environment the runtime gets them from Pantheon
+  secrets — see "WordPress Application Passwords" below.
 
 Other workflows use their own secrets — `slack-notify-deploy.yml` needs
 `SLACK_DEPLOYBOT_TOKEN` (see `@docs/architecture/SLACK_NOTIFICATIONS.md`), and it and

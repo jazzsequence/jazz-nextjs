@@ -556,7 +556,9 @@ This would make the workflow fully automatic, but requires IPC between hook and 
 1. ✅ Unit tests must pass
 2. ✅ Linter must pass
 3. ✅ Build must succeed
-4. ✅ **E2E tests must pass** ← Critical for catching runtime errors
+4. ✅ **E2E tests must pass** ← Critical for catching runtime errors. The pre-commit hook runs
+   them and gates on them; the reviewer agent deliberately does not (items 1–3 are the
+   reviewer's cheap checks), so the suite is not run twice per commit
 5. ✅ Reviewer agent approves AND writes the `reviewer-approved` flag
 
 **Text-only commits run none of 1–4** — neither the hook nor you. Item 5 still applies.

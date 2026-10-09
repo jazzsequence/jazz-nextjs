@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 
 test.describe('Greeting Component', () => {
   test.describe('time-based greetings', () => {
