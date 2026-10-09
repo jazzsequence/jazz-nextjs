@@ -8,7 +8,7 @@ name: Slack Deployment Notifications
 on:
   workflow_run:
     workflows:
-      - "Test on Pantheon"
+      - "Test"
       - "Promote to Pantheon Environment"
     types:
       - completed
