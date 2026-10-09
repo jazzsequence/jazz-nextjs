@@ -138,7 +138,7 @@ describe('WPPost', () => {
 
 ## Mocking API Calls
 
-Use MSW (Mock Service Worker) for API mocking:
+Use MSW (Mock Service Worker) for API mocking. Tests that make cross-origin requests through MSW should be in a directory that runs in the `node` Vitest environment (`tests/app/api/`, `tests/lib/wordpress/`, `tests/scripts/`) — see `docs/TESTING.md`:
 
 ```typescript
 // tests/mocks/handlers.ts
