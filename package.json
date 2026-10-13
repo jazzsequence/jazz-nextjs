@@ -44,7 +44,7 @@
     "@testing-library/dom": "^10.4.2",
     "date-fns": "^4.4.0",
     "dompurify": "^3.4.16",
-    "framer-motion": "^13.4.4",
+    "framer-motion": "^14.1.0",
     "html-react-parser": "^6.1.8",
     "next": "16.4.0",
     "react": "^19.3.0",
