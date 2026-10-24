@@ -49,7 +49,7 @@
     "next": "16.4.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "sanitize-html": "^2.18.0",
+    "sanitize-html": "^2.18.1",
     "sharp": "^0.35.5",
     "typescript": "^6.0.3",
     "zod": "4.6"
