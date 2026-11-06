@@ -13,7 +13,7 @@ This document covers how Altis Accelerate Experience Blocks are integrated into 
 2. Open the reusable block in the block editor, add a new `altis/variant`, assign it the audience, add a Heading + Paragraph block.
 3. Save.
 
-**Claude does:** Nothing — the Next.js site picks it up automatically.
+**Claude does:** Nothing in code — no changes are needed for a variant that uses supported rule fields. The new variant only appears once the cached homepage is refreshed; see [Refreshing After a WordPress Change](#refreshing-after-a-wordpress-change).
 
 ---
 
@@ -41,6 +41,7 @@ This document covers how Altis Accelerate Experience Blocks are integrated into 
 - [How It Works](#how-it-works)
 - [Current Implementation: Homepage Greeting](#current-implementation-homepage-greeting)
 - [WordPress Side: Adding New Variants or Audiences](#wordpress-side-adding-new-variants-or-audiences)
+- [Refreshing After a WordPress Change](#refreshing-after-a-wordpress-change)
 - [Next.js Side: Adding New Experience Blocks](#nextjs-side-adding-new-experience-blocks)
 - [Supported Audience Rules](#supported-audience-rules)
 - [Variant Priority and Fallback](#variant-priority-and-fallback)
@@ -119,6 +120,7 @@ const GREETING_BLOCK_ID = 16738;
 | 16722 | hour ≥ 17 | "Good evening, I'm Chris" |
 | 16726 | Thursday, 17 < hour ≤ 21 | "Welcome adventurer, I'm Chris" |
 | 16377 | country = CN | "嗨，我是 Chris" |
+| 17228 | date-window rules (see the audience in WordPress) | "Hey WordCamp Canada 👋, I'm Chris" |
 
 ### Relevant files
 
@@ -144,7 +146,9 @@ No Next.js code changes are required to add new variants or audiences, **as long
 3. Note the audience ID from the URL or the REST API response. You'll need it in step 4.
 4. In the Experience Block (block ID 16738), add a new `altis/variant` block and assign it to the new audience.
 
-The Next.js site will pick it up automatically on the next request (ISR revalidation or page refresh).
+No code change is needed, but the homepage is served from cache, so a new audience shows up only after the cache is refreshed. See [Refreshing After a WordPress Change](#refreshing-after-a-wordpress-change).
+
+Check the rule values against how the matcher reads them (see [Supported Audience Rules](#supported-audience-rules)). The month is **0-indexed** (November is `10`), so a rule entered as the calendar month number is a month late.
 
 ### Adding a new variant to the greeting block
 
@@ -152,7 +156,7 @@ The Next.js site will pick it up automatically on the next request (ISR revalida
 2. Inside the Experience Block, click **+ Add variant**.
 3. Set the **Audience** to the audience you want to target.
 4. Add a **Heading block** (`core/heading`) and one or more **Paragraph blocks** (`core/paragraph`).
-5. Save. The variant is live on the next page request.
+5. Save. Then refresh the cache — see [Refreshing After a WordPress Change](#refreshing-after-a-wordpress-change). Saving the block does **not** trigger revalidation: the WordPress webhook only maps `post`, `page`, `gc_game` and `media`.
 
 ### Important constraints
 
@@ -161,6 +165,36 @@ The Next.js site will pick it up automatically on the next request (ISR revalida
 - The variant marked **Fallback** is shown when no audience matches. There should always be exactly one fallback variant.
 - HTML inline formatting within paragraphs (`<strong>`, `<em>`, `<a>`, etc.) is preserved and sanitized by DOMPurify before rendering.
 - Other block types inside a variant (images, lists, etc.) are currently **not rendered** — only `core/heading` and `core/paragraph` inner blocks are parsed. See [Limitations](#limitations-and-known-constraints).
+
+---
+
+## Refreshing After a WordPress Change
+
+The variants and audiences are fetched with no cache options of their own (`fetchGreetingData()` in `src/lib/wordpress/greeting.ts`), so they are baked into the homepage's ISR render. The homepage is tagged `homepage` and `posts`, so revalidating either tag re-renders it with the current block and audiences. Without a refresh, a change appears when the ISR window expires.
+
+```bash
+npm run revalidate -- homepage
+BASE_URL=https://live-jazz-nextjs15.pantheonsite.io npm run revalidate -- homepage
+```
+
+**The script targets dev unless `BASE_URL` (or `NEXT_PUBLIC_SITE_URL`) says otherwise.** Running it bare does nothing to live. Check which environment you are looking at before assuming a refresh failed.
+
+### If the page is still stale after revalidating
+
+The Pantheon edge can keep serving an older copy of `/` even after Next.js has the fresh render. Tell the two apart by adding a throwaway query string, which bypasses the edge copy:
+
+```bash
+curl -sD - -o /dev/null "https://<env>-jazz-nextjs15.pantheonsite.io/?cb=probe" | grep -i x-nextjs-cache
+curl -s "https://<env>-jazz-nextjs15.pantheonsite.io/?cb=probe" | grep -o 'audienceId[^,]*' | sort -u
+```
+
+If the `?cb=` response contains the new audience ID and plain `/` does not, Next.js is fresh and the edge is stale. This has been observed on both dev and live, where the stale copy carried `x-nextjs-cache: STALE` and a climbing `age` header. Clearing the environment's cache fixed it both times:
+
+```bash
+terminus env:clear-cache jazz-nextjs15.<env>
+```
+
+On live this clears production's cache, so confirm first.
 
 ---
 
@@ -237,7 +271,7 @@ The `matchAudiences()` function in `src/lib/audience-matcher.ts` supports the fo
 
 ### Rule logic
 
-- **Within an audience**: all rules must match (AND logic).
+- **Within an audience**: all rules must match (AND logic). The group's `include: any` / `all` setting in WordPress is **ignored** — `parseAudiences()` drops it and the matcher always ANDs. An audience set to `any` with rules like `day >= 4` and `day <= 6` therefore behaves differently here than in Altis, where that pair is true every day. Set groups to `all` when the rules are meant to be combined.
 - **Across audiences**: the first matching audience ID is used.
 - **Priority**: audiences are evaluated in the order returned by `/accelerate/v1/audiences`. More specific audiences (e.g., the D&D Thursday audience) should be ordered before broader ones (e.g., Evening) in the Altis Audiences list if you want them to take priority when both match.
 
@@ -281,9 +315,10 @@ The `?greeting=<name>` query parameter forces a specific variant for E2E testing
 | Block must be a WordPress Reusable Block | The `/wp/v2/blocks/:id` endpoint only serves reusable blocks, not page-embedded blocks |
 | Authentication required | The `WORDPRESS_USERNAME` and `WORDPRESS_APP_PASSWORD` env vars must be set; block fetches fail without them |
 | Block ID is hardcoded | `GREETING_BLOCK_ID = 16738` in `greeting.ts`. If the block is recreated or a new one is needed, update this constant |
-| No ISR cache tags for the greeting | The greeting block is fetched without ISR tags, so it re-fetches on every server render. If this becomes a performance concern, add `next: { revalidate: 3600, tags: ['greeting'] }` to the fetch calls |
+| No ISR cache tags for the greeting | The greeting block is fetched without its own tags, so its data is baked into the homepage's ISR render and only refreshes when the homepage does (`homepage` / `posts` tag, or the ISR window expiring). See [Refreshing After a WordPress Change](#refreshing-after-a-wordpress-change) |
+| Group `include: any` is ignored | See [Rule logic](#rule-logic) |
 
 ---
 
 ## Last Updated
-2026-03-30
+2026-11-06
